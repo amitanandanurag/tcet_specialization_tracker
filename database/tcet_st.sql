@@ -766,8 +766,6 @@ ALTER TABLE `st_cgpa_master`
   ADD PRIMARY KEY (`cgpa_id`);
 
 --
--- Indexes for table `st_class_master`
---
 ALTER TABLE `st_class_master`
   ADD PRIMARY KEY (`class_id`);
 
@@ -777,8 +775,6 @@ ALTER TABLE `st_class_master`
 ALTER TABLE `st_credit_ledger`
   ADD PRIMARY KEY (`credit_id`);
 
---
--- Indexes for table `st_department_master`
 --
 ALTER TABLE `st_department_master`
   ADD PRIMARY KEY (`department_id`);
@@ -850,8 +846,6 @@ ALTER TABLE `st_research_records`
 ALTER TABLE `st_role_master`
   ADD PRIMARY KEY (`role_id`);
 
---
--- Indexes for table `st_section_master`
 --
 ALTER TABLE `st_section_master`
   ADD PRIMARY KEY (`id`);
@@ -953,10 +947,20 @@ ALTER TABLE `st_cgpa_master`
   MODIFY `cgpa_id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
--- AUTO_INCREMENT for table `st_class_master`
---
 ALTER TABLE `st_class_master`
   MODIFY `class_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+
+--
+-- AUTO_INCREMENT for table `st_department_master`
+--
+ALTER TABLE `st_department_master`
+  MODIFY `department_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+
+--
+-- AUTO_INCREMENT for table `st_section_master`
+--
+ALTER TABLE `st_section_master`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT for table `st_credit_ledger`
