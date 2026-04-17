@@ -14,28 +14,6 @@ var join_date=document.myform.join_date.value;
 
 var fname=document.myform.fname.value;
 
-var dob=document.myform.dob.value;
-
-var cat=document.myform.cat.value;
-
-var gender=document.myform.gender.value;
-
-var lname=document.myform.lname.value;
-
-var present=document.myform.present.value;
-
-var pname=document.myform.pname.value;
-
-var pmobile=document.myform.pmobile.value;
-
-var pjob=document.myform.pjob.value;
-
-var pincode=document.myform.pincode.value;
-
-var country=document.myform.country.value;
-
-var state=document.myform.state.value;
-
 var mobile=document.myform.mobile.value;
 var specializationSelect = document.getElementById("specialization_select");
 var specializationText = "";
@@ -763,7 +741,6 @@ if(register)
   <!-- /.content-wrapper -->
 <script type="text/javascript">
    function show(input) {
-        debugger;
         var validExtensions = ['jpg','png','jpeg']; //array of valid extensions
         var fileName = input.files[0].name;
         var fileNameExt = fileName.substr(fileName.lastIndexOf('.') + 1);
@@ -805,3 +782,5 @@ if(register)
   });
 </script>
  <?php include "header/footer.php" ?>
+
+
