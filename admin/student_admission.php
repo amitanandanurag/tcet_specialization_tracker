@@ -697,168 +697,62 @@ if(register)
 
     </div>
 
-    </div>
-
     <div class="box box-default" id="upload_documents_section" style="padding: 10px; display: none;">
         <div class="box-header with-border" style="border-bottom: 2px solid #9C27B0;">
           <h3 class="box-title">Upload Documents:- </h3>
-
           <div class="box-tools pull-right">
             <button type="button" class="btn btn-box-tool" data-widget="collapse"><i class="fa fa-minus"></i></button>
-
           </div>
         </div>
-        <!-- /.box-header -->
-     <div class="box-body">
+        <div class="box-body">
+          <style>
+            #upload_documents_section .doc-row {
+              margin: 0;
+              padding: 8px 0;
+              border-bottom: 1px dashed #e5e5e5;
+            }
+            #upload_documents_section .doc-row:last-child {
+              border-bottom: 0;
+            }
+            #upload_documents_section .doc-label {
+              display: inline-flex;
+              align-items: center;
+              gap: 8px;
+              margin: 0;
+              font-weight: 600;
+            }
+          </style>
 
-       <div class="row">
-          <div class="col-md-6">
-            <div class="form-group">
-                <input type="checkbox" id="checkbox1"/>
-                <label>Mark List</label>
-
+          <div class="row doc-row">
+            <div class="col-md-3 col-sm-4">
+              <label class="doc-label" for="checkbox1">
+                <input type="checkbox" id="checkbox1"> Mark List
+              </label>
+            </div>
+            <div class="col-md-9 col-sm-8" id="autoUpdate" style="display:none;">
+              <input type="file" class="form-control" name="mark-list" accept=".pdf,.jpg,.jpeg,.png">
             </div>
           </div>
-        <div id="autoUpdate" class="autoUpdate" style="display:none">
-         <input type="file" name="mark-list">
-        </div>
-          <script type="text/javascript">
-            $(document).ready(function(){
-              $('#checkbox1').change(function(){
-              if(this.checked)
-              $('#autoUpdate').fadeIn('slow');
-              else
-              $('#autoUpdate').fadeOut('slow');
 
-              });
-              });
-          </script>
-       </div>
-     <!--  <div class="row">
-          <div class="col-md-6">
-            <div class="form-group">
-                <input type="checkbox" id="checkbox2"/>
-                <label>Birth Certificate</label>
-
+          <div class="row doc-row">
+            <div class="col-md-3 col-sm-4">
+              <label class="doc-label" for="checkbox6">
+                <input type="checkbox" id="checkbox6"> Affidavit
+              </label>
+            </div>
+            <div class="col-md-9 col-sm-8" id="autoUpdate5" style="display:none;">
+              <input type="file" class="form-control" name="affidavit" accept=".pdf,.jpg,.jpeg,.png">
             </div>
           </div>
-        <div id="autoUpdate1" class="autoUpdate1" style="display:none">
-         <input type="file" name="bc">
-        </div>
-          <script type="text/javascript">
-            $(document).ready(function(){
-              $('#checkbox2').change(function(){
-              if(this.checked)
-              $('#autoUpdate1').fadeIn('slow');
-              else
-              $('#autoUpdate1').fadeOut('slow');
-
-                });
-                });
-          </script>
-       </div>
-       <div class="row">
-          <div class="col-md-6">
-            <div class="form-group">
-                <input type="checkbox" id="checkbox3"/>
-                <label>Transfer Certificate</label>
-
-            </div>
-          </div>
-        <div id="autoUpdate2" class="autoUpdate2" style="display:none">
-         <input type="file" name="tc">
-        </div>
-          <script type="text/javascript">
-            $(document).ready(function(){
-              $('#checkbox3').change(function(){
-              if(this.checked)
-              $('#autoUpdate2').fadeIn('slow');
-              else
-              $('#autoUpdate2').fadeOut('slow');
-
-                });
-                });
-          </script>
-       </div>
-
-       <div class="row">
-          <div class="col-md-6">
-            <div class="form-group">
-                <input type="checkbox" id="checkbox4"/>
-                <label>Caste Certificate</label>
-
-            </div>
-          </div>
-        <div id="autoUpdate3" class="autoUpdate3" style="display:none">
-         <input type="file" name="cc">
-        </div>
-          <script type="text/javascript">
-            $(document).ready(function(){
-              $('#checkbox4').change(function(){
-              if(this.checked)
-              $('#autoUpdate3').fadeIn('slow');
-              else
-              $('#autoUpdate3').fadeOut('slow');
-
-              });
-              });
-          </script>
-       </div>
-       <div class="row">
-          <div class="col-md-6">
-            <div class="form-group">
-                <input type="checkbox" id="checkbox5"/>
-                <label>Migration Certificate</label>
-
-            </div>
-          </div>
-        <div id="autoUpdate4" class="autoUpdate4" style="display:none">
-         <input type="file" name="migration">
-        </div>
-          <script type="text/javascript">
-            $(document).ready(function(){
-              $('#checkbox5').change(function(){
-              if(this.checked)
-              $('#autoUpdate4').fadeIn('slow');
-              else
-              $('#autoUpdate4').fadeOut('slow');
-
-                });
-                });
-          </script>
-       </div>-->
-       <div class="row">
-          <div class="col-md-6">
-            <div class="form-group">
-                <input type="checkbox" id="checkbox6"/>
-                <label>Affidavit</label>
-
-            </div>
-          </div>
-        <div id="autoUpdate5" class="autoUpdate5" style="display:none">
-         <input type="file" name="affidavit">
-        </div>
-          <script type="text/javascript">
-            $(document).ready(function(){
-              $('#checkbox6').change(function(){
-              if(this.checked)
-              $('#autoUpdate5').fadeIn('slow');
-              else
-              $('#autoUpdate5').fadeOut('slow');
-
-                });
-                });
-          </script>
-       </div>
         </div>
     </div>
 
+    <div class="row" style="margin: 10px 0 0 0;">
+      <div class="col-md-12">
+        <button type="submit" name="save" class="btn" style="background-color: #009688; color: #FFEB3B; font-size: 20px; padding: 5px 16px; min-width: 100px;">SAVE</button>
+        <button type="reset" name="reset" class="btn" style="background-color: #009688; color: #FFEB3B; font-size: 20px; padding: 5px 16px; min-width: 100px;">RESET</button>
+      </div>
     </div>
-
-<input type="submit" name="save" value="SAVE" style="background-color: #009688; color: #FFEB3B; font-size: 20px; padding: 5px; width: 100px;" />
-<input type="reset" name="reset" value="RESET" style="background-color: #009688; color: #FFEB3B; font-size: 20px; padding: 5px; width: 100px;" />
-
-</div>
 
 </form>
     <!--end formset3-->
@@ -869,7 +763,7 @@ if(register)
   <!-- /.content-wrapper -->
 <script type="text/javascript">
    function show(input) {
-        debugger;
+
         var validExtensions = ['jpg','png','jpeg']; //array of valid extensions
         var fileName = input.files[0].name;
         var fileNameExt = fileName.substr(fileName.lastIndexOf('.') + 1);
@@ -891,4 +785,25 @@ if(register)
         }
     }
   </script>
+<script type="text/javascript">
+  $(document).ready(function(){
+    $('#checkbox1').on('change', function(){
+      if (this.checked) {
+        $('#autoUpdate').stop(true, true).slideDown('fast');
+      } else {
+        $('#autoUpdate').stop(true, true).slideUp('fast');
+      }
+    });
+
+    $('#checkbox6').on('change', function(){
+      if (this.checked) {
+        $('#autoUpdate5').stop(true, true).slideDown('fast');
+      } else {
+        $('#autoUpdate5').stop(true, true).slideUp('fast');
+      }
+    });
+  });
+</script>
  <?php include "header/footer.php" ?>
+
+

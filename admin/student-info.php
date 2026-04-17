@@ -251,8 +251,8 @@ $(document).ready(function(){
     $('#modal-loader').show();      // load ajax loader
     $('#view').modal('show');       // show modal
 
-    $.ajax({
-      url: 'student-view.php',
+  $.ajax({
+      url: 'student_view.php',
       type: 'POST',
       data: 'id='+uid,
       dataType: 'html'
