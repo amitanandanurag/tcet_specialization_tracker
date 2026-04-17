@@ -15,12 +15,6 @@
 <a href="student-info.php"><i class="fa fa-info-circle"></i>LIST OF STUDENTS</a>
 </li>
 <li>
-<a href="left_students.php"><i class="fa fa-info-circle"></i>LEFT STUDENTS</a>
-</li>
-<li>
-<a href="previous_students.php"><i class="fa fa-info-circle"></i>PREVIOUS STUDENTS</a>
-</li>
-<li>
 <a href="student_concise_details.php"><i class="fa fa-info-circle"></i>CONCISE DETAILS</a>
 </li>
 </ul>

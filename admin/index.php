@@ -6,6 +6,9 @@
    /* $total_income = $db_handle->conn->query("SELECT SUM(total_fees) as total_income FROM dsms_fees_master")->fetch_assoc()['total_income'] ?? 0;
     $total_expenses = $db_handle->conn->query("SELECT SUM(total) as total_expenses FROM vouchers")->fetch_assoc()['total_expenses'] ?? 0;
     $net_balance = $total_income - $total_expenses;*/
+    $total_income = 5000;
+    $total_expenses = 6000;
+    $net_balance = 7000;
 ?>
 <link href='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.2/main.min.css' rel='stylesheet' />
 <script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.2/main.min.js'></script>
@@ -71,7 +74,10 @@ while ($row = $expense_result->fetch_assoc()) {
 for ($i = 1; $i <= 12; $i++) {
     $income_data[$i] = $income_data[$i] ?? 0;
     $expense_data[$i] = $expense_data[$i] ?? 0;
+
 }*/
+$income_data[0] =  0;
+$expense_data[0] =  0;
 ?>
 
 <script>
@@ -477,14 +483,14 @@ var pieChart = new Chart(ctxPie, {
       <div class="row">
       
         <?php
-        $result=$db_handle->conn->query("SELECT * fROM dsms_student_master where class='$class_id'");
-          $rowcount=mysqli_num_rows($result);
+       /* $result=$db_handle->conn->query("SELECT * fROM dsms_student_master where class='$class_id'");
+          $rowcount=mysqli_num_rows($result);*/
           ?>
           <div class="col-lg-4 col-xs-12">
           <!-- small box -->
           <div class="small-box bg-green-gradient">
             <div class="inner">
-            <h3><?php echo $rowcount; ?></h3>
+            <h3><?php echo "500"; ?></h3>
               <p>Total Students</p>
             </div>
 
@@ -500,7 +506,7 @@ var pieChart = new Chart(ctxPie, {
           <!-- small box -->
           <div class="small-box bg-yellow">
             <div class="inner">
-              <h3><?php echo $username; ?></h3>
+              <h3><?php echo "MCA"; ?></h3>
 
               <p>Class Name</p>
             </div>
@@ -516,10 +522,10 @@ var pieChart = new Chart(ctxPie, {
           <div class="small-box bg-blue">
             <div class="inner">
             <?php
-                 $result=$db_handle->conn->query("SELECT * fROM message_master");
-                 $rowcount=mysqli_num_rows($result);
+               /*  $result=$db_handle->conn->query("SELECT * fROM message_master");
+                 $rowcount=mysqli_num_rows($result);*/
                 ?>
-              <h3><?php echo $rowcount; ?></h3>
+              <h3><?php echo "500"; ?></h3>
 
               <p>Total Messages</p>
             </div>
@@ -597,21 +603,21 @@ var pieChart = new Chart(ctxPie, {
 </section>
 <?php
 // Fetch data for charts
-$studentCount = $db_handle->conn->query("SELECT COUNT(*) as count FROM dsms_student_master")->fetch_assoc()['count'];
+/*$studentCount = $db_handle->conn->query("SELECT COUNT(*) as count FROM dsms_student_master")->fetch_assoc()['count'];
 $employeeCount = $db_handle->conn->query("SELECT COUNT(*) as count FROM dsms_employee_master")->fetch_assoc()['count'];
 $classOneCount = $db_handle->conn->query("SELECT COUNT(*) as count FROM dsms_employee_master WHERE emp_type='grade1'")->fetch_assoc()['count'];
-$teacherCount = $db_handle->conn->query("SELECT COUNT(*) as count FROM dsms_employee_master WHERE emp_type='2'")->fetch_assoc()['count'];
+$teacherCount = $db_handle->conn->query("SELECT COUNT(*) as count FROM dsms_employee_master WHERE emp_type='2'")->fetch_assoc()['count'];*/
 ?>
 <?php
-$fees_distribution_query = "SELECT SUM(tution_fees) as monthly_fee, SUM(admission_fees) as admission_fee, SUM(exam) as late_fee, SUM(library) as extra_fee FROM dsms_fees_master";
+/*$fees_distribution_query = "SELECT SUM(tution_fees) as monthly_fee, SUM(admission_fees) as admission_fee, SUM(exam) as late_fee, SUM(library) as extra_fee FROM dsms_fees_master";
 $fees_distribution = $db_handle->conn->query($fees_distribution_query)->fetch_assoc();
 
 $expense_distribution_query = "SELECT SUM(total) as expense_total FROM vouchers";
-$expense_distribution = $db_handle->conn->query($expense_distribution_query)->fetch_assoc();
+$expense_distribution = $db_handle->conn->query($expense_distribution_query)->fetch_assoc();*/
 ?>
 
 <?php
-$income_query = "SELECT MONTH(date) as month, SUM(total_fees) as total_income FROM dsms_fees_master GROUP BY MONTH(date)";
+/*$income_query = "SELECT MONTH(date) as month, SUM(total_fees) as total_income FROM dsms_fees_master GROUP BY MONTH(date)";
 $expense_query = "SELECT MONTH(created_at) as month, SUM(total) as total_expenses FROM vouchers GROUP BY MONTH(created_at)";
 $income_result = $db_handle->conn->query($income_query);
 $expense_result = $db_handle->conn->query($expense_query);
@@ -631,15 +637,15 @@ while ($row = $expense_result->fetch_assoc()) {
 for ($i = 1; $i <= 12; $i++) {
     $income_data[$i] = $income_data[$i] ?? 0;
     $expense_data[$i] = $expense_data[$i] ?? 0;
-}
+}*/
 ?>
 
 <?php
-$fees_distribution_query = "SELECT SUM(tution_fees) as monthly_fee, SUM(admission_fees) as admission_fee, SUM(exam) as late_fee, SUM(library) as extra_fee FROM dsms_fees_master";
+/*$fees_distribution_query = "SELECT SUM(tution_fees) as monthly_fee, SUM(admission_fees) as admission_fee, SUM(exam) as late_fee, SUM(library) as extra_fee FROM dsms_fees_master";
 $fees_distribution = $db_handle->conn->query($fees_distribution_query)->fetch_assoc();
 
 $expense_distribution_query = "SELECT SUM(total) as expense_total FROM vouchers";
-$expense_distribution = $db_handle->conn->query($expense_distribution_query)->fetch_assoc();
+$expense_distribution = $db_handle->conn->query($expense_distribution_query)->fetch_assoc();*/
 ?>
 <script>
   var ctxBar = document.getElementById('barChart').getContext('2d');
