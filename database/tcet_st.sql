@@ -13,9 +13,6 @@ SET time_zone = "+00:00";
 
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
-/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
-/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
-/*!40101 SET NAMES utf8mb4 */;
 
 --
 -- Database: `tcet_st`
@@ -33,134 +30,7 @@ CREATE TABLE `class_master` (
   `date` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
---
--- Dumping data for table `class_master`
---
 
-INSERT INTO `class_master` (`id`, `class`, `date`) VALUES
-(1, 'VIII', '2027-04-22 01:00:00'),
-(2, 'IX', '2027-04-22 01:00:00'),
-(3, 'X', '2027-04-22 01:00:00'),
-(4, 'XI - COM', '2027-04-22 01:01:00'),
-(5, 'XI - SCI', '2028-04-22 06:27:00'),
-(6, 'XII - COM', '2027-04-22 01:02:00'),
-(7, 'XII - SCI', '2028-04-22 06:27:00'),
-(11, 'VII', '2024-04-25 10:46:54'),
-(12, 'X - Promoted', '2026-03-22 04:44:54'),
-(13, 'XII - Science - Promoted', '2026-03-22 04:44:54'),
-(14, 'XII - Commerce - Promoted', '2026-03-22 04:44:54');
-
--- --------------------------------------------------------
-
---
--- Table structure for table `dsms_student_master`
---
-
-CREATE TABLE `dsms_student_master` (
-  `std_id` int(11) NOT NULL,
-  `std_id_sch` varchar(100) NOT NULL,
-  `medium` text NOT NULL,
-  `academic_year` varchar(100) NOT NULL,
-  `register_number` varchar(200) NOT NULL,
-  `joining_date` varchar(100) NOT NULL,
-  `class` varchar(100) NOT NULL,
-  `batch` varchar(100) NOT NULL,
-  `department_id` int(11) DEFAULT NULL,
-  `specialization_id` int(11) DEFAULT NULL,
-  `cgpa` decimal(4,2) DEFAULT NULL,
-  `roll_no` int(200) DEFAULT NULL,
-  `fname` varchar(100) NOT NULL,
-  `mname` varchar(100) DEFAULT NULL,
-  `lname` varchar(100) NOT NULL,
-  `dob` varchar(100) NOT NULL,
-  `gender` varchar(50) NOT NULL,
-  `blood_group` varchar(100) DEFAULT NULL,
-  `birth_place` varchar(200) DEFAULT NULL,
-  `nationality` varchar(100) DEFAULT NULL,
-  `mother_tongue` varchar(100) DEFAULT NULL,
-  `category` varchar(100) NOT NULL,
-  `religion` varchar(100) DEFAULT NULL,
-  `caste` varchar(100) DEFAULT NULL,
-  `permanent_address` varchar(500) DEFAULT NULL,
-  `present_address` varchar(500) NOT NULL,
-  `city` varchar(100) DEFAULT NULL,
-  `district` varchar(100) NOT NULL,
-  `pincode` int(10) DEFAULT 0,
-  `country` varchar(100) DEFAULT NULL,
-  `state` varchar(200) DEFAULT NULL,
-  `phone` bigint(50) DEFAULT 0,
-  `mobile` bigint(50) DEFAULT 0,
-  `email_id` varchar(100) DEFAULT NULL,
-  `photo` varchar(100) DEFAULT NULL,
-  `parent_name` varchar(100) NOT NULL,
-  `parent_mobile` bigint(50) DEFAULT 0,
-  `parent_email` varchar(100) DEFAULT NULL,
-  `parent_job` varchar(100) DEFAULT NULL,
-  `mother_name` varchar(50) DEFAULT NULL,
-  `mother_mobile` varchar(50) DEFAULT NULL,
-  `mother_email` varchar(50) DEFAULT NULL,
-  `mother_job` varchar(50) DEFAULT NULL,
-  `qualification` varchar(100) DEFAULT NULL,
-  `school_name` varchar(200) DEFAULT NULL,
-  `school_address` varchar(500) DEFAULT NULL,
-  `marklist` varchar(100) DEFAULT NULL,
-  `birth_certificate` varchar(100) DEFAULT NULL,
-  `transfer_certificate` varchar(100) DEFAULT NULL,
-  `caste_certificate` varchar(100) DEFAULT NULL,
-  `migration_certificate` varchar(100) DEFAULT NULL,
-  `affidavit` varchar(100) DEFAULT NULL,
-  `v_no` text NOT NULL,
-  `allocatedvehicle` int(11) NOT NULL,
-  `gr_no` varchar(255) NOT NULL,
-  `aadhar_no` varchar(100) NOT NULL,
-  `pen` text NOT NULL,
-  `apar` text NOT NULL,
-  `edutype` varchar(10) NOT NULL,
-  `unaided_sub` int(11) NOT NULL,
-  `status` int(11) NOT NULL DEFAULT 1
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `session_master`
---
-
-CREATE TABLE `session_master` (
-  `session_id` int(11) NOT NULL,
-  `session` text NOT NULL,
-  `dsms_student_master` text NOT NULL,
-  `progress_insert` text NOT NULL,
-  `green_sheet_college` text NOT NULL,
-  `green_sheet_school` text NOT NULL,
-  `green_sheet_school_eight` text NOT NULL,
-  `leaving_certificate_master` text NOT NULL,
-  `leaving_certificate_master_cancelled` text NOT NULL,
-  `bonafied_certificate_master` text NOT NULL,
-  `bonafied_certificate_master_cancelled` text NOT NULL,
-  `dsms_fees_master` text NOT NULL,
-  `dsms_fees_master_unaided` text NOT NULL,
-  `dsms_fees_master_ext` text NOT NULL,
-  `fee_management` text NOT NULL,
-  `fee_management_unaided` text NOT NULL,
-  `fee_management_ext` text NOT NULL,
-  `dsms_cancelled_fees_master` text NOT NULL,
-  `dsms_cancelled_fees_master_unaided` text NOT NULL,
-  `dsms_cancelled_fees_master_ext` text NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `session_master`
---
-
-INSERT INTO `session_master` (`session_id`, `session`, `dsms_student_master`, `progress_insert`, `green_sheet_college`, `green_sheet_school`, `green_sheet_school_eight`, `leaving_certificate_master`, `leaving_certificate_master_cancelled`, `bonafied_certificate_master`, `bonafied_certificate_master_cancelled`, `dsms_fees_master`, `dsms_fees_master_unaided`, `dsms_fees_master_ext`, `fee_management`, `fee_management_unaided`, `fee_management_ext`, `dsms_cancelled_fees_master`, `dsms_cancelled_fees_master_unaided`, `dsms_cancelled_fees_master_ext`) VALUES
-(1, '2020 - 2021', 'dsms_student_master_2021', 'progress_insert_2021', 'green_sheet_college_2021', 'green_sheet_school_2021', 'green_sheet_school_eight_2021', 'leaving_certificate_master_2021_2022', 'leaving_certificate_master_cancelled_2021_2022', 'bonafied_certificate_master_2021', 'bonafied_certificate_master_cancelled_2021', 'dsms_fees_master_2021', 'dsms_fees_master_unaided_2021', '', 'fee_management_2021', 'fee_management_unaided_2021', '', 'dsms_cancelled_fees_master_2021', 'dsms_cancelled_fees_master_unaided_2021', ''),
-(2, '2021 - 2022', 'dsms_student_master_2022', 'progress_insert_2022', 'green_sheet_college_2022', 'green_sheet_school_2022', 'green_sheet_school_eight_2022', 'leaving_certificate_master_2022_2023', 'leaving_certificate_master_cancelled_2022_2023', 'bonafied_certificate_master_2022', 'bonafied_certificate_master_cancelled_2022', 'dsms_fees_master_2022', 'dsms_fees_master_unaided_2022', '', 'fee_management_2022', 'fee_management_unaided_2022', '', 'dsms_cancelled_fees_master_2022', 'dsms_cancelled_fees_master_unaided_2022', ''),
-(3, '2022 - 2023', 'dsms_student_master_2023', 'progress_insert_2023', 'green_sheet_college_2023', 'green_sheet_school_2023', 'green_sheet_school_eight_2023', 'leaving_certificate_master_2023_2024', 'leaving_certificate_master_cancelled_2023_2024', 'bonafied_certificate_master_2023', 'bonafied_certificate_master_cancelled_2023', 'dsms_fees_master_2023', 'dsms_fees_master_unaided_2023', '', 'fee_management_2023', 'fee_management_unaided_2023', '', 'dsms_cancelled_fees_master_2023', 'dsms_cancelled_fees_master_unaided_2023', ''),
-(4, '2024 - 2025', 'dsms_student_master_2025', 'progress_insert_2024', 'green_sheet_college_2024', 'green_sheet_school_2024', 'green_sheet_school_eight_2024', 'leaving_certificate_master_2024_2025', 'leaving_certificate_master_cancelled_2024_2025', 'bonafied_certificate_master_2024', 'bonafied_certificate_master_cancelled_2024', 'dsms_fees_master_2024', 'dsms_fees_master_unaided_2024', 'dsms_fees_master_ext_2024', 'fee_management_2024', 'fee_management_unaided_2024', 'fee_management_ext_2024', 'dsms_cancelled_fees_master_2024', 'dsms_cancelled_fees_master_unaided_2024', 'dsms_cancelled_fees_master_ext_2024'),
-(5, '2025 - 2026', 'dsms_student_master', 'progress_insert', 'green_sheet_college', 'green_sheet_school', 'green_sheet_school_eight', 'leaving_certificate_master', 'leaving_certificate_master_cancelled', 'bonafied_certificate_master', 'bonafied_certificate_master_cancelled', 'dsms_fees_master', 'dsms_fees_master_unaided', 'dsms_fees_master_ext', 'fee_management', 'fee_management_unaided', 'fee_management_ext', 'dsms_cancelled_fees_master', 'dsms_cancelled_fees_master_unaided', 'dsms_cancelled_fees_master_ext');
-
--- --------------------------------------------------------
 
 --
 -- Table structure for table `st_audit_log`
@@ -672,6 +542,170 @@ INSERT INTO `st_sub_menu_master` (`sub_menu_id`, `menu_id`, `sub_menu_name`) VAL
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `st_menu_seed_updates`
+--
+
+ALTER TABLE `st_sub_menu_master`
+  ADD COLUMN IF NOT EXISTS `sort_order` int(11) NOT NULL DEFAULT 0 AFTER `menu_id`;
+
+UPDATE `st_sub_menu_master`
+SET `sort_order` = `sub_menu_id`
+WHERE `sort_order` = 0;
+
+INSERT INTO `st_menu_master` (`menu_name`)
+SELECT 'Admin' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM `st_menu_master` WHERE LOWER(`menu_name`) = 'admin');
+
+INSERT INTO `st_menu_master` (`menu_name`)
+SELECT 'Coordinator' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM `st_menu_master` WHERE LOWER(`menu_name`) = 'coordinator');
+
+INSERT INTO `st_menu_master` (`menu_name`)
+SELECT 'Mentor' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM `st_menu_master` WHERE LOWER(`menu_name`) = 'mentor');
+
+INSERT INTO `st_sub_menu_master` (`menu_id`, `sub_menu_name`, `sort_order`)
+SELECT `m`.`menu_id`, 'Register Admin', 7
+FROM `st_menu_master` `m`
+WHERE LOWER(`m`.`menu_name`) = 'admin'
+AND NOT EXISTS (
+  SELECT 1 FROM `st_sub_menu_master` `sm`
+  WHERE `sm`.`menu_id` = `m`.`menu_id` AND LOWER(`sm`.`sub_menu_name`) = 'register admin'
+);
+
+INSERT INTO `st_sub_menu_master` (`menu_id`, `sub_menu_name`, `sort_order`)
+SELECT `m`.`menu_id`, 'Admin Info', 8
+FROM `st_menu_master` `m`
+WHERE LOWER(`m`.`menu_name`) = 'admin'
+AND NOT EXISTS (
+  SELECT 1 FROM `st_sub_menu_master` `sm`
+  WHERE `sm`.`menu_id` = `m`.`menu_id` AND LOWER(`sm`.`sub_menu_name`) = 'admin info'
+);
+
+INSERT INTO `st_sub_menu_master` (`menu_id`, `sub_menu_name`, `sort_order`)
+SELECT `m`.`menu_id`, 'Register Coordinator', 9
+FROM `st_menu_master` `m`
+WHERE LOWER(`m`.`menu_name`) = 'coordinator'
+AND NOT EXISTS (
+  SELECT 1 FROM `st_sub_menu_master` `sm`
+  WHERE `sm`.`menu_id` = `m`.`menu_id` AND LOWER(`sm`.`sub_menu_name`) = 'register coordinator'
+);
+
+INSERT INTO `st_sub_menu_master` (`menu_id`, `sub_menu_name`, `sort_order`)
+SELECT `m`.`menu_id`, 'Coordinator Info', 10
+FROM `st_menu_master` `m`
+WHERE LOWER(`m`.`menu_name`) = 'coordinator'
+AND NOT EXISTS (
+  SELECT 1 FROM `st_sub_menu_master` `sm`
+  WHERE `sm`.`menu_id` = `m`.`menu_id` AND LOWER(`sm`.`sub_menu_name`) = 'coordinator info'
+);
+
+INSERT INTO `st_sub_menu_master` (`menu_id`, `sub_menu_name`, `sort_order`)
+SELECT `m`.`menu_id`, 'Register Mentor', 11
+FROM `st_menu_master` `m`
+WHERE LOWER(`m`.`menu_name`) = 'mentor'
+AND NOT EXISTS (
+  SELECT 1 FROM `st_sub_menu_master` `sm`
+  WHERE `sm`.`menu_id` = `m`.`menu_id` AND LOWER(`sm`.`sub_menu_name`) = 'register mentor'
+);
+
+INSERT INTO `st_sub_menu_master` (`menu_id`, `sub_menu_name`, `sort_order`)
+SELECT `m`.`menu_id`, 'Mentor Info', 12
+FROM `st_menu_master` `m`
+WHERE LOWER(`m`.`menu_name`) = 'mentor'
+AND NOT EXISTS (
+  SELECT 1 FROM `st_sub_menu_master` `sm`
+  WHERE `sm`.`menu_id` = `m`.`menu_id` AND LOWER(`sm`.`sub_menu_name`) = 'mentor info'
+);
+
+INSERT INTO `st_sub_menu_master` (`menu_id`, `sub_menu_name`, `sort_order`)
+SELECT `m`.`menu_id`, 'Manage Section', 13
+FROM `st_menu_master` `m`
+WHERE LOWER(`m`.`menu_name`) = 'settings'
+AND NOT EXISTS (
+  SELECT 1 FROM `st_sub_menu_master` `sm`
+  WHERE `sm`.`menu_id` = `m`.`menu_id` AND LOWER(`sm`.`sub_menu_name`) = 'manage section'
+);
+
+INSERT INTO `st_menu_allocation_master` (`user_id`, `role_id`, `menu_id`, `sub_menu_id`)
+SELECT 0, `r`.`role_id`, `m`.`menu_id`, NULL
+FROM (SELECT 1 AS `role_id` UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4) `r`
+JOIN `st_menu_master` `m` ON LOWER(`m`.`menu_name`) = 'admin'
+WHERE NOT EXISTS (
+  SELECT 1 FROM `st_menu_allocation_master` `a`
+  WHERE `a`.`user_id` = 0 AND `a`.`role_id` = `r`.`role_id` AND `a`.`menu_id` = `m`.`menu_id` AND `a`.`sub_menu_id` IS NULL
+);
+
+INSERT INTO `st_menu_allocation_master` (`user_id`, `role_id`, `menu_id`, `sub_menu_id`)
+SELECT 0, `r`.`role_id`, `m`.`menu_id`, `sm`.`sub_menu_id`
+FROM (SELECT 1 AS `role_id` UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4) `r`
+JOIN `st_menu_master` `m` ON LOWER(`m`.`menu_name`) = 'admin'
+JOIN `st_sub_menu_master` `sm` ON `sm`.`menu_id` = `m`.`menu_id` AND LOWER(`sm`.`sub_menu_name`) IN ('register admin', 'admin info')
+WHERE NOT EXISTS (
+  SELECT 1 FROM `st_menu_allocation_master` `a`
+  WHERE `a`.`user_id` = 0 AND `a`.`role_id` = `r`.`role_id` AND `a`.`menu_id` = `m`.`menu_id` AND `a`.`sub_menu_id` = `sm`.`sub_menu_id`
+);
+
+INSERT INTO `st_menu_allocation_master` (`user_id`, `role_id`, `menu_id`, `sub_menu_id`)
+SELECT 0, `r`.`role_id`, `m`.`menu_id`, NULL
+FROM (SELECT 1 AS `role_id` UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4) `r`
+JOIN `st_menu_master` `m` ON LOWER(`m`.`menu_name`) = 'coordinator'
+WHERE NOT EXISTS (
+  SELECT 1 FROM `st_menu_allocation_master` `a`
+  WHERE `a`.`user_id` = 0 AND `a`.`role_id` = `r`.`role_id` AND `a`.`menu_id` = `m`.`menu_id` AND `a`.`sub_menu_id` IS NULL
+);
+
+INSERT INTO `st_menu_allocation_master` (`user_id`, `role_id`, `menu_id`, `sub_menu_id`)
+SELECT 0, `r`.`role_id`, `m`.`menu_id`, `sm`.`sub_menu_id`
+FROM (SELECT 1 AS `role_id` UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4) `r`
+JOIN `st_menu_master` `m` ON LOWER(`m`.`menu_name`) = 'coordinator'
+JOIN `st_sub_menu_master` `sm` ON `sm`.`menu_id` = `m`.`menu_id` AND LOWER(`sm`.`sub_menu_name`) IN ('register coordinator', 'coordinator info')
+WHERE NOT EXISTS (
+  SELECT 1 FROM `st_menu_allocation_master` `a`
+  WHERE `a`.`user_id` = 0 AND `a`.`role_id` = `r`.`role_id` AND `a`.`menu_id` = `m`.`menu_id` AND `a`.`sub_menu_id` = `sm`.`sub_menu_id`
+);
+
+INSERT INTO `st_menu_allocation_master` (`user_id`, `role_id`, `menu_id`, `sub_menu_id`)
+SELECT 0, `r`.`role_id`, `m`.`menu_id`, NULL
+FROM (SELECT 1 AS `role_id` UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4) `r`
+JOIN `st_menu_master` `m` ON LOWER(`m`.`menu_name`) = 'mentor'
+WHERE NOT EXISTS (
+  SELECT 1 FROM `st_menu_allocation_master` `a`
+  WHERE `a`.`user_id` = 0 AND `a`.`role_id` = `r`.`role_id` AND `a`.`menu_id` = `m`.`menu_id` AND `a`.`sub_menu_id` IS NULL
+);
+
+INSERT INTO `st_menu_allocation_master` (`user_id`, `role_id`, `menu_id`, `sub_menu_id`)
+SELECT 0, `r`.`role_id`, `m`.`menu_id`, `sm`.`sub_menu_id`
+FROM (SELECT 1 AS `role_id` UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4) `r`
+JOIN `st_menu_master` `m` ON LOWER(`m`.`menu_name`) = 'mentor'
+JOIN `st_sub_menu_master` `sm` ON `sm`.`menu_id` = `m`.`menu_id` AND LOWER(`sm`.`sub_menu_name`) IN ('register mentor', 'mentor info')
+WHERE NOT EXISTS (
+  SELECT 1 FROM `st_menu_allocation_master` `a`
+  WHERE `a`.`user_id` = 0 AND `a`.`role_id` = `r`.`role_id` AND `a`.`menu_id` = `m`.`menu_id` AND `a`.`sub_menu_id` = `sm`.`sub_menu_id`
+);
+
+INSERT INTO `st_menu_allocation_master` (`user_id`, `role_id`, `menu_id`, `sub_menu_id`)
+SELECT 0, `r`.`role_id`, `m`.`menu_id`, NULL
+FROM (SELECT 1 AS `role_id` UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4) `r`
+JOIN `st_menu_master` `m` ON LOWER(`m`.`menu_name`) = 'settings'
+WHERE NOT EXISTS (
+  SELECT 1 FROM `st_menu_allocation_master` `a`
+  WHERE `a`.`user_id` = 0 AND `a`.`role_id` = `r`.`role_id` AND `a`.`menu_id` = `m`.`menu_id` AND `a`.`sub_menu_id` IS NULL
+);
+
+INSERT INTO `st_menu_allocation_master` (`user_id`, `role_id`, `menu_id`, `sub_menu_id`)
+SELECT 0, `r`.`role_id`, `m`.`menu_id`, `sm`.`sub_menu_id`
+FROM (SELECT 1 AS `role_id` UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4) `r`
+JOIN `st_menu_master` `m` ON LOWER(`m`.`menu_name`) = 'settings'
+JOIN `st_sub_menu_master` `sm` ON `sm`.`menu_id` = `m`.`menu_id` AND LOWER(`sm`.`sub_menu_name`) IN ('manage class', 'manage section')
+WHERE NOT EXISTS (
+  SELECT 1 FROM `st_menu_allocation_master` `a`
+  WHERE `a`.`user_id` = 0 AND `a`.`role_id` = `r`.`role_id` AND `a`.`menu_id` = `m`.`menu_id` AND `a`.`sub_menu_id` = `sm`.`sub_menu_id`
+);
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `st_user_log_master`
 --
 
@@ -1014,7 +1048,7 @@ ALTER TABLE `st_menu_allocation_master`
 -- AUTO_INCREMENT for table `st_menu_master`
 --
 ALTER TABLE `st_menu_master`
-  MODIFY `menu_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `menu_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `st_minor_certificates`
@@ -1074,7 +1108,7 @@ ALTER TABLE `st_student_master`
 -- AUTO_INCREMENT for table `st_sub_menu_master`
 --
 ALTER TABLE `st_sub_menu_master`
-  MODIFY `sub_menu_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `sub_menu_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
 
 --
 -- AUTO_INCREMENT for table `st_user_log_master`

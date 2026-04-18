@@ -3,13 +3,28 @@ session_start();
 
 include_once("../database/db_connect.php");
 if(isset($_POST['login_button'])) {
-$db_handle = new DBController();
+try {
+	$db_handle = new DBController();
+} catch (Throwable $e) {
+	echo "Unable to connect with database";
+	exit();
+}
+
+if (!$db_handle || !($db_handle->conn instanceof mysqli)) {
+	echo "Unable to connect with database";
+	exit();
+}
 
 	$username = trim($_POST['username']);
 	$user_password = trim($_POST['password']);
 
 	$sql = "SELECT * FROM st_login WHERE username='$username'";
-	$resultset = mysqli_query($db_handle->conn, $sql) or die("database error:". mysqli_error($db_handle->conn));
+	$resultset = mysqli_query($db_handle->conn, $sql);
+
+	if (!$resultset) {
+		echo "Unable to connect with database";
+		exit();
+	}
 	$row = mysqli_fetch_assoc($resultset);
 	if($row['password']==$user_password){
 

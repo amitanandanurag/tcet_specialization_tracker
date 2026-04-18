@@ -30,29 +30,40 @@ $('document').ready(function() {
 				$("#login_button").html('<span class="glyphicon glyphicon-transfer"></span> &nbsp; sending ...');
 			},
 			success : function(response){	
+				var cleanResponse = $.trim(response || '');
+				var lowerResponse = cleanResponse.toLowerCase();
 
-				console.log(response);
+				if (
+					lowerResponse.indexOf('fatal error') !== -1 ||
+					lowerResponse.indexOf('uncaught') !== -1 ||
+					lowerResponse.indexOf('mysqli_sql_exception') !== -1 ||
+					lowerResponse.indexOf('unable to connect with database') !== -1
+				) {
+					cleanResponse = 'Unable to connect with database';
+				}
+
+				console.log(cleanResponse);
 
 
-				if(response=="ok"){									
+				if(cleanResponse=="ok"){									
 					$("#login_button").html('<img src="ajax-loader.gif" /> &nbsp; Signing In ...');
 					setTimeout(' window.location.href = "../admin"; ',4000);
 				} 
-				else if(response=="ok1"){									
+				else if(cleanResponse=="ok1"){									
 					$("#login_button").html('<img src="ajax-loader.gif" /> &nbsp; Signing In ...');
 					setTimeout(' window.location.href = "../admin"; ',4000);
 				} 
-				else if(response=="ok2"){									
+				else if(cleanResponse=="ok2"){									
 					$("#login_button").html('<img src="ajax-loader.gif" /> &nbsp; Signing In ...');
 					setTimeout(' window.location.href = "../admin"; ',4000);
 				}
 
-				else if(response=="ok3"){									
+				else if(cleanResponse=="ok3"){									
 					$("#login_button").html('<img src="ajax-loader.gif" /> &nbsp; Signing In ...');
 					setTimeout(' window.location.href = "../admin"; ',4000);
 				} 
 
-				else if(response=="ok4"){									
+				else if(cleanResponse=="ok4"){									
 					$("#login_button").html('<img src="ajax-loader.gif" /> &nbsp; Signing In ...');
 					setTimeout(' window.location.href = "../admin"; ',4000);
 				} 
@@ -60,10 +71,16 @@ $('document').ready(function() {
 
 				else {									
 					$("#error").fadeIn(1000, function(){						
-						$("#error").html('<div class="alert alert-danger"> <span class="glyphicon glyphicon-info-sign"></span> &nbsp; '+response+' !</div>');
+						$("#error").html('<div class="alert alert-danger"> <span class="glyphicon glyphicon-info-sign"></span> &nbsp; '+cleanResponse+' !</div>');
 						$("#login_button").html('<span class="glyphicon glyphicon-log-in"></span> &nbsp; Sign In');
 					});
 				}
+			},
+			error: function(){
+				$("#error").fadeIn(1000, function(){
+					$("#error").html('<div class="alert alert-danger"> <span class="glyphicon glyphicon-info-sign"></span> &nbsp; Unable to connect with database !</div>');
+					$("#login_button").html('<span class="glyphicon glyphicon-log-in"></span> &nbsp; Sign In');
+				});
 			}
 		});
 		return false;
