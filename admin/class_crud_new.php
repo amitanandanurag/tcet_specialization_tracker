@@ -1,562 +1,436 @@
 <?php include "header/header.php"; ?>
+<?php
+$masters = array(
+  'class' => array(
+    'title' => 'Class',
+    'table' => 'st_class_master',
+    'pk' => 'class_id',
+    'name' => 'class_name'
+  ),
+  'section' => array(
+    'title' => 'Section',
+    'table' => 'st_section_master',
+    'pk' => 'id',
+    'name' => 'sections'
+  ),
+  'department' => array(
+    'title' => 'Department',
+    'table' => 'st_department_master',
+    'pk' => 'department_id',
+    'name' => 'department_name'
+  ),
+  'menu' => array(
+    'title' => 'Menu',
+    'table' => 'st_menu_master',
+    'pk' => 'menu_id',
+    'name' => 'menu_name'
+  )
+);
 
-  <!-- Content Wrapper. Contains page content -->
-  <div class="content-wrapper">
-   <section class="content-header">
-      
-      <ol class="breadcrumb"> 
-        <li><a href="#"><i class="fa fa-dashboard"></i> Home</a></li>
-        <li class="active">Class</li>
-      </ol>
-    </section>
- <section class="content" style="margin-top: 30px">
-  <div class="box" style=" padding: 10px;">
+function clean_master_value($value)
+{
+  $value = trim((string) $value);
+  $value = preg_replace('/\s+/', ' ', $value);
+  return $value;
+}
 
-  <h2><i class="fa fa-cog" aria-hidden="true"></i> Settings</h2>
+$activeTab = 'class-list';
+$alertType = '';
+$alertMessage = '';
+$openAddModalType = '';
 
-  <ul class="nav nav-tabs">
-    <li class="active">
-      <a data-toggle="tab" href="#home"><i class="fa fa-bars" aria-hidden="true"></i> Class Lists</a>
-    </li>
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['master_action'], $_POST['master_type'])) {
+  $masterType = $_POST['master_type'];
+  $action = $_POST['master_action'];
 
-    <li><a data-toggle="tab" href="#menu1"><i class="fa fa-plus-circle"></i> Add Class</a></li>
+  if (isset($masters[$masterType])) {
+    $meta = $masters[$masterType];
+    $table = $meta['table'];
+    $pk = $meta['pk'];
+    $nameCol = $meta['name'];
+    $title = $meta['title'];
 
-     <li><a data-toggle="tab" href="#listsection"><i class="fa fa-bars" aria-hidden="true"></i> Section Lists</a></li>
+    if ($action === 'add') {
+      $name = clean_master_value($_POST['master_name'] ?? '');
+      $activeTab = $masterType . '-add';
+      $openAddModalType = $masterType;
 
-    <li><a data-toggle="tab" href="#addsection"><i class="fa fa-plus-circle"></i> Add Section</a></li>
-  </ul> 
+      if ($name === '') {
+        $alertType = 'warning';
+        $alertMessage = $title . ' name is required.';
+      } else {
+        $dupSql = "SELECT COUNT(*) AS cnt FROM $table WHERE LOWER(TRIM($nameCol)) = LOWER(TRIM(?))";
+        $dupStmt = mysqli_prepare($db_handle->conn, $dupSql);
 
-  <div class="tab-content">
+        if ($dupStmt) {
+          mysqli_stmt_bind_param($dupStmt, 's', $name);
+          mysqli_stmt_execute($dupStmt);
+          $dupResult = mysqli_stmt_get_result($dupStmt);
+          $dupRow = $dupResult ? mysqli_fetch_assoc($dupResult) : array('cnt' => 0);
+          mysqli_stmt_close($dupStmt);
 
-   <!--To List class names-->
-    <div id="home" class="tab-pane fade in active">
-     <div class="box-body" style="margin-top: 30px;">
-          <table id="all_admin" class="text-center table table-striped table-bordered" width="100%">
-              <thead>
-               <tr>
-                <th>ID</th>
-                <th>Class</th>
-                <th>Edit</th>
-                <th>Delete</th>
-              </tr>
-            </thead>
-          </table>
-     </div>     
-    </div>
- 
+          if (!empty($dupRow) && intval($dupRow['cnt']) > 0) {
+            $alertType = 'warning';
+            $alertMessage = $title . ' already exists.';
+          } else {
+            $insertSql = "INSERT INTO $table ($nameCol) VALUES (?)";
+            $insertStmt = mysqli_prepare($db_handle->conn, $insertSql);
 
-   <!--To add class-->
+            if ($insertStmt) {
+              mysqli_stmt_bind_param($insertStmt, 's', $name);
+              $ok = mysqli_stmt_execute($insertStmt);
+              mysqli_stmt_close($insertStmt);
 
-    <div id="menu1" class="tab-pane fade">
-    <div class="box-body" style="margin-top: 30px;">
-      <form action="" method="POST" class="form-horizontal" role="form" style="align-content: center;">
-        <div class="form-group">
-          <label class="col-xs-4 control-label" for="name"> Class Name </label>
-          <div class="col-xs-4">
-              <input type="text" class="form-control" 
-              id="class_name" name="class_name" placeholder="Give Class Name" required="required"/>
-          </div>
+              if ($ok) {
+                $alertType = 'success';
+                $alertMessage = $title . ' added successfully.';
+                $activeTab = $masterType . '-list';
+                $openAddModalType = '';
+              } else {
+                $alertType = 'danger';
+                $alertMessage = 'Unable to add ' . strtolower($title) . '.';
+              }
+            } else {
+              $alertType = 'danger';
+              $alertMessage = 'Unable to prepare add statement for ' . strtolower($title) . '.';
+            }
+          }
+        } else {
+          $alertType = 'danger';
+          $alertMessage = 'Unable to validate duplicate ' . strtolower($title) . '.';
+        }
+      }
+    } elseif ($action === 'update') {
+      $id = intval($_POST['master_id'] ?? 0);
+      $name = clean_master_value($_POST['master_name'] ?? '');
+      $activeTab = $masterType . '-list';
+
+      if ($id <= 0 || $name === '') {
+        $alertType = 'warning';
+        $alertMessage = 'Valid ' . strtolower($title) . ' details are required for update.';
+      } else {
+        $dupSql = "SELECT COUNT(*) AS cnt FROM $table WHERE LOWER(TRIM($nameCol)) = LOWER(TRIM(?)) AND $pk <> ?";
+        $dupStmt = mysqli_prepare($db_handle->conn, $dupSql);
+
+        if ($dupStmt) {
+          mysqli_stmt_bind_param($dupStmt, 'si', $name, $id);
+          mysqli_stmt_execute($dupStmt);
+          $dupResult = mysqli_stmt_get_result($dupStmt);
+          $dupRow = $dupResult ? mysqli_fetch_assoc($dupResult) : array('cnt' => 0);
+          mysqli_stmt_close($dupStmt);
+
+          if (!empty($dupRow) && intval($dupRow['cnt']) > 0) {
+            $alertType = 'warning';
+            $alertMessage = $title . ' already exists.';
+          } else {
+            $updateSql = "UPDATE $table SET $nameCol = ? WHERE $pk = ?";
+            $updateStmt = mysqli_prepare($db_handle->conn, $updateSql);
+
+            if ($updateStmt) {
+              mysqli_stmt_bind_param($updateStmt, 'si', $name, $id);
+              $ok = mysqli_stmt_execute($updateStmt);
+              mysqli_stmt_close($updateStmt);
+
+              if ($ok) {
+                $alertType = 'success';
+                $alertMessage = $title . ' updated successfully.';
+              } else {
+                $alertType = 'danger';
+                $alertMessage = 'Unable to update ' . strtolower($title) . '.';
+              }
+            } else {
+              $alertType = 'danger';
+              $alertMessage = 'Unable to prepare update statement for ' . strtolower($title) . '.';
+            }
+          }
+        } else {
+          $alertType = 'danger';
+          $alertMessage = 'Unable to validate duplicate ' . strtolower($title) . ' before update.';
+        }
+      }
+    } elseif ($action === 'delete') {
+      $id = intval($_POST['master_id'] ?? 0);
+      $activeTab = $masterType . '-list';
+
+      if ($id <= 0) {
+        $alertType = 'warning';
+        $alertMessage = 'Invalid ' . strtolower($title) . ' selected for delete.';
+      } else {
+        $deleteSql = "DELETE FROM $table WHERE $pk = ?";
+        $deleteStmt = mysqli_prepare($db_handle->conn, $deleteSql);
+
+        if ($deleteStmt) {
+          mysqli_stmt_bind_param($deleteStmt, 'i', $id);
+          $ok = mysqli_stmt_execute($deleteStmt);
+          mysqli_stmt_close($deleteStmt);
+
+          if ($ok) {
+            $alertType = 'success';
+            $alertMessage = $title . ' deleted successfully.';
+          } else {
+            $alertType = 'danger';
+            $alertMessage = 'Unable to delete ' . strtolower($title) . '. It may be in use.';
+          }
+        } else {
+          $alertType = 'danger';
+          $alertMessage = 'Unable to prepare delete statement for ' . strtolower($title) . '.';
+        }
+      }
+    }
+  }
+}
+
+if (isset($_GET['tab'])) {
+  $requestedTab = trim($_GET['tab']);
+  if ($requestedTab !== '') {
+    $activeTab = $requestedTab;
+  }
+}
+
+$masterRows = array();
+foreach ($masters as $type => $meta) {
+  $table = $meta['table'];
+  $pk = $meta['pk'];
+  $nameCol = $meta['name'];
+
+  $rows = array();
+  $result = $db_handle->conn->query("SELECT $pk AS master_id, $nameCol AS master_name FROM $table ORDER BY $nameCol ASC");
+  if ($result) {
+    while ($row = $result->fetch_assoc()) {
+      $rows[] = $row;
+    }
+  }
+  $masterRows[$type] = $rows;
+}
+?>
+
+<div class="content-wrapper">
+  <section class="content-header">
+    <h1>Master CRUD</h1>
+    <ol class="breadcrumb">
+      <li><a href="index.php"><i class="fa fa-dashboard"></i> Home</a></li>
+      <li class="active">Master CRUD</li>
+    </ol>
+  </section>
+
+  <section class="content" style="margin-top: 20px;">
+    <div class="box" style="padding: 10px;">
+      <h3><i class="fa fa-cogs"></i> Class, Section, Department, Menu Master Management</h3>
+
+      <?php if ($alertMessage !== '') { ?>
+        <div class="alert alert-<?php echo htmlspecialchars($alertType); ?> alert-dismissible" style="margin-top: 15px;">
+          <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+          <?php echo htmlspecialchars($alertMessage); ?>
         </div>
-                  
-            <div class="form-group">
-            <div class="col-sm-offset-2 col-sm-10" align="center">
-              <button type="submit" class="btn btn-success" name="add">Add Class</button>
+      <?php } ?>
+
+      <ul class="nav nav-tabs" style="margin-top: 20px;">
+        <li class="<?php echo ($activeTab === 'class-list') ? 'active' : ''; ?>"><a data-toggle="tab" href="#class-list">Class List</a></li>
+
+        <li class="<?php echo ($activeTab === 'section-list') ? 'active' : ''; ?>"><a data-toggle="tab" href="#section-list">Section List</a></li>
+
+        <li class="<?php echo ($activeTab === 'department-list') ? 'active' : ''; ?>"><a data-toggle="tab" href="#department-list">Department List</a></li>
+
+        <li class="<?php echo ($activeTab === 'menu-list') ? 'active' : ''; ?>"><a data-toggle="tab" href="#menu-list">Menu List</a></li>
+      </ul>
+
+      <div class="tab-content" style="padding-top: 20px;">
+        <?php foreach ($masters as $type => $meta) {
+          $listTabId = $type . '-list';
+          $addTabId = $type . '-add';
+          $title = $meta['title'];
+          $rows = $masterRows[$type];
+        ?>
+
+          <div id="<?php echo $listTabId; ?>" class="tab-pane fade <?php echo ($activeTab === $listTabId) ? 'in active' : ''; ?>">
+            <div class="clearfix" style="margin-bottom: 15px;">
+              <button
+                type="button"
+                class="btn btn-success pull-right open-add-modal"
+                data-toggle="modal"
+                data-target="#addMasterModal"
+                data-master-type="<?php echo htmlspecialchars($type); ?>"
+                data-master-title="<?php echo htmlspecialchars($title); ?>"
+              >
+                <i class="fa fa-plus"></i>
+              </button>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-bordered table-striped text-center">
+                <thead>
+                  <tr>
+                    <th style="width: 80px;">No.</th>
+                    <th><?php echo htmlspecialchars($title); ?> Name</th>
+                    <th style="width: 100px;">Edit</th>
+                    <th style="width: 100px;">Delete</th>
+                  </tr>
+                </thead>
+                <tbody>
+                <?php if (empty($rows)) { ?>
+                  <tr>
+                    <td colspan="4">No <?php echo htmlspecialchars(strtolower($title)); ?> found.</td>
+                  </tr>
+                <?php } else {
+                  $serialNumber = 1;
+                  foreach ($rows as $row) {
+                    $id = intval($row['master_id']);
+                    $name = (string) $row['master_name'];
+                ?>
+                  <tr>
+                    <td><?php echo $serialNumber; ?></td>
+                    <td><?php echo htmlspecialchars($name); ?></td>
+                    <td>
+                      <button
+                        type="button"
+                        class="btn btn-sm btn-primary open-edit-modal"
+                        data-toggle="modal"
+                        data-target="#editMasterModal"
+                        data-master-type="<?php echo htmlspecialchars($type); ?>"
+                        data-master-id="<?php echo $id; ?>"
+                        data-master-name="<?php echo htmlspecialchars($name); ?>"
+                        data-master-title="<?php echo htmlspecialchars($title); ?>"
+                      >
+                        <i class="fa fa-pencil"></i>
+                      </button>
+                    </td>
+                    <td>
+                      <button type="button" class="btn btn-sm btn-danger" onclick="confirmMasterDelete('<?php echo htmlspecialchars($type); ?>', <?php echo $id; ?>, '<?php echo htmlspecialchars(addslashes($name)); ?>')">
+                        <i class="fa fa-trash"></i>
+                      </button>
+                    </td>
+                  </tr>
+                <?php
+                    $serialNumber++;
+                  }
+                }
+                ?>
+                </tbody>
+              </table>
             </div>
           </div>
-      </form>
+
+        <?php } ?>
       </div>
     </div>
+  </section>
+</div>
 
-   <!--To List Section Names-->
-
-    <div id="listsection" class="tab-pane fade">
-     <div class="box-body" style="margin-top: 30px;">
-             <table id="all_section" class="text-center table table-striped table-bordered" width="100%">
-              <thead>
-               <tr>
-                <th>ID</th>
-                <th>Sections Name</th>           
-                <th>Edit</th>
-                <th>Delete</th>
-              </tr>
-            </thead>
-          </table>
-        </div>
+<div id="addMasterModal" class="modal fade" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" id="add-master-title">Add</h4>
       </div>
+      <form method="POST">
+        <div class="modal-body">
+          <input type="hidden" name="master_action" value="add">
+          <input type="hidden" name="master_type" id="add_master_type" value="">
 
-  <!--To add Section Name -->
-
-  <div id="addsection" class="tab-pane fade">
-    <div class="box-body" style="margin-top: 30px;">
-      <form action="" method="POST" class="form-horizontal" role="form" style="align-content: center;">
-        <div class="form-group">
-        <label class="col-xs-4 control-label"
-                  for="name">Sections Name</label>
-        <div class="col-xs-4">
-            <input type="text" class="form-control" 
-            id="section_name" name="section_name" placeholder="Give Sections Name" required="required" onkeyup="check_subject();" />
-        </div>
-       </div>
-                  
-         <div class="form-group">
-          <div class="col-sm-offset-2 col-sm-10" align="center">
-            <button type="submit" class="btn btn-success" name="add_section">Add Sections</button>
+          <div class="form-group">
+            <label for="add_master_name" class="control-label">Name</label>
+            <input type="text" name="master_name" id="add_master_name" class="form-control" placeholder="Enter name" required>
           </div>
         </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+          <button type="submit" class="btn btn-success">Save</button>
+        </div>
       </form>
-      </div>
     </div>
-
-   </div>
+  </div>
 </div>
-</section> 
 
-<!-- start add class php code -->
+<form id="delete-master-form" method="POST" style="display:none;">
+  <input type="hidden" name="master_action" value="delete">
+  <input type="hidden" name="master_type" id="delete_master_type" value="">
+  <input type="hidden" name="master_id" id="delete_master_id" value="">
+</form>
 
-<?php  
+<div id="editMasterModal" class="modal fade" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" id="edit-master-title">Edit</h4>
+      </div>
+      <form method="POST">
+        <div class="modal-body">
+          <input type="hidden" name="master_action" value="update">
+          <input type="hidden" name="master_type" id="edit_master_type" value="">
+          <input type="hidden" name="master_id" id="edit_master_id" value="">
 
-if(isset($_POST['add']))
-{
-  
-  $class_name = $_POST['class_name']; 
-
-    $result=$db_handle->numRows("select * from class_master where class='$class_name'");
-
-  if ($result>=1) {
-     echo '<script type="text/javascript">swal("Oops...", "Class Name Already Exist..!", "error");</script>';
-  }
-
-
-else{
-$sql = "INSERT INTO class_master(class) VALUES ('$class_name')";  // Insert query
-
-if($db_handle->conn->query($sql) === TRUE)
-{
-    echo '<script type="text/javascript">swal({title: "ADDED", text: "Class Added Successfully", type: 
-    "success"}).then(function()
-       { 
-        window.location.href ="class_crud_new.php";
-       }
-    );</script>';
-}
-else
-{
-echo("Error description: " . mysqli_error($db_handle->conn));
-}
-
-}
-
-$db_handle->conn->close();
-}
-
-?>
-
-<?php  
-
-/*if(isset($_POST['add_section']))
-{
-  
-  $section_name = $_POST['section_name']; 
-  $result=$db_handle->numRows("select * from section_master where sections='$section_name'");
-  if ($result>=1) {
-     echo '<script type="text/javascript">swal("Oops...", "Subject Name Already Exist..!", "error");</script>';
-  }
-
-else{
-$sql = "INSERT INTO section_master(sections) VALUES ('$section_name')";  // Insert query
-
-if($db_handle->conn->query($sql) === TRUE)
-{
-
-  echo '<script type="text/javascript">swal({title: "ADDED", text: "Section Added Successfully", type: 
-  "success"}).then(function()
-     { 
-      window.location.href ="class_crud_new.php";
-     }
-  );</script>';
-}
-else
-{
-echo("Error description: " . mysqli_error($db_handle->conn));
-}
-
-}
-
- $db_handle->conn->close();
-}*/
-
-?>
-
-<!--Start Edit Modal -->
-
-<div id="edit" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display: none;">
-             <div class="modal-dialog"> 
-                  <div class="modal-content"> 
-                  
-                       <div class="modal-header"> 
-                            <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button> 
-                            <h4 class="modal-title">
-                              <i class="glyphicon glyphicon-user"></i> Edit Class Details
-                            </h4> 
-                       </div> 
-                       <div class="modal-body"> 
-                       
-                           <div id="modal-loader" style="display: none; text-align: center;">
-                            <img src="ajax-loader.gif">
-                           </div>
-                            
-                           <!-- content will be load here -->                          
-                           <div id="dynamic-content"></div>
-                             
-                        </div> 
-                        <div class="modal-footer"> 
-                              <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>  
-                        </div> 
-                        
-                 </div> 
-              </div>
-       </div><!-- /.modal -->    
-    
-    </div> 
-
- 
-<!--script src="../assets/jquery-1.12.4.min.js"></script>
-<script src="../assets/js/bootstrap.min.js"></script-->
-<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js"></script>
+          <div class="form-group">
+            <label for="edit_master_name" class="control-label">Name</label>
+            <input type="text" name="master_name" id="edit_master_name" class="form-control" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+          <button type="submit" class="btn btn-primary">Update</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
 
 <script>
- $(document).ready(function(){
-  
-  $(document).on('click', '#class_edit', function(e){
-    
-    e.preventDefault();
-     
-    var uid = $(this).data('id');   // it will get id of clicked row
-    
-    $('#dynamic-content').html(''); // leave it blank before ajax call
-    $('#modal-loader').show();      // load ajax loader
-    
-    $.ajax({
-      url: 'class_edit_new.php',  
-      type: 'POST', 
-      data: 'id='+uid,
-      dataType: 'html'
-    })
-    .done(function(data){
-      console.log(data);  
-      $('#dynamic-content').html('');    
-      $('#dynamic-content').html(data); // load response 
-      $('#modal-loader').hide();      // hide ajax loader 
-    })
-    .fail(function(){
-      $('#dynamic-content').html('<i class="glyphicon glyphicon-info-sign"></i> Something went wrong, Please try again...');
-      $('#modal-loader').hide();
+  $(document).ready(function() {
+    $('#addMasterModal').on('show.bs.modal', function(event) {
+      var button = $(event.relatedTarget);
+      var masterType = button.data('master-type');
+      var masterTitle = button.data('master-title');
+
+      $('#add_master_type').val(masterType);
+      $('#add_master_name').val('');
+      $('#add-master-title').text('Add ' + masterTitle);
+      $('#add_master_name').attr('placeholder', 'Enter ' + masterTitle + ' Name');
     });
-    
-  });
-  
-});
 
+    $('#editMasterModal').on('show.bs.modal', function(event) {
+      var button = $(event.relatedTarget);
+      var masterType = button.data('master-type');
+      var masterId = button.data('master-id');
+      var masterName = button.data('master-name');
+      var masterTitle = button.data('master-title');
 
-/*$(document).ready(function(){
-  
-  $(document).on('click', '#section_edit_new', function(e){
-    
-    e.preventDefault();
-    
-    var uid = $(this).data('id');   // it will get id of clicked row
-    
-    $('#dynamic-content').html(''); // leave it blank before ajax call
-    $('#modal-loader').show();      // load ajax loader
-    
-    $.ajax({
-      url: 'section_edit_new.php', 
-      type: 'POST',
-      data: 'id='+uid,
-      dataType: 'html'
-    })
-    .done(function(data){
-      console.log(data);  
-      $('#dynamic-content').html('');    
-      $('#dynamic-content').html(data); // load response 
-      $('#modal-loader').hide();      // hide ajax loader 
-    })
-    .fail(function(){
-      $('#dynamic-content').html('<i class="glyphicon glyphicon-info-sign"></i> Something went wrong, Please try again...');
-      $('#modal-loader').hide();
+      $('#edit_master_type').val(masterType);
+      $('#edit_master_id').val(masterId);
+      $('#edit_master_name').val(masterName);
+      $('#edit-master-title').text('Edit ' + masterTitle);
     });
-    
+
+    <?php if ($openAddModalType !== '') { ?>
+      $('#add_master_type').val('<?php echo htmlspecialchars($openAddModalType, ENT_QUOTES); ?>');
+      $('#add-master-title').text('Add <?php echo htmlspecialchars($masters[$openAddModalType]['title'], ENT_QUOTES); ?>');
+      $('#add_master_name').attr('placeholder', 'Enter <?php echo htmlspecialchars($masters[$openAddModalType]['title'], ENT_QUOTES); ?> Name');
+      $('#addMasterModal').modal('show');
+    <?php } ?>
   });
-  
-});*/
 
-</script>
+  function confirmMasterDelete(masterType, masterId, masterName) {
+    var message = 'Delete "' + masterName + '"?';
 
-
-<script type="text/javascript" language="javascript">
-
-  /*  function delete_class(id)
-    {
-      var form_data = new FormData();
-     
-     form_data.append("id", id)
-    swal({
-    title: "Are you sure?",
-    text: "Once deleted, you will not be able to recover this Class details!",
-    icon: "warning",
-    buttons: true,
-    dangerMode: true,
-    })
-    .then((willDelete) => {
-    if (willDelete) {
-    $.ajax({
-        url: 'delete_class.php',
-        type: 'post',
-        dataType: "json",
-        cache: false,
-        contentType: false, 
-        processData: false,
-        data: form_data,
-        success: function (data)
-        {
-
-
-            swal('Class has been deleted!')
-           .then((value) => {
-            location.reload();
-            });
+    if (typeof swal === 'function') {
+      swal({
+        title: 'Are you sure?',
+        text: message,
+        icon: 'warning',
+        buttons: true,
+        dangerMode: true
+      }).then(function(willDelete) {
+        if (willDelete) {
+          $('#delete_master_type').val(masterType);
+          $('#delete_master_id').val(masterId);
+          $('#delete-master-form').submit();
         }
-    });
-  }
-  else
-  {
-    swal("Delete Operation has been cancel!");
-  }
-});
-
-}*/
-
-
-      $(document).ready(function() {
-        var dataTable = $('#all_admin').DataTable( {
-         "dom": 'Bfrtip',
-         "paging": true,
-         "searching": true,
-         "select": true,
-         "aaSorting" : [[0, 'asc']],
-         "lengthMenu": [
-            [ 10, 25, 50, 100, 500],
-            [ '10', '25', '50', '100', '500']
-        ],
-        "columnDefs": [
-                         {
-                          "orderable": false, "targets": 3
-                         }
-                        ],
-        "buttons": [
-           {
-            extend: 'colvis',
-            text: "Columns"
-           },
-           {
-            extend: 'pageLength',
-            text: 'Show'
-           },
-             {
-                extend: 'excel',
-                text: "Excel",
-                title: "",
-                exportOptions:
-                {
-                    columns: [ 0, 1, 2, 3, 4, 5 ]
-                },
-            },
-             {
-                extend: 'csv',
-                text: "CSV",
-                title: "",
-                exportOptions: {
-                   columns: [ 0, 1, 2, 3, 4, 5 ]
-                }
-            },
-             {
-                extend: 'pdf',
-                text: "PDF",
-                title: "",
-                orientation: 'landscape',
-                pageSize: 'LEGAL',
-                exportOptions: {
-                    columns: [ 0, 1, 2, 3, 4, 5 ]
-                }
-            },
-             {
-                extend: 'print',
-                title: "",
-                text: "print",
-                exportOptions: {
-                    columns: [ 0, 1, 2, 3, 4, 5 ]
-                }
-            },
-        ], 
-          "processing": true,
-          "serverSide": true,
-          "language": {
-                        "processing": "<span style='color:#8b0000;font-size:20px;back'> Processing data.. <i class='fa fa-spinner fa-spin'></i> </span>",
-                        "search": '',
-                        "searchPlaceholder": "search",
-                        "paginate": {
-                        "previous": '<i class="fa fa-angle-double-left"></i> Previous',
-                        "next": 'Next <i class="fa fa-angle-double-right"></i>'
-            }
-                        }, 
-          "ajax":{ 
-            url :"all_class_ajax.php",
-            type: "post",
-            error: function(response){
-              console.log(response);
-              $(".all_admin_ajax-error").html("");
-              $("#all_admin_ajax").append('<tbody class="all_admin_ajax-error"><tr><th colspan="3">No data found in the server </th></tr></tbody>');
-              $("#all_admin_ajax_processing").css("display","none");
-            }
-          }
-        });
-        $('input[type=search]').addClass('form-control');
-        $('#all_admin_length').addClass('hidden');
-        $('.sidebar-mini').addClass('sidebar-collapse');
       });
-
-
-
-
-  /* function delete_section(id)
-    {
-      var form_data = new FormData();
-     
-     form_data.append("id", id)
-    swal({
-    title: "Are you sure?",
-    text: "Once deleted, you will not be able to recover this Section details!",
-    icon: "warning",
-    buttons: true,
-    dangerMode: true,
-    })
-    .then((willDelete) => {
-    if (willDelete) {
-    $.ajax({
-        url: 'delete_section_new.php',
-        type: 'post',
-        dataType: "json",
-        cache: false,
-        contentType: false,
-        processData: false,
-        data: form_data,
-        success: function (data)
-        {
-
-
-            swal('Section has been deleted!')
-           .then((value) => {
-             location.reload();
-            });
-        }
-    });
+    } else if (confirm(message)) {
+      $('#delete_master_type').val(masterType);
+      $('#delete_master_id').val(masterId);
+      $('#delete-master-form').submit();
+    }
   }
-  else
-  {
-    swal("Delete Operation has been cancel!");
-  }
-});
-
-}
-
-      $(document).ready(function() {
-        var dataTable = $('#all_section').DataTable( {
-         "dom": 'Bfrtip',
-         "paging": true,
-         "searching": true,
-         "select": true,
-         "aaSorting" : [[0, 'asc']],
-         "lengthMenu": [
-            [ 10, 25, 50, 100, 500],
-            [ '10', '25', '50', '100', '500']
-        ],
-        "columnDefs": [
-                         {
-                          "orderable": false, "targets": 4
-                         }
-                        ],
-        "buttons": [
-           {
-            extend: 'colvis',
-            text: "Columns"
-           },
-           {
-            extend: 'pageLength',
-            text: 'Show'
-           },
-             {
-                extend: 'excel',
-                text: "Excel",
-                title: "",
-                exportOptions:
-                {
-                    columns: [ 0, 1, 2, 3, 4, 5 ]
-                },
-            },
-             {
-                extend: 'csv',
-                text: "CSV",
-                title: "",
-                exportOptions: {
-                   columns: [ 0, 1, 2, 3, 4, 5 ]
-                }
-            },
-             {
-                extend: 'pdf',
-                text: "PDF",
-                title: "",
-                orientation: 'landscape',
-                pageSize: 'LEGAL',
-                exportOptions: {
-                    columns: [ 0, 1, 2, 3, 4, 5 ]
-                }
-            },
-             {
-                extend: 'print',
-                title: "",
-                text: "print",
-                exportOptions: {
-                    columns: [ 0, 1, 2, 3, 4, 5 ]
-                }
-            },
-        ], 
-          "processing": true,
-          "serverSide": true,
-          "language": {
-                        "processing": "<span style='color:#8b0000;font-size:20px;back'> Processing data.. <i class='fa fa-spinner fa-spin'></i> </span>",
-                        "search": '',
-                        "searchPlaceholder": "search",
-                        "paginate": {
-                        "previous": '<i class="fa fa-angle-double-left"></i> Previous',
-                        "next": 'Next <i class="fa fa-angle-double-right"></i>'
-            }
-                        }, 
-          "ajax":{
-            url :"all_section_ajax.php",
-            type: "post",
-            error: function(response){
-              console.log(response);
-              $(".all_admin_ajax-error").html("");
-              $("#all_admin_ajax").append('<tbody class="all_admin_ajax-error"><tr><th colspan="3">No data found in the server </th></tr></tbody>');
-              $("#all_admin_ajax_processing").css("display","none");
-            }
-          }
-        });
-        $('input[type=search]').addClass('form-control');
-        $('#all_admin_length').addClass('hidden');
-        $('.sidebar-mini').addClass('sidebar-collapse');
-      });*/
-
 </script>
 
 <?php include "header/footer.php"; ?>

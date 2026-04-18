@@ -168,17 +168,27 @@ if(register)
 </script>
 
 <script type="text/javascript">
+  function setAdmissionDetailSectionsVisible(isVisible) {
+    if (isVisible) {
+      $('#below_eligibility_sections').show();
+      $('#personal_details_section').show();
+      $('#contact_details_section').show();
+      $('#upload_documents_section').show();
+    } else {
+      $('#below_eligibility_sections').hide();
+      $('#personal_details_section').hide();
+      $('#contact_details_section').hide();
+      $('#upload_documents_section').hide();
+    }
+  }
+
   function resetSpecializationConditionalUI() {
     $('#cgpa').val('');
     $('#specialization_subject_select').prop('selectedIndex', 0);
     $('#specialization_subject_wrapper').hide();
     $('#cgpa_section').hide();
     $('#honours_not_eligible').hide();
-    $('#below_eligibility_sections').show();
-    // Hide personal, contact, and upload documents sections by default
-    $('#personal_details_section').hide();
-    $('#contact_details_section').hide();
-    $('#upload_documents_section').hide();
+    setAdmissionDetailSectionsVisible(false);
   }
 
   function updateHonoursEligibility() {
@@ -188,28 +198,25 @@ if(register)
     var isHonours = specializationText.indexOf('honours') !== -1 || specializationText.indexOf('honors') !== -1;
 
     if (!isHonours) {
+      $('#specialization_subject_wrapper').hide();
       $('#honours_not_eligible').hide();
-      $('#below_eligibility_sections').show();
+      setAdmissionDetailSectionsVisible(false);
       return;
     }
 
     if (cgpaRaw !== '' && !isNaN(cgpa) && cgpa > 7) {
       $('#specialization_subject_wrapper').show();
       $('#honours_not_eligible').hide();
-      $('#below_eligibility_sections').show();
-      // Show all sections for Honours with CGPA > 7
-      $('#personal_details_section').show();
-      $('#contact_details_section').show();
-      $('#upload_documents_section').show();
+      setAdmissionDetailSectionsVisible(true);
     } else if (cgpaRaw !== '') {
       $('#specialization_subject_wrapper').hide();
       $('#specialization_subject_select').prop('selectedIndex', 0);
       $('#honours_not_eligible').show();
-      $('#below_eligibility_sections').hide();
+      setAdmissionDetailSectionsVisible(false);
     } else {
       $('#specialization_subject_wrapper').hide();
       $('#honours_not_eligible').hide();
-      $('#below_eligibility_sections').show();
+      setAdmissionDetailSectionsVisible(false);
     }
   }
 
@@ -222,10 +229,7 @@ if(register)
 
     if (isMinor) {
       $('#specialization_subject_wrapper').show();
-      // Show personal, contact, and upload documents for minor students
-      $('#personal_details_section').show();
-      $('#contact_details_section').show();
-      $('#upload_documents_section').show();
+      setAdmissionDetailSectionsVisible(true);
       return;
     }
 
@@ -241,7 +245,7 @@ if(register)
       handleSpecializationSelection();
     });
 
-    $('#cgpa').on('input', function() {
+    $('#cgpa').on('input keyup change blur', function() {
       updateHonoursEligibility();
     });
   });
