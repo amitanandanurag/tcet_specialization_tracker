@@ -12,6 +12,7 @@ class DBController
     public $database = "tcet_st";
 
    public $conn;
+  public $last_error = '';
 
     function __construct()
     {
@@ -26,8 +27,15 @@ class DBController
 
     function connectDB()
     {
-        $conn = mysqli_connect($this->host,$this->user,$this->password,$this->database);
-        return $conn;
+      mysqli_report(MYSQLI_REPORT_OFF);
+      $conn = @mysqli_connect($this->host,$this->user,$this->password,$this->database);
+
+      if (!$conn) {
+        $this->last_error = 'Unable to connect with database';
+        return false;
+      }
+
+      return $conn;
     }
 
     function runQuery($query) {

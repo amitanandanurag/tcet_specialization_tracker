@@ -87,7 +87,7 @@ if (!$row) {
 			type="submit"
 			class="btn"
 			style="background-color: #009688; color: #FFEB3B; min-width: 100px;"
-		>SAVE</button>
+		>UPDATE</button>
 		<button
 			type="reset"
 			class="btn"
