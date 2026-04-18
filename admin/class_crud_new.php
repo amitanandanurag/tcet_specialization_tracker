@@ -206,16 +206,15 @@ foreach ($masters as $type => $meta) {
 
 <div class="content-wrapper">
   <section class="content-header">
-    <h1>Master CRUD</h1>
     <ol class="breadcrumb">
       <li><a href="index.php"><i class="fa fa-dashboard"></i> Home</a></li>
-      <li class="active">Master CRUD</li>
+      <li class="active">Settings</li>
     </ol>
   </section>
 
   <section class="content" style="margin-top: 20px;">
     <div class="box" style="padding: 10px;">
-      <h3><i class="fa fa-cogs"></i> Class, Section, Department, Menu Master Management</h3>
+      <h3><i class="fa fa-cogs"></i> Settings</h3>
 
       <?php if ($alertMessage !== '') { ?>
         <div class="alert alert-<?php echo htmlspecialchars($alertType); ?> alert-dismissible" style="margin-top: 15px;">
@@ -225,13 +224,13 @@ foreach ($masters as $type => $meta) {
       <?php } ?>
 
       <ul class="nav nav-tabs" style="margin-top: 20px;">
-        <li class="<?php echo ($activeTab === 'class-list') ? 'active' : ''; ?>"><a data-toggle="tab" href="#class-list">Class List</a></li>
+        <li class="<?php echo ($activeTab === 'class-list') ? 'active' : ''; ?>"><a data-toggle="tab" href="#class-list">Class</a></li>
 
-        <li class="<?php echo ($activeTab === 'section-list') ? 'active' : ''; ?>"><a data-toggle="tab" href="#section-list">Section List</a></li>
+        <li class="<?php echo ($activeTab === 'section-list') ? 'active' : ''; ?>"><a data-toggle="tab" href="#section-list">Section</a></li>
 
-        <li class="<?php echo ($activeTab === 'department-list') ? 'active' : ''; ?>"><a data-toggle="tab" href="#department-list">Department List</a></li>
+        <li class="<?php echo ($activeTab === 'department-list') ? 'active' : ''; ?>"><a data-toggle="tab" href="#department-list">Department</a></li>
 
-        <li class="<?php echo ($activeTab === 'menu-list') ? 'active' : ''; ?>"><a data-toggle="tab" href="#menu-list">Menu List</a></li>
+        <li class="<?php echo ($activeTab === 'menu-list') ? 'active' : ''; ?>"><a data-toggle="tab" href="#menu-list">Menu</a></li>
       </ul>
 
       <div class="tab-content" style="padding-top: 20px;">

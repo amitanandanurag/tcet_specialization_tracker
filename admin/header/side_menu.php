@@ -67,7 +67,7 @@
 </span>
 </a>
 <ul class="treeview-menu">
-<li><a href="class_crud_new.php"><i class="fa fa-cogs"></i>MANAGE CLASS</a></li>
+<li><a href="class_crud_new.php"><i class="fa fa-cogs"></i>SETTING</a></li>
 </ul>
 </li>
 
