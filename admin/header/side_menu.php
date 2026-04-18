@@ -110,7 +110,7 @@ if ($menuStmt) {
 <ul class="sidebar-menu" id="sidebar-dynamic-menu">
 <li class="active"><a href="index.php"><i class="fa fa-user"></i><span><?php echo htmlspecialchars($role_name); ?></span></a></li>
 
-<?php foreach ($menuTree as $menuData) {
+<?php foreach ($menuTree as $menuId => $menuData) {
 	$menuName = trim((string) $menuData['menu_name']);
 	$menuKey = strtolower($menuName);
 	$menuIcon = isset($menuIcons[$menuKey]) ? $menuIcons[$menuKey] : 'fa fa-folder';
@@ -138,4 +138,5 @@ if ($menuStmt) {
 </li>
 <?php } ?>
 
+</ul>
 </section>

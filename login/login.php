@@ -18,14 +18,31 @@ if (!$db_handle || !($db_handle->conn instanceof mysqli)) {
 	$username = trim($_POST['username']);
 	$user_password = trim($_POST['password']);
 
-	$sql = "SELECT * FROM st_login WHERE username='$username'";
-	$resultset = mysqli_query($db_handle->conn, $sql);
+	$sql = "SELECT * FROM st_login WHERE username=?";
+	$stmt = mysqli_prepare($db_handle->conn, $sql);
+
+	if (!$stmt) {
+		echo "Unable to connect with database";
+		exit();
+	}
+
+	mysqli_stmt_bind_param($stmt, 's', $username);
+	mysqli_stmt_execute($stmt);
+	$resultset = mysqli_stmt_get_result($stmt);
 
 	if (!$resultset) {
 		echo "Unable to connect with database";
 		exit();
 	}
+
 	$row = mysqli_fetch_assoc($resultset);
+	mysqli_stmt_close($stmt);
+
+	if (!$row) {
+		echo "email or password does not exist.";
+		exit();
+	}
+
 	if($row['password']==$user_password){
 
 	    $_SESSION['user_session'] = $row['user_id'];

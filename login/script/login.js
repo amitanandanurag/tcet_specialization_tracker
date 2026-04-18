@@ -45,33 +45,16 @@ $('document').ready(function() {
 				console.log(cleanResponse);
 
 
-				if(cleanResponse=="ok"){									
+				if(cleanResponse=="ok" || cleanResponse=="ok1" || cleanResponse=="ok2" || cleanResponse=="ok3" || cleanResponse=="ok4"){
 					$("#login_button").html('<img src="ajax-loader.gif" /> &nbsp; Signing In ...');
-					setTimeout(' window.location.href = "../admin"; ',4000);
+					setTimeout(function(){ window.location.href = "../admin"; }, 4000);
 				} 
-				else if(cleanResponse=="ok1"){									
-					$("#login_button").html('<img src="ajax-loader.gif" /> &nbsp; Signing In ...');
-					setTimeout(' window.location.href = "../admin"; ',4000);
-				} 
-				else if(cleanResponse=="ok2"){									
-					$("#login_button").html('<img src="ajax-loader.gif" /> &nbsp; Signing In ...');
-					setTimeout(' window.location.href = "../admin"; ',4000);
-				}
-
-				else if(cleanResponse=="ok3"){									
-					$("#login_button").html('<img src="ajax-loader.gif" /> &nbsp; Signing In ...');
-					setTimeout(' window.location.href = "../admin"; ',4000);
-				} 
-
-				else if(cleanResponse=="ok4"){									
-					$("#login_button").html('<img src="ajax-loader.gif" /> &nbsp; Signing In ...');
-					setTimeout(' window.location.href = "../admin"; ',4000);
-				} 
-
-
-				else {									
-					$("#error").fadeIn(1000, function(){						
-						$("#error").html('<div class="alert alert-danger"> <span class="glyphicon glyphicon-info-sign"></span> &nbsp; '+cleanResponse+' !</div>');
+				else {
+					$("#error").fadeIn(1000, function(){
+						var $alert = $('<div class="alert alert-danger">');
+						$('<span class="glyphicon glyphicon-info-sign">').appendTo($alert);
+						$alert.append(document.createTextNode(' ' + cleanResponse + ' !'));
+						$("#error").empty().append($alert);
 						$("#login_button").html('<span class="glyphicon glyphicon-log-in"></span> &nbsp; Sign In');
 					});
 				}
