@@ -85,13 +85,11 @@ if (!$row) {
 	<div style="margin-top: 12px;">
 		<button
 			type="submit"
-			class="btn"
-			style="background-color: #009688; color: #FFEB3B; min-width: 100px;"
-		>UPDATE</button>
+			class="btn-submit"
+		>Save Changes</button>
 		<button
 			type="reset"
-			class="btn"
-			style="background-color: #009688; color: #FFEB3B; min-width: 100px;"
-		>RESET</button>
+			class="btn-reset"
+		>Reset</button>
 	</div>
 </form>
