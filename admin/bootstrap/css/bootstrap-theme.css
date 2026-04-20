@@ -105,14 +105,26 @@ fieldset[disabled] .btn-default.active {
   background-image: none;
 }
 .btn-primary {
-  background-image: -webkit-linear-gradient(top, #337ab7 0%, #265a88 100%);
-  background-image:      -o-linear-gradient(top, #337ab7 0%, #265a88 100%);
-  background-image: -webkit-gradient(linear, left top, left bottom, from(#337ab7), to(#265a88));
-  background-image:         linear-gradient(to bottom, #337ab7 0%, #265a88 100%);
-  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#ff337ab7', endColorstr='#ff265a88', GradientType=0);
+  /* Using your Primary: #7656ec and Secondary: #423cbc */
+  background-image: -webkit-linear-gradient(top, #7656ec 0%, #423cbc 100%);
+  background-image:      -o-linear-gradient(top, #7656ec 0%, #423cbc 100%);
+  background-image: -webkit-gradient(linear, left top, left bottom, from(#7656ec), to(#423cbc));
+  background-image:         linear-gradient(to bottom, #7656ec 0%, #423cbc 100%);
+  
+  /* Legacy IE Support */
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#ff7656ec', endColorstr='#ff423cbc', GradientType=0);
   filter: progid:DXImageTransform.Microsoft.gradient(enabled = false);
+  
   background-repeat: repeat-x;
-  border-color: #245580;
+  border-color: #423cbc; /* Set to your darker secondary theme color */
+  color: #ffffff; /* Ensures text is readable on the purple background */
+}
+
+/* Optional: Add a hover state to make it feel interactive */
+.btn-primary:hover {
+  background-color: #423cbc;
+  background-image: none; /* Simplifies look on hover */
+  border-color: #332e91;
 }
 .btn-primary:hover,
 .btn-primary:focus {
