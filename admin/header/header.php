@@ -104,7 +104,7 @@ while ($row = $result->fetch_assoc()) {
 
 								<li class="user-footer" style="background-color: #f9f9f9; padding: 10px;">
 									<div class="pull-left">
-										<a href="settings.php" class="btn btn-default btn-flat">Profile</a>
+										<a href="setting_profile.php" class="btn btn-default btn-flat">Profile</a>
 									</div>
 									<div class="pull-right">
 										<a href="../login/logout.php" class="btn btn-danger btn-flat">Sign out</a>

@@ -1,47 +1,34 @@
 <?php
-$menuIcons = array(
-	'students' => 'fa fa-graduation-cap',
-	'admin' => 'fa fa-user-secret',
-	'coordinator' => 'fa fa-user',
-	'mentor' => 'fa fa-user',
-	'settings' => 'fa fa-cog'
-);
+function sidebar_has_column($conn, $table, $column)
+{
+	$escapedColumn = mysqli_real_escape_string($conn, $column);
+	$result = mysqli_query($conn, "SHOW COLUMNS FROM $table LIKE '$escapedColumn'");
+	$exists = ($result && mysqli_num_rows($result) > 0);
 
-$subMenuRoutes = array(
-	'register students' => 'student_admission.php',
-	'list of students' => 'student-info.php',
-	'concise details' => 'student_concise_details.php',
-	'left students' => '#',
-	'previous students' => '#',
-	'register admin' => 'admin_register.php',
-	'admin info' => 'admin_info.php',
-	'register coordinator' => 'coordinator_register.php',
-	'coordinator info' => 'coordinator_info.php',
-	'register mentor' => 'mentor_register.php',
-	'mentor info' => 'mentor_info.php',
-	'manage class' => 'class_crud_new.php',
-	'settings' => 'class_crud_new.php#section-list'
-);
+	if ($result) {
+		mysqli_free_result($result);
+	}
 
-$subMenuIcons = array(
-	'register students' => 'fa fa-plus',
-	'list of students' => 'fa fa-info-circle',
-	'concise details' => 'fa fa-info-circle',
-	'left students' => 'fa fa-minus-circle',
-	'previous students' => 'fa fa-history',
-	'register admin' => 'fa fa-plus',
-	'admin info' => 'fa fa-info-circle',
-	'register coordinator' => 'fa fa-plus',
-	'coordinator info' => 'fa fa-info-circle',
-	'register mentor' => 'fa fa-plus',
-	'mentor info' => 'fa fa-info-circle',
-	'manage class' => 'fa fa-cogs',
-	'manage section' => 'fa fa-list-alt'
-);
+	return $exists;
+}
+
+$menuHasIconColumn = sidebar_has_column($db_handle->conn, 'st_menu_master', 'menu_icon');
+$subMenuHasIconColumn = sidebar_has_column($db_handle->conn, 'st_sub_menu_master', 'sub_menu_icon');
+$subMenuHasRouteColumn = sidebar_has_column($db_handle->conn, 'st_sub_menu_master', 'sub_menu_route');
 
 $menuTree = array();
 
-$menuSql = "SELECT m.menu_id, m.menu_name
+$menuIconSelect = $menuHasIconColumn
+	? "COALESCE(NULLIF(TRIM(m.menu_icon), ''), 'fa fa-folder') AS menu_icon"
+	: "'fa fa-folder' AS menu_icon";
+$subMenuRouteSelect = $subMenuHasRouteColumn
+	? "COALESCE(NULLIF(TRIM(sm.sub_menu_route), ''), '#') AS sub_menu_route"
+	: "'#' AS sub_menu_route";
+$subMenuIconSelect = $subMenuHasIconColumn
+	? "COALESCE(NULLIF(TRIM(sm.sub_menu_icon), ''), 'fa fa-angle-double-right') AS sub_menu_icon"
+	: "'fa fa-angle-double-right' AS sub_menu_icon";
+
+$menuSql = "SELECT m.menu_id, m.menu_name, $menuIconSelect
 			FROM st_menu_master m
 			WHERE EXISTS (
 				SELECT 1
@@ -68,10 +55,11 @@ if ($menuStmt) {
 		$menuId = (int) $menuRow['menu_id'];
 		$menuTree[$menuId] = array(
 			'menu_name' => $menuRow['menu_name'],
+			'menu_icon' => $menuRow['menu_icon'],
 			'submenus' => array()
 		);
 
-		$subSql = "SELECT sm.sub_menu_id, sm.sub_menu_name
+		$subSql = "SELECT sm.sub_menu_id, sm.sub_menu_name, $subMenuRouteSelect, $subMenuIconSelect
 				   FROM st_sub_menu_master sm
 				   WHERE sm.menu_id = ?
 				   AND (
@@ -112,8 +100,10 @@ if ($menuStmt) {
 
 <?php foreach ($menuTree as $menuId => $menuData) {
 	$menuName = trim((string) $menuData['menu_name']);
-	$menuKey = strtolower($menuName);
-	$menuIcon = isset($menuIcons[$menuKey]) ? $menuIcons[$menuKey] : 'fa fa-folder';
+	$menuIcon = trim((string) $menuData['menu_icon']);
+	if ($menuIcon === '') {
+		$menuIcon = 'fa fa-folder';
+	}
 ?>
 <li class="treeview" data-menu-id="<?php echo $menuId; ?>" id="sidebar-menu-<?php echo $menuId; ?>">
 <a href="#">
@@ -127,9 +117,14 @@ if ($menuStmt) {
 	foreach ($menuData['submenus'] as $subMenu) {
 		$subId = intval($subMenu['sub_menu_id']);
 		$subName = trim((string) $subMenu['sub_menu_name']);
-		$subKey = strtolower($subName);
-		$subRoute = isset($subMenuRoutes[$subKey]) ? $subMenuRoutes[$subKey] : '#';
-		$subIcon = isset($subMenuIcons[$subKey]) ? $subMenuIcons[$subKey] : 'fa fa-angle-double-right';
+		$subRoute = trim((string) ($subMenu['sub_menu_route'] ?? '#'));
+		$subIcon = trim((string) ($subMenu['sub_menu_icon'] ?? 'fa fa-angle-double-right'));
+		if ($subRoute === '') {
+			$subRoute = '#';
+		}
+		if ($subIcon === '') {
+			$subIcon = 'fa fa-angle-double-right';
+		}
 ?>
 <li data-sub-menu-id="<?php echo $subId; ?>" id="sidebar-submenu-item-<?php echo $subId; ?>"><a href="<?php echo htmlspecialchars($subRoute); ?>"><i class="<?php echo htmlspecialchars($subIcon); ?>"></i><?php echo strtoupper(htmlspecialchars($subName)); ?></a></li>
 <?php }
