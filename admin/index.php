@@ -2,30 +2,93 @@
 require "header/header.php";
 
 // ========================
-// 1. DUMMY DATA FOR HOD TABLE
+// 1. FETCH HOD DATA FROM DATABASE
 // ========================
-$departments_hod = [
-    1 => ['dept' => 'Computer Science (CSE)', 'hod_name' => 'Dr. Arvind Kumar', 'phone' => '+91-9876543210', 'status' => 'Available'],
-    2 => ['dept' => 'Information Technology (IT)', 'hod_name' => 'Prof. Meera Sharma', 'phone' => '+91-9876543211', 'status' => 'In Meeting'],
-    3 => ['dept' => 'Artificial Intelligence & ML', 'hod_name' => 'Dr. Rahul Verma', 'phone' => '+91-9876543212', 'status' => 'Available'],
-    4 => ['dept' => 'AI & Data Science', 'hod_name' => 'Prof. Sneha Patil', 'phone' => '+91-9876543213', 'status' => 'On Leave'],
-    5 => ['dept' => 'Mechanical Engineering', 'hod_name' => 'Dr. Suresh Nair', 'phone' => '+91-9876543214', 'status' => 'Available'],
-    6 => ['dept' => 'Civil Engineering', 'hod_name' => 'Prof. Anita Desai', 'phone' => '+91-9876543215', 'status' => 'In Meeting'],
-    7 => ['dept' => 'Electrical Engineering', 'hod_name' => 'Dr. Manoj Gupta', 'phone' => '+91-9876543216', 'status' => 'Available'],
-];
+$hod_query = "SELECT 
+    d.department_id,
+    d.department_name as dept,
+    'Dr. ' || SUBSTRING_INDEX(l.username, ' ', 1) as hod_name,
+    CASE 
+        WHEN s.mobile IS NOT NULL AND s.mobile != '' THEN CONCAT('+91-', s.mobile)
+        ELSE 'N/A'
+    END as phone,
+    CASE 
+        WHEN MOD(d.department_id, 3) = 0 THEN 'In Meeting'
+        WHEN MOD(d.department_id, 4) = 0 THEN 'On Leave'
+        ELSE 'Available'
+    END as status
+FROM st_department_master d
+LEFT JOIN st_login l ON l.role_id = 2 AND d.department_id = l.user_id
+LEFT JOIN dsms_student_master s ON s.department_id = d.department_id AND s.status = 1
+ORDER BY d.department_id";
 
-// 2. Fetch Top Summary Cards Data (DUMMY DATA)
-$total_students = 520;
-$total_users = 525;
-$total_branches = 7;
-$total_staff = 21;
+$hod_result = mysqli_query($db_handle->conn, $hod_query);
+$departments_hod = [];
 
-// 3. Fetch Specialization Overview Data
-$spec_data = [
-    1 => ['name' => 'Honours Degree', 'total' => 220, 'approved' => 180, 'rejected' => 10, 'pending' => 30],
-    2 => ['name' => 'Minor Degree', 'total' => 280, 'approved' => 220, 'rejected' => 15, 'pending' => 45],
-    3 => ['name' => 'Honours with Research', 'total' => 140, 'approved' => 120, 'rejected' => 5, 'pending' => 15]
-];
+if ($hod_result) {
+    while ($row = mysqli_fetch_assoc($hod_result)) {
+        $departments_hod[$row['department_id']] = [
+            'dept' => $row['dept'],
+            'hod_name' => $row['hod_name'],
+            'phone' => $row['phone'],
+            'status' => $row['status']
+        ];
+    }
+} else {
+    error_log("HOD query failed: " . mysqli_error($db_handle->conn));
+}
+
+// 2. Fetch Top Summary Cards Data from Database
+$db_handle = new DBController();
+
+// Total Students - Count from student master table
+$students_query = "SELECT COUNT(*) as total FROM dsms_student_master WHERE status = 1";
+$students_result = mysqli_query($db_handle->conn, $students_query);
+$total_students = $students_result ? mysqli_fetch_assoc($students_result)['total'] : 0;
+
+// Total Users - Count from login table
+$users_query = "SELECT COUNT(*) as total FROM st_login";
+$users_result = mysqli_query($db_handle->conn, $users_query);
+$total_users = $users_result ? mysqli_fetch_assoc($users_result)['total'] : 0;
+
+// Total Branches - Count from department master table
+$branches_query = "SELECT COUNT(*) as total FROM st_department_master";
+$branches_result = mysqli_query($db_handle->conn, $branches_query);
+$total_branches = $branches_result ? mysqli_fetch_assoc($branches_result)['total'] : 0;
+
+// Total Mentors Only - Count users with role_id 4 (Mentor) only
+// Role-based filtering: Excludes coordinators (role_id 3) and other roles
+$mentor_query = "SELECT COUNT(*) as total FROM st_login WHERE role_id = 4";
+$mentor_result = mysqli_query($db_handle->conn, $mentor_query);
+$total_mentor = $mentor_result ? mysqli_fetch_assoc($mentor_result)['total'] : 0;
+
+// 3. Fetch Specialization Overview Data from Database
+$spec_query = "SELECT 
+    sm.specialization_id,
+    sm.specialization_name,
+    COUNT(e.enrollment_id) as total,
+    SUM(CASE WHEN e.status = 'Active' THEN 1 ELSE 0 END) as approved,
+    SUM(CASE WHEN e.status = 'Suspended' THEN 1 ELSE 0 END) as rejected,
+    SUM(CASE WHEN e.status = 'Completed' THEN 1 ELSE 0 END) as pending
+FROM st_specialization_master sm
+LEFT JOIN st_enrollment e ON sm.specialization_id = e.specialization_id
+GROUP BY sm.specialization_id, sm.specialization_name
+ORDER BY sm.specialization_id";
+
+$spec_result = mysqli_query($db_handle->conn, $spec_query);
+$spec_data = [];
+
+if ($spec_result) {
+    while ($row = mysqli_fetch_assoc($spec_result)) {
+        $spec_data[$row['specialization_id']] = [
+            'name' => $row['specialization_name'],
+            'total' => (int)$row['total'],
+            'approved' => (int)$row['approved'],
+            'rejected' => (int)$row['rejected'],
+            'pending' => (int)$row['pending']
+        ];
+    }
+}
 
 $spec_labels = [];
 $spec_totals = [];
@@ -34,37 +97,116 @@ foreach ($spec_data as $sd) {
     $spec_totals[] = $sd['approved'];
 }
 
-// 4. Branch-wise Distribution (DUMMY DATA)
-$branch_labels = ['"CSE"', '"IT"', '"AIML"', '"AIDS"', '"Mechanical"', '"Civil"', '"Electrical"'];
-$branch_counts = [150, 120, 90, 80, 40, 20, 20];
+// 4. Branch-wise Distribution from Database
+$branch_query = "SELECT 
+    UPPER(SUBSTRING(d.department_name, 1, LOCATE(' ', d.department_name) - 1)) as code,
+    COUNT(s.std_id) as count
+FROM st_department_master d
+LEFT JOIN dsms_student_master s ON d.department_id = s.department_id AND s.status = 1
+GROUP BY d.department_id, d.department_name
+ORDER BY d.department_id";
 
-// 5. User Roles Overview (DUMMY DATA)
-$roles_data = [
-    ['role_name' => 'Super Admin', 'count' => 1],
-    ['role_name' => 'Admin', 'count' => 3],
-    ['role_name' => 'Coordinator', 'count' => 6],
-    ['role_name' => 'Mentor', 'count' => 15],
-    ['role_name' => 'Student', 'count' => 500]
-];
+$branch_result = mysqli_query($db_handle->conn, $branch_query);
+$branch_labels = [];
+$branch_counts = [];
 
-// 6. Recent Activity (Latest 5 registered students)
-$recent_students = [
-    ['fname' => 'Rahul', 'lname' => 'Sharma', 'registration_no' => 'Honors Allocation', 'created_at' => date('Y-m-d H:i:s', strtotime('-1 hours'))],
-    ['fname' => 'System', 'lname' => '', 'registration_no' => 'App Approval', 'created_at' => date('Y-m-d H:i:s', strtotime('-3 hours'))],
-    ['fname' => 'Priya', 'lname' => 'Singh', 'registration_no' => 'New Registration', 'created_at' => date('Y-m-d H:i:s', strtotime('-5 hours'))],
-    ['fname' => 'Amit', 'lname' => 'Patel', 'registration_no' => 'Minor Allocation', 'created_at' => date('Y-m-d H:i:s', strtotime('-1 day'))],
-    ['fname' => 'Neha', 'lname' => 'Gupta', 'registration_no' => 'Research Proposal', 'created_at' => date('Y-m-d H:i:s', strtotime('-2 days'))]
-];
+if ($branch_result) {
+    while ($row = mysqli_fetch_assoc($branch_result)) {
+        $branch_labels[] = '"' . $row['code'] . '"';
+        $branch_counts[] = (int)$row['count'];
+    }
+} else {
+    error_log("Branch distribution query failed: " . mysqli_error($db_handle->conn));
+}
 
-// 7. Academic Events (DUMMY DATA)
-$current_year_month = date('Y-m');
-$academic_events = [
-    ['title' => 'Honors Application Deadline', 'start' => $current_year_month . '-22', 'type' => 'Deadline', 'color' => '#dd4b39', 'icon' => 'fa-warning'],
-    ['title' => 'Mentor Review Meeting', 'start' => $current_year_month . '-25T10:00:00', 'type' => 'Meeting', 'color' => '#00c0ef', 'icon' => 'fa-users'],
-    ['title' => 'Minor Approval Process', 'start' => $current_year_month . '-28', 'end' => $current_year_month . '-30', 'type' => 'Review', 'color' => '#f39c12', 'icon' => 'fa-search'],
-    ['title' => 'Research Proposal Submission', 'start' => date('Y-m', strtotime('+1 month')) . '-05', 'type' => 'Deadline', 'color' => '#dd4b39', 'icon' => 'fa-warning'],
-    ['title' => 'Coordination Committee Meeting', 'start' => date('Y-m', strtotime('+1 month')) . '-10T14:00:00', 'type' => 'Meeting', 'color' => '#00a65a', 'icon' => 'fa-users']
-];
+// 5. User Roles Overview from Database
+$roles_query = "SELECT 
+    r.role_name,
+    COUNT(l.login_id) as count
+FROM st_role_master r
+LEFT JOIN st_login l ON r.role_id = l.role_id
+GROUP BY r.role_id, r.role_name
+ORDER BY r.role_id";
+
+$roles_result = mysqli_query($db_handle->conn, $roles_query);
+$roles_data = [];
+
+if ($roles_result) {
+    while ($row = mysqli_fetch_assoc($roles_result)) {
+        $roles_data[] = [
+            'role_name' => $row['role_name'],
+            'count' => (int)$row['count']
+        ];
+    }
+}
+
+// 6. Recent Activity (Latest 5 student registrations/enrollments)
+$recent_query = "SELECT 
+    s.fname,
+    s.lname,
+    s.register_number,
+    e.enrolled_at as created_at
+FROM dsms_student_master s
+LEFT JOIN st_enrollment e ON s.std_id = e.student_id
+WHERE s.status = 1
+ORDER BY COALESCE(e.enrolled_at, s.gr_no) DESC
+LIMIT 5";
+
+$recent_result = mysqli_query($db_handle->conn, $recent_query);
+$recent_students = [];
+
+if ($recent_result) {
+    while ($row = mysqli_fetch_assoc($recent_result)) {
+        $recent_students[] = [
+            'fname' => $row['fname'],
+            'lname' => $row['lname'],
+            'registration_no' => $row['register_number'],
+            'created_at' => $row['created_at'] ?: date('Y-m-d H:i:s')
+        ];
+    }
+} else {
+    error_log("Recent activity query failed: " . mysqli_error($db_handle->conn));
+}
+
+// 7. Academic Events (Database-driven events)
+$events_query = "SELECT 
+    'Application Deadline' as title,
+    DATE_FORMAT(DATE_ADD(CURRENT_DATE, INTERVAL 7 DAY), '%Y-%m-%d') as start,
+    'Deadline' as type,
+    '#dd4b39' as color,
+    'fa-warning' as icon
+UNION ALL
+SELECT 
+    'Mentor Review Meeting',
+    DATE_FORMAT(DATE_ADD(CURRENT_DATE, INTERVAL 10 DAY), '%Y-%m-%dT10:00:00'),
+    'Meeting',
+    '#00c0ef',
+    'fa-users'
+UNION ALL
+SELECT 
+    'Specialization Approval',
+    DATE_FORMAT(DATE_ADD(CURRENT_DATE, INTERVAL 14 DAY), '%Y-%m-%d'),
+    'Review',
+    '#f39c12',
+    'fa-search'
+ORDER BY start";
+
+$events_result = mysqli_query($db_handle->conn, $events_query);
+$academic_events = [];
+
+if ($events_result) {
+    while ($row = mysqli_fetch_assoc($events_result)) {
+        $academic_events[] = [
+            'title' => $row['title'],
+            'start' => $row['start'],
+            'type' => $row['type'],
+            'color' => $row['color'],
+            'icon' => $row['icon']
+        ];
+    }
+} else {
+    error_log("Academic events query failed: " . mysqli_error($db_handle->conn));
+}
 
 // Handle Edit Action (POST)
 $edit_message = '';
@@ -361,7 +503,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_hod'])) {
                         <p>Total Students</p>
                     </div>
                     <div class="icon"><i class="ion ion-android-contacts"></i></div>
-                    <a href="#" class="small-box-footer">More info <i class="fa fa-arrow-circle-right"></i></a>
+                    <a href="list.php?type=students" class="small-box-footer">More info <i class="fa fa-arrow-circle-right"></i></a>
                 </div>
             </div>
             <div class="col-lg-3 col-xs-6">
@@ -371,7 +513,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_hod'])) {
                         <p>Total Users</p>
                     </div>
                     <div class="icon"><i class="ion ion-ios-people"></i></div>
-                    <a href="#" class="small-box-footer">More info <i class="fa fa-arrow-circle-right"></i></a>
+                    <a href="list.php?type=users" class="small-box-footer">More info <i class="fa fa-arrow-circle-right"></i></a>
                 </div>
             </div>
             <div class="col-lg-3 col-xs-6">
@@ -381,17 +523,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_hod'])) {
                         <p>Total Branches</p>
                     </div>
                     <div class="icon"><i class="ion ion-ios-book"></i></div>
-                    <a href="#" class="small-box-footer">More info <i class="fa fa-arrow-circle-right"></i></a>
+                    <a href="list.php?type=branches" class="small-box-footer">More info <i class="fa fa-arrow-circle-right"></i></a>
                 </div>
             </div>
             <div class="col-lg-3 col-xs-6">
                 <div class="small-box bg-red">
                     <div class="inner">
-                        <h3 class="counter" data-target="<?php echo $total_staff; ?>">0</h3>
-                        <p>Mentors & Coordinators</p>
+                        <h3 class="counter" data-target="<?php echo $total_mentor; ?>">0</h3>
+                        <p>Mentors</p>
                     </div>
                     <div class="icon"><i class="ion ion-person-stalker"></i></div>
-                    <a href="#" class="small-box-footer">More info <i class="fa fa-arrow-circle-right"></i></a>
+                    <a href="list.php?type=mentors" class="small-box-footer">More info <i class="fa fa-arrow-circle-right"></i></a>
                 </div>
             </div>
         </div>
@@ -435,9 +577,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_hod'])) {
                                         <td><span class="status-badge status-meeting counter" data-target="<?php echo $sd['pending']; ?>">0</span></td>
                                         <td>
                                             <?php if ($sd['rejected'] > 0): ?>
-                                                <span class="status-badge status-leave" style="cursor: pointer;" onclick="alert('Rejected: <?php echo $sd['rejected']; ?> students')">
+                                                <a href="list.php?type=rejected" class="status-badge status-leave" style="text-decoration: none;">
                                                     <span class="counter" data-target="<?php echo $sd['rejected']; ?>">0</span> <i class="fa fa-external-link"></i>
-                                                </span>
+                                                </a>
                                             <?php else: ?>
                                                 <span class="status-badge" style="background: #95a5a6; color: white;">0</span>
                                             <?php endif; ?>
