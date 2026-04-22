@@ -361,7 +361,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_hod'])) {
                         <p>Total Students</p>
                     </div>
                     <div class="icon"><i class="ion ion-android-contacts"></i></div>
-                    <a href="#" class="small-box-footer">More info <i class="fa fa-arrow-circle-right"></i></a>
+                    <a href="list.php?type=students" class="small-box-footer">More info <i class="fa fa-arrow-circle-right"></i></a>
                 </div>
             </div>
             <div class="col-lg-3 col-xs-6">
@@ -371,7 +371,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_hod'])) {
                         <p>Total Users</p>
                     </div>
                     <div class="icon"><i class="ion ion-ios-people"></i></div>
-                    <a href="#" class="small-box-footer">More info <i class="fa fa-arrow-circle-right"></i></a>
+                    <a href="list.php?type=users" class="small-box-footer">More info <i class="fa fa-arrow-circle-right"></i></a>
                 </div>
             </div>
             <div class="col-lg-3 col-xs-6">
@@ -381,7 +381,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_hod'])) {
                         <p>Total Branches</p>
                     </div>
                     <div class="icon"><i class="ion ion-ios-book"></i></div>
-                    <a href="#" class="small-box-footer">More info <i class="fa fa-arrow-circle-right"></i></a>
+                    <a href="list.php?type=branches" class="small-box-footer">More info <i class="fa fa-arrow-circle-right"></i></a>
                 </div>
             </div>
             <div class="col-lg-3 col-xs-6">
@@ -391,7 +391,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_hod'])) {
                         <p>Mentors & Coordinators</p>
                     </div>
                     <div class="icon"><i class="ion ion-person-stalker"></i></div>
-                    <a href="#" class="small-box-footer">More info <i class="fa fa-arrow-circle-right"></i></a>
+                    <a href="list.php?type=mentors" class="small-box-footer">More info <i class="fa fa-arrow-circle-right"></i></a>
                 </div>
             </div>
         </div>
@@ -435,9 +435,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_hod'])) {
                                         <td><span class="status-badge status-meeting counter" data-target="<?php echo $sd['pending']; ?>">0</span></td>
                                         <td>
                                             <?php if ($sd['rejected'] > 0): ?>
-                                                <span class="status-badge status-leave" style="cursor: pointer;" onclick="alert('Rejected: <?php echo $sd['rejected']; ?> students')">
+                                                <a href="list.php?type=rejected" class="status-badge status-leave" style="text-decoration: none;">
                                                     <span class="counter" data-target="<?php echo $sd['rejected']; ?>">0</span> <i class="fa fa-external-link"></i>
-                                                </span>
+                                                </a>
                                             <?php else: ?>
                                                 <span class="status-badge" style="background: #95a5a6; color: white;">0</span>
                                             <?php endif; ?>
