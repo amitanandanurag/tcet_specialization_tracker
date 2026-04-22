@@ -339,7 +339,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_hod'])) {
 <div class="content-wrapper">
     <section class="content-header">
         <h1>
-            <i class="fa fa-dashboard"></i> <span><strong>Specialization Tracker Dashboard</strong></span>
+            <i class="fa fa-dashboard"></i> <span><strong> Dashboard</strong></span>
         </h1>
         <ol class="breadcrumb">
             <li><a href="index.php"><i class="fa fa-dashboard"></i> Home</a></li>

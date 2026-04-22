@@ -10,8 +10,6 @@
 
     var batch = document.myform.batch.value;
 
-    var join_date = document.myform.join_date.value;
-
     var fname = document.myform.fname.value;
 
     var dob = document.myform.dob.value;
@@ -67,10 +65,6 @@
       alert("Batch  can't be blank.");
       return false;
     }
-    if (join_date == null || join_date == "") {
-      alert("Joining Date can't be blank.");
-      return false;
-    }
     if (fname == null || fname == "") {
       alert("First Name can't be blank.");
       return false;
@@ -79,6 +73,27 @@
       if ($('#specialization_subject_select').prop('selectedIndex') <= 0) {
         alert("Please select Specialization Subject for Minor Degree.");
         return false;
+      }
+      // Validate Multidisciplinary field for Minor
+      var multidisciplinary = $('input[name="multidisciplinary"]:checked').val();
+      if (!multidisciplinary) {
+        alert("Please select Yes or No for Multidisciplinary field.");
+        return false;
+      }
+      if (multidisciplinary === "no") {
+        var minorCgpa = $('#minor_cgpa').val();
+        if (minorCgpa == null || minorCgpa === "") {
+          alert("Please enter CGPA for Multidisciplinary Minor.");
+          return false;
+        }
+        if (isNaN(minorCgpa)) {
+          alert("Please enter valid numeric CGPA.");
+          return false;
+        }
+        if (parseFloat(minorCgpa) < 6) {
+          alert("CGPA must be at least 6 for Multidisciplinary Minor.");
+          return false;
+        }
       }
     }
     if (specializationText.indexOf("honours") !== -1 || specializationText.indexOf("honors") !== -1) {
@@ -111,6 +126,34 @@
   function display2() {
 
     var class1 = $('#class4').val();
+
+    $('#class4').on('change', function() {
+
+      // Reset specialization dropdown
+      $('#specialization_select').prop('selectedIndex', 0);
+
+      // Reset specialization subject
+      $('#specialization_subject_select').prop('selectedIndex', 0);
+
+      // Reset CGPA
+      $('#cgpa').val('');
+
+      // Reset Minor fields
+      $('#minor_cgpa_section').hide();
+      $('#minor_cgpa').val('');
+      $('input[name="multidisciplinary"]').prop('checked', false);
+
+      // Hide UI
+      $('#specialization_subject_wrapper').hide();
+      $('#cgpa_section').hide();
+      $('#honours_not_eligible').hide();
+      $('#multidisciplinary_section').hide();
+
+      setAdmissionDetailSectionsVisible(false);
+    });
+
+
+
     var section = $('#batch4').val();
 
     $.ajax({
@@ -184,6 +227,9 @@
     $('#specialization_subject_wrapper').hide();
     $('#cgpa_section').hide();
     $('#honours_not_eligible').hide();
+    $('#minor_cgpa_section').hide();
+    $('#minor_cgpa').val('');
+    $('input[name="multidisciplinary"]').prop('checked', false);
     setAdmissionDetailSectionsVisible(false);
   }
 
@@ -216,6 +262,27 @@
     }
   }
 
+  function handleMultidisciplinaryChange() {
+    var isMinorSelected = $('#specialization_select option:selected').text().toLowerCase().indexOf('minor') !== -1;
+    if (isMinorSelected) {
+      var multidisciplinaryValue = $('input[name="multidisciplinary"]:checked').val();
+      if (multidisciplinaryValue === 'no') {
+        $('#minor_cgpa_section').show();
+        $('#specialization_subject_wrapper').show();
+        setAdmissionDetailSectionsVisible(true);
+      } else if (multidisciplinaryValue === 'yes') {
+        $('#minor_cgpa_section').hide();
+        $('#minor_cgpa').val('');
+        $('#specialization_subject_wrapper').show();
+        setAdmissionDetailSectionsVisible(true);
+      } else {
+        $('#minor_cgpa_section').hide();
+        $('#specialization_subject_wrapper').hide();
+        setAdmissionDetailSectionsVisible(false);
+      }
+    }
+  }
+
   function handleSpecializationSelection() {
     var specializationText = $('#specialization_select option:selected').text().toLowerCase();
     var isMinor = specializationText.indexOf('minor') !== -1;
@@ -224,9 +291,14 @@
     resetSpecializationConditionalUI();
 
     if (isMinor) {
-      $('#specialization_subject_wrapper').show();
-      setAdmissionDetailSectionsVisible(true);
+      // Show Multidisciplinary question for Minor
+      $('#multidisciplinary_section').show();
+      // Do not show subject wrapper yet - wait for multidisciplinary selection
+      $('#specialization_subject_wrapper').hide();
+      setAdmissionDetailSectionsVisible(false);
       return;
+    } else {
+      $('#multidisciplinary_section').hide();
     }
 
     if (isHonours) {
@@ -243,6 +315,10 @@
 
     $('#cgpa').on('input keyup change blur', function() {
       updateHonoursEligibility();
+    });
+
+    $('input[name="multidisciplinary"]').on('change', function() {
+      handleMultidisciplinaryChange();
     });
   });
 </script>
@@ -311,26 +387,21 @@
               </div>
               <div class="col-md-4">
                 <div class="form-group">
-                  <label>Registration Number <span style="color: red;">*</span></label>
+                  <label>ERP ID <span style="color: red;">*</span></label>
                   <input type="text" name="registration_no" value="" id="registration_no" onblur="ckeck_reg()" class="form-control" style="width: 100%;" required>
-                  <small class="text-muted">Unique registration number (letters, numbers, hyphens only)</small>
                 </div>
               </div>
               <div class="col-md-4">
                 <div class="form-group">
-                  <label>Joining Date <span style="color: red;">*</span></label>
-                  <div class="input-group date">
-                    <div class="input-group-addon">
-                      <i class="fa fa-calendar"></i>
-                    </div>
-                    <input type="date" name="join_date" id="join_date" class="form-control pull-right" placeholder="DD-MM-YYYY" required>
-                  </div>
+                  <label>Roll No.</label>
+                  <input type="text" name="roll_no" class="form-control" id="data421" data-placeholder="" style="width: 100%;" required>
                 </div>
-              </div>
-            </div><!--1 Section End->
+              </div><!--1 Section End->
              /.col -->
+            </div>
 
             <div class="col-md-12">
+              <!-- /.form-group -->
               <div class="col-md-4">
                 <div class="form-group">
                   <label>Class <span style="color: red;">*</span></label>
@@ -350,7 +421,7 @@
                 </div>
               </div>
               <!-- /.form-group -->
-              <div class="col-md-2">
+              <div class="col-md-4">
                 <div class="form-group">
                   <label>Division<span style="color: red;">*</span></label>
                   <select class="form-control select" name="batch" id="batch4" class="batch" onchange="display2()" style="width: 100%;" required>
@@ -370,11 +441,11 @@
                 </div>
               </div>
 
-              <div class="col-md-2">
+              <div class="col-md-4">
                 <div class="form-group">
-                  <label>Batch</label>
+                  <label>Graduating Year</label>
                   <select class="form-control select" name="batch_id" id="batch_id" class="batch_id" style="width: 100%;">
-                    <option>Select Batch</option>
+                    <option>Select Year</option>
                     <?php
                     $result = $db_handle->conn->query("SELECT * from st_batch_master");
 
@@ -386,13 +457,6 @@
                     <?php } ?>
 
                   </select>
-                </div>
-              </div>
-
-              <div class="col-md-4">
-                <div class="form-group">
-                  <label>Roll No.</label>
-                  <input type="text" name="roll_no" class="form-control" id="data421" data-placeholder="" style="width: 100%;" required>
                 </div>
               </div>
 
@@ -437,6 +501,24 @@
                 </div>
               </div>
 
+              <!-- Multidisciplinary Section - Only for Minor -->
+              <div class="col-md-4" id="multidisciplinary_section" style="display: none;">
+                <div class="form-group">
+                  <label>Multidisciplinary <span style="color: red;">*</span></label>
+                  <div>
+                    <label style="margin-right: 14px; padding-top: 4px; font-weight: normal;">
+                      <input type="radio" name="multidisciplinary" value="yes"> Yes
+                    </label>
+                    <label style="font-weight: normal;">
+                      <input type="radio" name="multidisciplinary" value="no"> No
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <div class="col-md-12">
               <div class="col-md-4" id="specialization_subject_wrapper" style="display: none;">
                 <div class="form-group">
                   <label>Specialization Subject<span style="color: red;">*</span></label>
@@ -456,6 +538,13 @@
                 </div>
               </div>
 
+              <div class="col-md-4" id="minor_cgpa_section" style="display: none;">
+                <div class="form-group">
+                  <label>Enter Your CGPA (for Multidisciplinary Minor)<span style="color: red;">*</span></label>
+                  <input type="text" name="minor_cgpa" id="minor_cgpa" class="form-control" data-placeholder="" style="width: 100%;">
+                  <small class="text-muted">Minimum CGPA required: 6.0</small>
+                </div>
+              </div>
             </div>
 
             <div class="col-md-12" id="cgpa_section" style="display: none;">
@@ -504,7 +593,7 @@
 
                 <div class="col-md-4">
                   <div class="form-group">
-                    <label>First Name</label>
+                    <label>Full Name</label>
                     <input type="text" name="fname" class="form-control" data-placeholder="" style="width: 100%;" required>
                   </div>
                 </div>
@@ -512,281 +601,98 @@
 
                 <div class="col-md-4">
                   <div class="form-group">
-                    <label>Middle Name</label>
-                    <input type="text" name="mname" class="form-control" data-placeholder="" style="width: 100%;">
+                    <label>College Email <span style="color: red;">*</span></label>
+                    <input type="email" name="email" id="college_email" class="form-control"
+                      placeholder="example@tcetmumbai.in" style="width: 100%;"
+                      pattern="[a-zA-Z0-9._%+\-]+@tcetmumbai\.in"
+                      title="Email must end with @tcetmumbai.in" required>
                   </div>
                 </div>
-
 
                 <div class="col-md-4">
                   <div class="form-group">
-                    <label>Last Name</label>
-                    <input type="text" name="lname" class="form-control" data-placeholder="" style="width: 100%;" required>
+                    <label>Mobile</label>
+                    <input type="text" pattern="^\d{10}$" class="form-control"
+                      id="mobile" name="mobile" minlength="10" maxlength="10" oninput="javascript: if (this.value.length > this.maxLength) this.value = this.value.slice(0, this.maxLength);" placeholder="Mobile No." style="width: 100%;" />
+                    <!-- <input type="text" class="form-control" name="mobile"  data-placeholder="" style="width: 100%;" required="required"> -->
                   </div>
                 </div>
-
               </div>
+              <!-- /.box-body -->
+            </div>
 
-              <div class="col-md-12">
-                <div class="col-md-4">
-                  <div class="form-group">
-                    <label>Date of Birth</label>
-                    <div class="input-group date">
-                      <div class="input-group-addon">
-                        <i class="fa fa-calendar"></i>
-                      </div>
-                      <input type="date" name="dob" id="dob" class="form-control pull-right" placeholder="DD-MM-YYYY">
-                    </div>
-                  </div>
+
+            <!--end formset2-->
+
+          </div>
+
+          <!-- new formset3-->
+
+
+          <div class="box box-default" id="upload_documents_section" style="padding: 10px; display: none;">
+            <div class="box-header with-border" style="border-bottom: 2px solid #9C27B0;">
+              <h3 class="box-title">Upload Documents:- </h3>
+              <div class="box-tools pull-right">
+                <button type="button" class="btn btn-box-tool" data-widget="collapse"><i class="fa fa-minus"></i></button>
+              </div>
+            </div>
+            <div class="box-body">
+              <div class="row doc-row">
+                <div class="col-md-3 col-sm-4">
+                  <label class="doc-label" for="checkbox1">
+                    <input type="checkbox" id="checkbox1"> Mark List
+                  </label>
                 </div>
-
-
-                <!-- /.form-group -->
-                <div class="col-md-4">
-                  <div class="form-group">
-                    <label>Gender</label>
-                    <select class="form-control select" name="gender" style="width: 100%;">
-                      <option value="">Please Select</option>
-                      <option value="Male" selected="Male">Male</option>
-                      <option value="Female">Female</option>
-                    </select>
-                  </div>
+                <div class="col-md-9 col-sm-8 doc-upload-field" id="autoUpdate1" style="display:none;">
+                  <input type="file" class="form-control" name="mark-list1" accept=".pdf,.jpg,.jpeg,.png">
                 </div>
+              </div>
 
-
-                <div class="col-md-4">
-                  <div class="form-group">
-                    <label>Nationality</label>
-                    <select class="form-control select" name="nation" style="width: 100%;">
-                      <option selected="selected" value="INDIAN">Indian</option>
-                    </select>
-                  </div>
+              <div class="row doc-row">
+                <div class="col-md-3 col-sm-4">
+                  <label class="doc-label" for="checkbox2">
+                    <input type="checkbox" id="checkbox2"> MarkSheet of Semester 1
+                  </label>
                 </div>
-
-              </div>
-
-              <!-- /.col -->
-              <!-- /.col -->
-              <div class="col-md-12">
-
-                <div class="col-md-4">
-                  <div class="form-group">
-                    <label>APAAR ID</label>
-                    <input type="text" name="appar" id="apaar" class="form-control" data-placeholder="" style="width: 100%;">
-                  </div>
+                <div class="col-md-9 col-sm-8 doc-upload-field" id="autoUpdate2" style="display:none;">
+                  <input type="file" class="form-control" name="mark-list2" accept=".pdf,.jpg,.jpeg,.png">
                 </div>
+              </div>
 
-
-                <div class="col-md-4">
-                  <div class="form-group">
-                    <label>UAN</label>
-                    <input type="text" name="uan" id="uan" class="form-control" data-placeholder="" style="width: 100%;">
-                  </div>
+              <div class="row doc-row">
+                <div class="col-md-3 col-sm-4">
+                  <label class="doc-label" for="checkbox6">
+                    <input type="checkbox" id="checkbox6"> MarkSheet of Semester 2
+                  </label>
                 </div>
-                <!-- /.form-group -->
-
-
-                <div class="col-md-4">
-                  <div class="form-group">
-                    <label>PAN </label>
-                    <input type="text" name="pan" id="pan" class="form-control" data-placeholder="" style="width: 100%;">
-                  </div>
+                <div class="col-md-9 col-sm-8 doc-upload-field" id="autoUpdate6" style="display:none;">
+                  <input type="file" class="form-control" name="mark-list6" accept=".pdf,.jpg,.jpeg,.png">
                 </div>
-
-              </div> <!--col 12 close-->
-
-            </div>
-            <!-- /.row -->
-          </div>
-          <!-- /.box-body -->
-
-        </div>
-
-
-        <!--end formset2-->
-
-      </div>
-
-      <!-- new formset3-->
-
-      <div class="box box-default" id="contact_details_section" style="padding: 10px; display: none;">
-        <div class="box-header with-border" style="border-bottom: 2px solid #9C27B0;">
-          <h3 class="box-title">CONTACT DETAILS:- </h3>
-
-          <div class="box-tools pull-right">
-            <button type="button" class="btn btn-box-tool" data-widget="collapse"><i class="fa fa-minus"></i></button>
-
-          </div>
-        </div>
-        <!-- /.box-header -->
-        <div class="box-body">
-          <div class="row">
-            <div class="col-md-6">
-              <div>
-                <img id="user_img" style="border:solid; height:100px; width:100px" />
-              </div>
-              <div class="form-group">
-                <label>Upload Photo</label>
-                <input type="file" class="form-control" name="photo" id="photo" onchange="show(this)" data-placeholder="" style="width: 100%;">
-                <small class="text-muted d-block mt-1">JPG, PNG up to 2MB</small>
               </div>
 
-              <div class="form-group">
-                <label>College Email <span style="color: red;">*</span></label>
-                <input type="email" name="email" id="college_email" class="form-control"
-                  placeholder="example@tcetmumbai.in" style="width: 100%;"
-                  pattern="[a-zA-Z0-9._%+\-]+@tcetmumbai\.in"
-                  title="Email must end with @tcetmumbai.in" required>
-              </div>
-            </div>
-
-            <div class="col-md-6">
-              <div class="form-group">
-                <label>Permanent Address</label>
-                <textarea class="form-control" name="permanent" value="12345678bhgj" data-placeholder="" rows="4" style="width: 100%;">
-                </textarea>
-              </div>
-            </div>
-            <div class="col-md-6">
-              <div class="form-group">
-                <label>Present Address</label>
-                <textarea class="form-control" name="present" data-placeholder="" rows="4" style="width: 100%;">
-                </textarea>
-              </div>
-            </div>
-            <!-- /.col -->
-          </div>
-
-          <hr />
-
-
-          <div class="row">
-            <div class="col-md-4">
-              <div class="form-group">
-                <label>City</label>
-                <input type="text" class="form-control" name="city" pattern="[a-zA-Z]{1,}" data-placeholder="" placeholder="e.g. Mumbai" style="width: 100%;">
+              <div class="row doc-row">
+                <div class="col-md-3 col-sm-4">
+                  <label class="doc-label" for="checkbox4">
+                    <input type="checkbox" id="checkbox4"> MarkSheet of Semester 3
+                  </label>
+                </div>
+                <div class="col-md-9 col-sm-8 doc-upload-field" id="autoUpdate4" style="display:none;">
+                  <input type="file" class="form-control" name="mark-list4" accept=".pdf,.jpg,.jpeg,.png">
+                </div>
               </div>
 
-            </div>
-            <div class="col-md-4">
-              <div class="form-group">
-                <label>Pincode</label>
-                <input type="text" pattern="^\d{6}$" class="form-control"
-                  id="pincode" name="pincode" minlength="6" maxlength="6" oninput="javascript: if (this.value.length > this.maxLength) this.value = this.value.slice(0, this.maxLength);" placeholder="Pincode" style="width: 100%;" />
-                <!-- <input type="number" class="form-control" name="pincode"  data-placeholder="" style="width: 100%;"> -->
-              </div>
-
-            </div>
-            <script type="text/javascript" src="countries.js"></script>
-            <div class="col-md-4">
-              <div class="form-group">
-                <label>Country</label>
-                <select id="country" name="country" class="form-control select2" style="width: 100%;">
-                  <option selected="selected" value="India">India</option>
-                </select>
+              <div class="row" style="margin: 20px 0 0 0;">
+                <div style="margin-top: 20px; text-align: center;">
+                  <input type="submit" name="save" value="Save Changes" class="btn-submit">
+                  <input type="reset" name="reset" value="Reset" class="btn-reset">
+                </div>
               </div>
             </div>
           </div>
-          <div class="row">
-            <div class="col-md-4">
-              <div class="form-group">
-                <label>State</label>
-                <select name="state" id="state" class="form-control select" style="width: 100%;">
-                  <option selected="selected" value="Maharashtra">Maharashtra</option>
-                </select>
-              </div>
-            </div>
-            <div class="col-md-4">
-              <div class="form-group">
-                <label>Phone</label>
-                <input type="text" pattern="^\d{10}$" class="form-control"
-                  id="phone" name="phone" minlength="10" maxlength="10" oninput="javascript: if (this.value.length > this.maxLength) this.value = this.value.slice(0, this.maxLength);" placeholder="phone" style="width: 100%;" />
-                <!-- <input type="text" class="form-control" name="phone"  data-placeholder="" style="width: 100%;"> -->
-              </div>
-
-            </div>
-            <div class="col-md-4">
-              <div class="form-group">
-                <label>Mobile</label>
-                <input type="text" pattern="^\d{10}$" class="form-control"
-                  id="mobile" name="mobile" minlength="10" maxlength="10" oninput="javascript: if (this.value.length > this.maxLength) this.value = this.value.slice(0, this.maxLength);" placeholder="phone" style="width: 100%;" />
-                <!-- <input type="text" class="form-control" name="mobile"  data-placeholder="" style="width: 100%;" required="required"> -->
-              </div>
-
-            </div>
-          </div>
-          <div class="row">
-
-
-
-          </div>
-          <!-- /.row -->
-        </div>
-        <!-- /.box-body -->
-
-      </div>
-
-      <div class="box box-default" id="upload_documents_section" style="padding: 10px; display: none;">
-        <div class="box-header with-border" style="border-bottom: 2px solid #9C27B0;">
-          <h3 class="box-title">Upload Documents:- </h3>
-          <div class="box-tools pull-right">
-            <button type="button" class="btn btn-box-tool" data-widget="collapse"><i class="fa fa-minus"></i></button>
-          </div>
-        </div>
-        <div class="box-body">
-          <style>
-            #upload_documents_section .doc-row {
-              margin: 0;
-              padding: 8px 0;
-              border-bottom: 1px dashed #e5e5e5;
-            }
-
-            #upload_documents_section .doc-row:last-child {
-              border-bottom: 0;
-            }
-
-            #upload_documents_section .doc-label {
-              display: inline-flex;
-              align-items: center;
-              gap: 8px;
-              margin: 0;
-              font-weight: 600;
-            }
-          </style>
-
-          <div class="row doc-row">
-            <div class="col-md-3 col-sm-4">
-              <label class="doc-label" for="checkbox1">
-                <input type="checkbox" id="checkbox1"> Mark List
-              </label>
-            </div>
-            <div class="col-md-9 col-sm-8" id="autoUpdate" style="display:none;">
-              <input type="file" class="form-control" name="mark-list" accept=".pdf,.jpg,.jpeg,.png">
-            </div>
-          </div>
-
-          <div class="row doc-row">
-            <div class="col-md-3 col-sm-4">
-              <label class="doc-label" for="checkbox6">
-                <input type="checkbox" id="checkbox6"> Affidavit
-              </label>
-            </div>
-            <div class="col-md-9 col-sm-8" id="autoUpdate5" style="display:none;">
-              <input type="file" class="form-control" name="affidavit" accept=".pdf,.jpg,.jpeg,.png">
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="row" style="margin: 10px 0 0 0;">
-        <div style="margin-top: 20px; text-align: center;">
-          <input type="submit" name="save" value="Save Changes" class="btn-submit">
-          <input type="reset" name="reset" value="Reset" class="btn-reset">
-        </div>
-      </div>
 
     </form>
     <!--end formset3-->
+
 
   </section>
   <!-- /.content -->
@@ -818,17 +724,41 @@
   $(document).ready(function() {
     $('#checkbox1').on('change', function() {
       if (this.checked) {
-        $('#autoUpdate').stop(true, true).slideDown('fast');
+        $('#autoUpdate1').stop(true, true).slideDown('fast');
       } else {
-        $('#autoUpdate').stop(true, true).slideUp('fast');
+        $('#autoUpdate1').stop(true, true).slideUp('fast');
+      }
+    });
+
+    $('#checkbox2').on('change', function() {
+      if (this.checked) {
+        $('#autoUpdate2').stop(true, true).slideDown('fast');
+      } else {
+        $('#autoUpdate2').stop(true, true).slideUp('fast');
+      }
+    });
+
+    $('#checkbox3').on('change', function() {
+      if (this.checked) {
+        $('#autoUpdate3').stop(true, true).slideDown('fast');
+      } else {
+        $('#autoUpdate3').stop(true, true).slideUp('fast');
+      }
+    });
+
+    $('#checkbox4').on('change', function() {
+      if (this.checked) {
+        $('#autoUpdate4').stop(true, true).slideDown('fast');
+      } else {
+        $('#autoUpdate4').stop(true, true).slideUp('fast');
       }
     });
 
     $('#checkbox6').on('change', function() {
       if (this.checked) {
-        $('#autoUpdate5').stop(true, true).slideDown('fast');
+        $('#autoUpdate6').stop(true, true).slideDown('fast');
       } else {
-        $('#autoUpdate5').stop(true, true).slideUp('fast');
+        $('#autoUpdate6').stop(true, true).slideUp('fast');
       }
     });
   });

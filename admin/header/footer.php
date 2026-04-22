@@ -1,8 +1,8 @@
 <footer class="main-footer" style="margin-left:5px">
     <div class="pull-right hidden-xs">
-      <b>Version</b> 3.1
+      <b>Version</b> 2026.1
     </div>
-    <strong>&copy; <script type="text/javascript"> document.write(new Date().getFullYear()) </script> Dignity IT Solution </strong>
+    <strong>&copy; <script type="text/javascript"> document.write(new Date().getFullYear()) </script> TCET, Mumbai </strong>
   </footer>
 
 <!-- jQuery 2.2.3 -->

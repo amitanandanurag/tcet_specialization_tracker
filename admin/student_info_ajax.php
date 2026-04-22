@@ -6,133 +6,160 @@ $db_handle = new DBController();
 $requestData = $_REQUEST;
 $select_class = $_POST['select_class'] ?? '';
 $select_section = $_POST['select_section'] ?? '';
-$student_table = "st_student_master";
+$select_session = $_POST['select_session'] ?? '';
 
-$columns = array(
-  0 => 'student_id',
-  1 => 'student_id',
-  2 => 'student_id',
-  3 => 'student_id',
-  4 => 'registration_no',
-  5 => 'fname',
-  6 => 'class_id',
-  7 => 'division_id',
-  8 => 'department_id',
-  9 => 'specialization_id',
-  10 => 'specialization_subject_id',
-  11 => 'cgpa',
-  12 => 'mobile',
-  13 => 'academic_year',
-  14 => 'roll_no',
-  15 => 'joining_date',
-  16 => 'dob',
-  17 => 'gender',
-  18 => 'email',
-  19 => 'city',
-  20 => 'permanent_address',
-  21 => 'student_id',
-  22 => 'student_id',
-  23 => 'student_id'
-);
-
+// Build main query
 $sql = "SELECT
-  sm.student_id,
-  sm.photo,
-  sm.mobile,
-  sm.registration_no,
-  sm.academic_year,
-  sm.roll_no,
-  sm.fname,
-  sm.mname,
-  sm.lname,
-  sm.dob,
-  sm.gender,
-  sm.joining_date,
-  sm.permanent_address,
-  sm.email,
-  sm.city,
-  IFNULL(cl.class_name, '') AS class_display,
-  IFNULL(sec.sections, '') AS section_display,
-  IFNULL(dep.department_name, '') AS department_name,
-  IFNULL(sp.specialization_name, '') AS specialization_name,
-  IFNULL(ssb.subject_name, '') AS specialization_subject_name,
-  IFNULL(sm.cgpa, '') AS cgpa
-FROM $student_table sm
+    sm.student_id,
+    sm.registration_no,
+    sm.academic_year,
+    sm.roll_no,
+    sm.fname,
+    sm.class_id,
+    sm.division_id,
+    sm.grad_year,
+    sm.department_id,
+    sm.specialization_id,
+    sm.specialization_subject_id,
+    sm.cgpa,
+    sm.mobile,
+    sm.email,
+    sm.mark_list,
+    sm.status,
+    sm.created_at,
+    IFNULL(cl.class_name, '') AS class_display,
+    IFNULL(sec.sections, '') AS section_display,
+    IFNULL(dep.department_name, '') AS department_name,
+    IFNULL(sp.specialization_name, '') AS specialization_name,
+    IFNULL(ssb.subject_name, '') AS specialization_subject_name
+FROM st_student_master sm
 LEFT JOIN st_class_master cl ON cl.class_id = sm.class_id
 LEFT JOIN st_section_master sec ON sec.id = sm.division_id
 LEFT JOIN st_department_master dep ON dep.department_id = sm.department_id
 LEFT JOIN st_specialization_master sp ON sp.specialization_id = sm.specialization_id
 LEFT JOIN st_specialization_subject_master ssb ON ssb.subject_id = sm.specialization_subject_id
-WHERE sm.status='1'";
+WHERE sm.status = '0'";
 
-if (!empty($select_class) && !empty($select_section)) {
-  $sql .= " AND sm.class_id='".mysqli_real_escape_string($db_handle->conn, $select_class)."' ";
-  $sql .= " AND sm.division_id='".mysqli_real_escape_string($db_handle->conn, $select_section)."' ";
+// Apply filters
+if (!empty($select_class)) {
+    $sql .= " AND sm.class_id = '" . mysqli_real_escape_string($db_handle->conn, $select_class) . "'";
+}
+if (!empty($select_section)) {
+    $sql .= " AND sm.division_id = '" . mysqli_real_escape_string($db_handle->conn, $select_section) . "'";
+}
+if (!empty($select_session)) {
+    $sql .= " AND sm.academic_year = '" . mysqli_real_escape_string($db_handle->conn, $select_session) . "'";
 }
 
+// Search
 if (!empty($requestData['search']['value'])) {
-  $searchValue = mysqli_real_escape_string($db_handle->conn, $requestData['search']['value']);
-  $sql .= " AND (sm.registration_no LIKE '".$searchValue."%' OR sm.fname LIKE '".$searchValue."%' OR sm.lname LIKE '".$searchValue."%') ";
+    $search = mysqli_real_escape_string($db_handle->conn, $requestData['search']['value']);
+    $sql .= " AND (sm.registration_no LIKE '%$search%' 
+                OR sm.fname LIKE '%$search%' 
+                OR sm.roll_no LIKE '%$search%'
+                OR sm.email LIKE '%$search%'
+                OR sm.mobile LIKE '%$search%')";
 }
 
-$result = $db_handle->query($sql);
-$totalData = $db_handle->numRows($sql);
+// Total count
+$totalData = mysqli_num_rows($db_handle->query($sql));
 $totalFiltered = $totalData;
 
-$orderColumnIndex = isset($requestData['order'][0]['column']) ? intval($requestData['order'][0]['column']) : 0;
-$orderColumn = isset($columns[$orderColumnIndex]) ? $columns[$orderColumnIndex] : 'student_id';
-if (!preg_match('/^[a-zA-Z0-9_]+$/', $orderColumn)) {
-  $orderColumn = 'student_id';
+// Ordering
+$orderColumn = 'sm.student_id';
+$orderDir = 'DESC';
+if (isset($requestData['order'][0]['column'])) {
+    $columns = ['student_id', 'student_id', 'student_id', 'registration_no', 'fname', 'class_display', 'section_display', 'department_name', 'specialization_name', 'specialization_subject_name', 'cgpa', 'mobile', 'academic_year', 'roll_no', 'email'];
+    $colIndex = intval($requestData['order'][0]['column']);
+    if (isset($columns[$colIndex])) {
+        $orderColumn = $columns[$colIndex];
+    }
+    $orderDir = strtoupper($requestData['order'][0]['dir']) === 'ASC' ? 'ASC' : 'DESC';
 }
-$orderDir = (isset($requestData['order'][0]['dir']) && strtolower($requestData['order'][0]['dir']) === 'desc') ? 'DESC' : 'ASC';
-$start = isset($requestData['start']) ? intval($requestData['start']) : 0;
-$length = isset($requestData['length']) ? intval($requestData['length']) : 15;
 
-$sql .= " ORDER BY sm.".$orderColumn." ".$orderDir." LIMIT ".$start." ,".$length;
+// Pagination
+$start = intval($requestData['start'] ?? 0);
+$length = intval($requestData['length'] ?? 15);
+
+$sql .= " ORDER BY $orderColumn $orderDir LIMIT $start, $length";
 $result = $db_handle->query($sql);
 
-$data = array();
-while ($row = $result->fetch_assoc()) {
-  $photo = $row["photo"];
-  if (empty($photo)) {
-    $photo = "student.JPG";
-  }
+// Prepare data
+$data = [];
+$counter = $start + 1;
 
-  $mobile_no = $row["mobile"];
-  $nestedData = array();
-  $student_id=$row["student_id"];
-  $nestedData[] = "<input type='checkbox' class='selectRow' value='".$row['student_id']."' />";
-  $nestedData[] = $requestData['start'] = $requestData['start'] + 1;
-  $nestedData[] = "<a href='whatsapp://send?phone=+91$mobile_no?text=WELCOME TO THAKUR COLLEGE OF ENGINEERING AND TECHNOLOGY' action='share/whatsapp/share'><button class='btn bg-gray btn-sm' type='button'><i class='fa fa-whatsapp' style='font-size:30px;color:green'></i></button></a>";
-  $nestedData[] = '<a href="student_photo/'.$photo.'"><img src="student_photo/'.$photo.'" width="50" height="50" style="border-radius:50%;" /></a>';
-  $nestedData[] = $row["registration_no"];
-  $nestedData[] = "<div align='left'>".$row["fname"]." ".$row["mname"]." ".$row["lname"]."</div>";
-  $nestedData[] = $row["class_display"];
-  $nestedData[] = $row["section_display"];
-  $nestedData[] = $row["department_name"];
-  $nestedData[] = $row["specialization_name"];
-  $nestedData[] = $row["specialization_subject_name"];
-  $nestedData[] = $row["cgpa"];
-  $nestedData[] = $row["mobile"];
-  $nestedData[] = $row["academic_year"];
-  $nestedData[] = $row["roll_no"];
-  $nestedData[] = $row["joining_date"];
-  $nestedData[] = $row["dob"];
-  $nestedData[] = $row["gender"];
-  $nestedData[] = $row["email"];
-  $nestedData[] = $row["city"];
-  $nestedData[] = $row["permanent_address"];
-  $nestedData[] = "<button class='btn btn-primary btn-sm' type='button' id='student_view' data-id='".$row["student_id"]."'> <i class='fa fa-eye'></i> </button>";
-  $nestedData[] = "<button class='btn bg-olive btn-sm' type='button' id='student_edit' data-id='".$row["student_id"]."'> <i class='fa fa-pencil'></i> </button>";
-  $nestedData[] = "<a onclick='delete_user(\"".$row["student_id"]."\", \"".$student_table."\")'><button class='btn btn-danger btn-sm' type='button'><i class='fa fa-trash'></i></button></a>";
-  $data[] = $nestedData;
+while ($row = mysqli_fetch_assoc($result)) {
+    $nestedData = [];
+    
+    // Checkbox
+    $nestedData[] = "<input type='checkbox' class='selectRow' value='{$row['student_id']}' />";
+    
+    // SR NO
+    $nestedData[] = $counter++;
+    
+    // WhatsApp
+    $mobile = $row['mobile'];
+    if (!empty($mobile)) {
+        $nestedData[] = "<a href='https://wa.me/91$mobile?text=WELCOME%20TO%20THAKUR%20COLLEGE' target='_blank'>
+                            <button class='btn btn-success btn-sm'><i class='fa fa-whatsapp'></i></button>
+                         </a>";
+    } else {
+        $nestedData[] = "-";
+    }
+    
+    // Registration No
+    $nestedData[] = "<strong>{$row['registration_no']}</strong>";
+    
+    // Name
+    $nestedData[] = "<div align='left'><strong>" . htmlspecialchars($row['fname']) . "</strong></div>";
+    
+    // Class
+    $nestedData[] = !empty($row['class_display']) ? $row['class_display'] : '-';
+    
+    // Division
+    $nestedData[] = !empty($row['section_display']) ? $row['section_display'] : '-';
+    
+    // Department
+    $nestedData[] = !empty($row['department_name']) ? $row['department_name'] : '-';
+    
+    // Specialization
+    $nestedData[] = !empty($row['specialization_name']) ? $row['specialization_name'] : '-';
+    
+    // Specialization Subject
+    $nestedData[] = !empty($row['specialization_subject_name']) ? $row['specialization_subject_name'] : '-';
+    
+    // CGPA
+    $nestedData[] = !empty($row['cgpa']) ? number_format($row['cgpa'], 2) : '-';
+    
+    
+    // Mobile
+    $nestedData[] = !empty($row['mobile']) ? $row['mobile'] : '-';
+    
+    // Academic Year
+    $nestedData[] = !empty($row['academic_year']) ? $row['academic_year'] : '-';
+    
+    // Roll No
+    $nestedData[] = !empty($row['roll_no']) ? $row['roll_no'] : '-';
+    
+    // Email
+    $nestedData[] = !empty($row['email']) ? "<a href='mailto:{$row['email']}'>" . htmlspecialchars($row['email']) . "</a>" : '-';
+    
+    // View Button
+    $nestedData[] = "<button class='btn btn-primary btn-sm' id='student_view' data-id='{$row['student_id']}'><i class='fa fa-eye'></i></button>";
+    
+    // Edit Button
+    $nestedData[] = "<button class='btn bg-olive btn-sm' id='student_edit' data-id='{$row['student_id']}'><i class='fa fa-pencil'></i></button>";
+    
+    // Delete Button
+    $nestedData[] = "<button class='btn btn-danger btn-sm' onclick='delete_user({$row['student_id']}, \"st_student_master\")'><i class='fa fa-trash'></i></button>";
+    
+    $data[] = $nestedData;
 }
 
-$json_data = array(
-  "recordsTotal" => intval($totalData),
-  "recordsFiltered" => intval($totalFiltered),
-  "data" => $data
-);
-
-echo json_encode($json_data);
+echo json_encode([
+    "draw" => intval($requestData['draw']),
+    "recordsTotal" => intval($totalData),
+    "recordsFiltered" => intval($totalFiltered),
+    "data" => $data
+]);
 ?>
