@@ -69,13 +69,8 @@
               </div>
             </div>
             <div class="box-footer role-form-actions">
-<<<<<<< HEAD
-              <button type="submit" class="btn btn-save-like"><i class="fa fa-save"></i> SAVE</button>
-              <button type="reset" class="btn btn-reset-like">RESET</button>
-=======
               <button type="submit" class="btn btn-submit"><i class="fa fa-save"></i> SAVE</button>
               <button type="reset" class="btn btn-reset">RESET</button>
->>>>>>> bc3b82053a8c25ccabcc37e1cf379f56d6dae6a5
               <a href="<?php echo htmlspecialchars($infoFile); ?>" class="btn btn-default">Back</a>
             </div>
           </form>

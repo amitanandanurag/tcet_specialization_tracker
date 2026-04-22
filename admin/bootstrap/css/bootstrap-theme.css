@@ -105,16 +105,6 @@ fieldset[disabled] .btn-default.active {
   background-image: none;
 }
 .btn-primary {
-<<<<<<< HEAD
-  background-image: -webkit-linear-gradient(top, #337ab7 0%, #265a88 100%);
-  background-image:      -o-linear-gradient(top, #337ab7 0%, #265a88 100%);
-  background-image: -webkit-gradient(linear, left top, left bottom, from(#337ab7), to(#265a88));
-  background-image:         linear-gradient(to bottom, #337ab7 0%, #265a88 100%);
-  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#ff337ab7', endColorstr='#ff265a88', GradientType=0);
-  filter: progid:DXImageTransform.Microsoft.gradient(enabled = false);
-  background-repeat: repeat-x;
-  border-color: #245580;
-=======
   /* Using your Primary: #7656ec and Secondary: #423cbc */
   background-image: -webkit-linear-gradient(top, #7656ec 0%, #423cbc 100%);
   background-image:      -o-linear-gradient(top, #7656ec 0%, #423cbc 100%);
@@ -135,7 +125,6 @@ fieldset[disabled] .btn-default.active {
   background-color: #423cbc;
   background-image: none; /* Simplifies look on hover */
   border-color: #332e91;
->>>>>>> bc3b82053a8c25ccabcc37e1cf379f56d6dae6a5
 }
 .btn-primary:hover,
 .btn-primary:focus {

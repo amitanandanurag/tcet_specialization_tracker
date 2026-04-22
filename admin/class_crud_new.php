@@ -40,8 +40,6 @@ function clean_sort_order($value)
   return ($value === '') ? 0 : max(0, intval($value));
 }
 
-<<<<<<< HEAD
-=======
 function clean_route_value($value)
 {
   $value = trim((string) $value);
@@ -236,7 +234,6 @@ function ensure_menu_metadata_columns($conn)
   }
 }
 
->>>>>>> bc3b82053a8c25ccabcc37e1cf379f56d6dae6a5
 function ensure_parent_menu_allocation_for_roles($conn, $menuId)
 {
   $roleIds = array(1, 2, 3, 4);
@@ -302,69 +299,9 @@ $shouldSyncSidebar = false;
 $ajaxResponse = null;
 $isAjaxRequest = isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
 
-<<<<<<< HEAD
-function get_menu_icon_class($menuName)
-{
-  $menuName = strtolower(trim((string) $menuName));
-  $map = array(
-    'students' => 'fa fa-graduation-cap',
-    'admin' => 'fa fa-user-secret',
-    'coordinator' => 'fa fa-users',
-    'mentor' => 'fa fa-user',
-    'settings' => 'fa fa-book'
-  );
-
-  return isset($map[$menuName]) ? $map[$menuName] : 'fa fa-folder';
-}
-
-function get_submenu_icon_class($subMenuName)
-{
-  $subMenuName = strtolower(trim((string) $subMenuName));
-  $map = array(
-    'register students' => 'fa fa-plus',
-    'list of students' => 'fa fa-info-circle',
-    'concise details' => 'fa fa-info-circle',
-    'left students' => 'fa fa-minus-circle',
-    'previous students' => 'fa fa-history',
-    'register admin' => 'fa fa-plus',
-    'admin info' => 'fa fa-info-circle',
-    'register coordinator' => 'fa fa-plus',
-    'coordinator info' => 'fa fa-info-circle',
-    'register mentor' => 'fa fa-plus',
-    'mentor info' => 'fa fa-info-circle',
-    'manage class' => 'fa fa-cogs',
-    'manage section' => 'fa fa-list-alt'
-  );
-
-  return isset($map[$subMenuName]) ? $map[$subMenuName] : 'fa fa-angle-double-right';
-}
-
-function get_submenu_route($subMenuName)
-{
-  $subMenuName = strtolower(trim((string) $subMenuName));
-  $map = array(
-    'register students' => 'student_admission.php',
-    'list of students' => 'student-info.php',
-    'concise details' => 'student_concise_details.php',
-    'left students' => '#',
-    'previous students' => '#',
-    'register admin' => 'admin_register.php',
-    'admin info' => 'admin_info.php',
-    'register coordinator' => 'coordinator_register.php',
-    'coordinator info' => 'coordinator_info.php',
-    'register mentor' => 'mentor_register.php',
-    'mentor info' => 'mentor_info.php',
-    'manage class' => 'class_crud_new.php',
-    'manage section' => 'class_crud_new.php#section-list'
-  );
-
-  return isset($map[$subMenuName]) ? $map[$subMenuName] : '#';
-}
-=======
 ensure_menu_metadata_columns($db_handle->conn);
 
 $availableMenuIcons = get_menu_icon_options();
->>>>>>> bc3b82053a8c25ccabcc37e1cf379f56d6dae6a5
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['master_action'], $_POST['master_type'])) {
   $masterType = $_POST['master_type'];
@@ -379,10 +316,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['master_action'], $_PO
 
     if ($action === 'add') {
       $name = clean_master_value($_POST['master_name'] ?? '');
-<<<<<<< HEAD
-=======
       $menuIcon = sanitize_icon_class($_POST['menu_icon'] ?? '', get_default_menu_icon($name));
->>>>>>> bc3b82053a8c25ccabcc37e1cf379f56d6dae6a5
       $activeTab = $masterType . '-add';
       $openAddModalType = $masterType;
 
@@ -404,13 +338,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['master_action'], $_PO
             $alertType = 'warning';
             $alertMessage = $title . ' already exists.';
           } else {
-<<<<<<< HEAD
-            $insertSql = "INSERT INTO $table ($nameCol) VALUES (?)";
-            $insertStmt = mysqli_prepare($db_handle->conn, $insertSql);
-
-            if ($insertStmt) {
-              mysqli_stmt_bind_param($insertStmt, 's', $name);
-=======
             if ($masterType === 'menu') {
               $insertSql = "INSERT INTO $table ($nameCol, menu_icon) VALUES (?, ?)";
             } else {
@@ -424,7 +351,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['master_action'], $_PO
               } else {
                 mysqli_stmt_bind_param($insertStmt, 's', $name);
               }
->>>>>>> bc3b82053a8c25ccabcc37e1cf379f56d6dae6a5
               $ok = mysqli_stmt_execute($insertStmt);
               mysqli_stmt_close($insertStmt);
 
@@ -449,11 +375,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['master_action'], $_PO
                     'master_type' => $masterType,
                     'master_id' => $insertedId,
                     'master_name' => $name,
-<<<<<<< HEAD
-                    'menu_icon' => get_menu_icon_class($name)
-=======
                     'menu_icon' => $menuIcon
->>>>>>> bc3b82053a8c25ccabcc37e1cf379f56d6dae6a5
                   );
                 }
               } else {
@@ -482,10 +404,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['master_action'], $_PO
     } elseif ($action === 'update') {
       $id = intval($_POST['master_id'] ?? 0);
       $name = clean_master_value($_POST['master_name'] ?? '');
-<<<<<<< HEAD
-=======
       $menuIcon = sanitize_icon_class($_POST['menu_icon'] ?? '', get_default_menu_icon($name));
->>>>>>> bc3b82053a8c25ccabcc37e1cf379f56d6dae6a5
       $activeTab = $masterType . '-list';
 
       if ($id <= 0 || $name === '') {
@@ -506,13 +425,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['master_action'], $_PO
             $alertType = 'warning';
             $alertMessage = $title . ' already exists.';
           } else {
-<<<<<<< HEAD
-            $updateSql = "UPDATE $table SET $nameCol = ? WHERE $pk = ?";
-            $updateStmt = mysqli_prepare($db_handle->conn, $updateSql);
-
-            if ($updateStmt) {
-              mysqli_stmt_bind_param($updateStmt, 'si', $name, $id);
-=======
             if ($masterType === 'menu') {
               $updateSql = "UPDATE $table SET $nameCol = ?, menu_icon = ? WHERE $pk = ?";
             } else {
@@ -526,7 +438,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['master_action'], $_PO
               } else {
                 mysqli_stmt_bind_param($updateStmt, 'si', $name, $id);
               }
->>>>>>> bc3b82053a8c25ccabcc37e1cf379f56d6dae6a5
               $ok = mysqli_stmt_execute($updateStmt);
               mysqli_stmt_close($updateStmt);
 
@@ -670,11 +581,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['sub_menu_action'])) {
     $menuId = intval($_POST['menu_id'] ?? 0);
     $subMenuName = clean_master_value($_POST['sub_menu_name'] ?? '');
     $sortOrder = clean_sort_order($_POST['sort_order'] ?? 0);
-<<<<<<< HEAD
-=======
     $subMenuRoute = clean_route_value($_POST['sub_menu_route'] ?? '#');
     $subMenuIcon = sanitize_icon_class($_POST['sub_menu_icon'] ?? '', get_default_submenu_icon($subMenuName));
->>>>>>> bc3b82053a8c25ccabcc37e1cf379f56d6dae6a5
     $openAddSubMenuModal = true;
 
     if ($menuId <= 0 || $subMenuName === '') {
@@ -708,19 +616,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['sub_menu_action'])) {
             }
           }
 
-<<<<<<< HEAD
-          $insertSql = "INSERT INTO st_sub_menu_master (menu_id, sub_menu_name, sort_order) VALUES (?, ?, ?)";
-          $insertStmt = mysqli_prepare($db_handle->conn, $insertSql);
-
-          if ($insertStmt) {
-            mysqli_stmt_bind_param($insertStmt, 'isi', $menuId, $subMenuName, $sortOrder);
-=======
           $insertSql = "INSERT INTO st_sub_menu_master (menu_id, sub_menu_name, sort_order, sub_menu_icon, sub_menu_route) VALUES (?, ?, ?, ?, ?)";
           $insertStmt = mysqli_prepare($db_handle->conn, $insertSql);
 
           if ($insertStmt) {
             mysqli_stmt_bind_param($insertStmt, 'isiss', $menuId, $subMenuName, $sortOrder, $subMenuIcon, $subMenuRoute);
->>>>>>> bc3b82053a8c25ccabcc37e1cf379f56d6dae6a5
             $ok = mysqli_stmt_execute($insertStmt);
             mysqli_stmt_close($insertStmt);
 
@@ -753,13 +653,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['sub_menu_action'])) {
                   'menu_name' => $menuName,
                   'sub_menu_name' => $subMenuName,
                   'sort_order' => $sortOrder,
-<<<<<<< HEAD
-                  'sub_menu_icon' => get_submenu_icon_class($subMenuName),
-                  'sub_menu_route' => get_submenu_route($subMenuName)
-=======
                   'sub_menu_icon' => $subMenuIcon,
                   'sub_menu_route' => $subMenuRoute
->>>>>>> bc3b82053a8c25ccabcc37e1cf379f56d6dae6a5
                 );
               }
             } else {
@@ -790,11 +685,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['sub_menu_action'])) {
     $menuId = intval($_POST['menu_id'] ?? 0);
     $subMenuName = clean_master_value($_POST['sub_menu_name'] ?? '');
     $sortOrder = clean_sort_order($_POST['sort_order'] ?? 0);
-<<<<<<< HEAD
-=======
     $subMenuRoute = clean_route_value($_POST['sub_menu_route'] ?? '#');
     $subMenuIcon = sanitize_icon_class($_POST['sub_menu_icon'] ?? '', get_default_submenu_icon($subMenuName));
->>>>>>> bc3b82053a8c25ccabcc37e1cf379f56d6dae6a5
 
     if ($subMenuId <= 0 || $menuId <= 0 || $subMenuName === '') {
       $alertType = 'warning';
@@ -814,19 +706,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['sub_menu_action'])) {
           $alertType = 'warning';
           $alertMessage = 'Sub menu already exists under selected menu.';
         } else {
-<<<<<<< HEAD
-          $updateSql = "UPDATE st_sub_menu_master SET menu_id = ?, sub_menu_name = ?, sort_order = ? WHERE sub_menu_id = ?";
-          $updateStmt = mysqli_prepare($db_handle->conn, $updateSql);
-
-          if ($updateStmt) {
-            mysqli_stmt_bind_param($updateStmt, 'isii', $menuId, $subMenuName, $sortOrder, $subMenuId);
-=======
           $updateSql = "UPDATE st_sub_menu_master SET menu_id = ?, sub_menu_name = ?, sort_order = ?, sub_menu_icon = ?, sub_menu_route = ? WHERE sub_menu_id = ?";
           $updateStmt = mysqli_prepare($db_handle->conn, $updateSql);
 
           if ($updateStmt) {
             mysqli_stmt_bind_param($updateStmt, 'isissi', $menuId, $subMenuName, $sortOrder, $subMenuIcon, $subMenuRoute, $subMenuId);
->>>>>>> bc3b82053a8c25ccabcc37e1cf379f56d6dae6a5
             $ok = mysqli_stmt_execute($updateStmt);
             mysqli_stmt_close($updateStmt);
 
@@ -931,15 +815,11 @@ foreach ($masters as $type => $meta) {
   $nameCol = $meta['name'];
 
   $rows = array();
-<<<<<<< HEAD
-  $result = $db_handle->conn->query("SELECT $pk AS master_id, $nameCol AS master_name FROM $table ORDER BY $nameCol ASC");
-=======
   if ($type === 'menu') {
     $result = $db_handle->conn->query("SELECT $pk AS master_id, $nameCol AS master_name, COALESCE(NULLIF(TRIM(menu_icon), ''), 'fa fa-folder') AS menu_icon FROM $table ORDER BY $nameCol ASC");
   } else {
     $result = $db_handle->conn->query("SELECT $pk AS master_id, $nameCol AS master_name FROM $table ORDER BY $nameCol ASC");
   }
->>>>>>> bc3b82053a8c25ccabcc37e1cf379f56d6dae6a5
   if ($result) {
     while ($row = $result->fetch_assoc()) {
       $rows[] = $row;
@@ -949,11 +829,7 @@ foreach ($masters as $type => $meta) {
 }
 
 $menuOptions = array();
-<<<<<<< HEAD
-$menuResult = $db_handle->conn->query("SELECT menu_id, menu_name FROM st_menu_master ORDER BY menu_name ASC");
-=======
 $menuResult = $db_handle->conn->query("SELECT menu_id, menu_name, COALESCE(NULLIF(TRIM(menu_icon), ''), 'fa fa-folder') AS menu_icon FROM st_menu_master ORDER BY menu_name ASC");
->>>>>>> bc3b82053a8c25ccabcc37e1cf379f56d6dae6a5
 if ($menuResult) {
   while ($menuRow = $menuResult->fetch_assoc()) {
     $menuOptions[] = $menuRow;
@@ -961,11 +837,7 @@ if ($menuResult) {
 }
 
 $subMenuRows = array();
-<<<<<<< HEAD
-$subMenuResult = $db_handle->conn->query("SELECT sm.sub_menu_id, sm.menu_id, sm.sub_menu_name, sm.sort_order, m.menu_name FROM st_sub_menu_master sm INNER JOIN st_menu_master m ON m.menu_id = sm.menu_id ORDER BY m.menu_name ASC, sm.sort_order ASC, sm.sub_menu_id ASC");
-=======
 $subMenuResult = $db_handle->conn->query("SELECT sm.sub_menu_id, sm.menu_id, sm.sub_menu_name, sm.sort_order, COALESCE(NULLIF(TRIM(sm.sub_menu_icon), ''), 'fa fa-angle-double-right') AS sub_menu_icon, COALESCE(NULLIF(TRIM(sm.sub_menu_route), ''), '#') AS sub_menu_route, m.menu_name FROM st_sub_menu_master sm INNER JOIN st_menu_master m ON m.menu_id = sm.menu_id ORDER BY m.menu_name ASC, sm.sort_order ASC, sm.sub_menu_id ASC");
->>>>>>> bc3b82053a8c25ccabcc37e1cf379f56d6dae6a5
 if ($subMenuResult) {
   while ($subMenuRow = $subMenuResult->fetch_assoc()) {
     $subMenuRows[] = $subMenuRow;
@@ -977,21 +849,13 @@ if ($subMenuResult) {
   <section class="content-header">
     <ol class="breadcrumb">
       <li><a href="index.php"><i class="fa fa-dashboard"></i> Home</a></li>
-<<<<<<< HEAD
-      <li class="active">Settings</li>
-=======
       <li class="active">Master CRUD</li>
->>>>>>> bc3b82053a8c25ccabcc37e1cf379f56d6dae6a5
     </ol>
   </section>
 
   <section class="content" style="margin-top: 20px;">
     <div class="box" style="padding: 10px;">
-<<<<<<< HEAD
-      <h3><i class="fa fa-cogs"></i> Class, Section, Department, Menu Master Management</h3>
-=======
       <h3><i class="fa fa-cogs"></i> Settings</h3>
->>>>>>> bc3b82053a8c25ccabcc37e1cf379f56d6dae6a5
 
       <?php if ($alertMessage !== '') { ?>
         <div class="alert alert-<?php echo htmlspecialchars($alertType); ?> alert-dismissible" style="margin-top: 15px;">
@@ -1007,17 +871,11 @@ if ($subMenuResult) {
 
         <li class="<?php echo ($activeTab === 'section-list') ? 'active' : ''; ?>"><a data-toggle="tab" href="#section-list">Section</a></li>
 
-<<<<<<< HEAD
-        <li class="<?php echo ($activeTab === 'department-list') ? 'active' : ''; ?>"><a data-toggle="tab" href="#department-list">Department</a></li>
-
-        <li class="<?php echo ($activeTab === 'menu-list') ? 'active' : ''; ?>"><a data-toggle="tab" href="#menu-list">Menu List</a></li>
-=======
         <li class="<?php echo ($activeTab === 'department-list') ? 'active' : ''; ?>"><a data-toggle="tab" href="#department-list">Departments</a></li>
 
         <li class="<?php echo ($activeTab === 'menu-list') ? 'active' : ''; ?>"><a data-toggle="tab" href="#menu-list">Menu</a></li>
 
         <li class="<?php echo ($activeTab === 'sub-menu-list') ? 'active' : ''; ?>"><a data-toggle="tab" href="#sub-menu-list">Sub Menu</a></li>
->>>>>>> bc3b82053a8c25ccabcc37e1cf379f56d6dae6a5
       </ul>
 
       <div class="tab-content" style="padding-top: 20px;">
@@ -1047,12 +905,9 @@ if ($subMenuResult) {
                   <tr>
                     <th style="width: 80px;">No.</th>
                     <th><?php echo htmlspecialchars($title); ?> Name</th>
-<<<<<<< HEAD
-=======
                     <?php if ($type === 'menu') { ?>
                     <th>Icon</th>
                     <?php } ?>
->>>>>>> bc3b82053a8c25ccabcc37e1cf379f56d6dae6a5
                     <th style="width: 100px;">Edit</th>
                     <th style="width: 100px;">Delete</th>
                   </tr>
@@ -1060,31 +915,21 @@ if ($subMenuResult) {
                 <tbody>
                 <?php if (empty($rows)) { ?>
                   <tr>
-<<<<<<< HEAD
-                    <td colspan="4">No <?php echo htmlspecialchars(strtolower($title)); ?> found.</td>
-=======
                     <td colspan="<?php echo ($type === 'menu') ? '5' : '4'; ?>">No <?php echo htmlspecialchars(strtolower($title)); ?> found.</td>
->>>>>>> bc3b82053a8c25ccabcc37e1cf379f56d6dae6a5
                   </tr>
                 <?php } else {
                   $serialNumber = 1;
                   foreach ($rows as $row) {
                     $id = intval($row['master_id']);
                     $name = (string) $row['master_name'];
-<<<<<<< HEAD
-=======
                     $menuIconValue = ($type === 'menu') ? (string) ($row['menu_icon'] ?? 'fa fa-folder') : '';
->>>>>>> bc3b82053a8c25ccabcc37e1cf379f56d6dae6a5
                 ?>
                   <tr>
                     <td><?php echo $serialNumber; ?></td>
                     <td><?php echo htmlspecialchars($name); ?></td>
-<<<<<<< HEAD
-=======
                     <?php if ($type === 'menu') { ?>
                     <td><i class="<?php echo htmlspecialchars($menuIconValue); ?>" aria-hidden="true"></i></td>
                     <?php } ?>
->>>>>>> bc3b82053a8c25ccabcc37e1cf379f56d6dae6a5
                     <td>
                       <button
                         type="button"
@@ -1094,10 +939,7 @@ if ($subMenuResult) {
                         data-master-type="<?php echo htmlspecialchars($type); ?>"
                         data-master-id="<?php echo $id; ?>"
                         data-master-name="<?php echo htmlspecialchars($name, ENT_QUOTES); ?>"
-<<<<<<< HEAD
-=======
                         data-menu-icon="<?php echo htmlspecialchars($menuIconValue, ENT_QUOTES); ?>"
->>>>>>> bc3b82053a8c25ccabcc37e1cf379f56d6dae6a5
                         data-master-title="<?php echo htmlspecialchars($title, ENT_QUOTES); ?>"
                       >
                         <i class="fa fa-pencil"></i>
@@ -1141,11 +983,8 @@ if ($subMenuResult) {
                   <th>Menu Name</th>
                   <th style="width: 100px;">Sequence</th>
                   <th>Sub Menu Name</th>
-<<<<<<< HEAD
-=======
                   <th>Route</th>
                   <th>Icon</th>
->>>>>>> bc3b82053a8c25ccabcc37e1cf379f56d6dae6a5
                   <th style="width: 100px;">Edit</th>
                   <th style="width: 100px;">Delete</th>
                 </tr>
@@ -1153,11 +992,7 @@ if ($subMenuResult) {
               <tbody>
               <?php if (empty($subMenuRows)) { ?>
                 <tr>
-<<<<<<< HEAD
-                  <td colspan="5">No sub menu found.</td>
-=======
                   <td colspan="8">No sub menu found.</td>
->>>>>>> bc3b82053a8c25ccabcc37e1cf379f56d6dae6a5
                 </tr>
               <?php } else {
                 $subSerial = 1;
@@ -1167,22 +1002,16 @@ if ($subMenuResult) {
                   $sortOrderValue = intval($subRow['sort_order']);
                   $menuNameValue = (string) $subRow['menu_name'];
                   $subNameValue = (string) $subRow['sub_menu_name'];
-<<<<<<< HEAD
-=======
                   $subIconValue = (string) $subRow['sub_menu_icon'];
                   $subRouteValue = (string) $subRow['sub_menu_route'];
->>>>>>> bc3b82053a8c25ccabcc37e1cf379f56d6dae6a5
               ?>
                 <tr>
                   <td><?php echo $subSerial; ?></td>
                   <td><?php echo htmlspecialchars($menuNameValue); ?></td>
                   <td><?php echo $sortOrderValue; ?></td>
                   <td><?php echo htmlspecialchars($subNameValue); ?></td>
-<<<<<<< HEAD
-=======
                   <td><?php echo htmlspecialchars($subRouteValue); ?></td>
                   <td><i class="<?php echo htmlspecialchars($subIconValue); ?>" aria-hidden="true"></i></td>
->>>>>>> bc3b82053a8c25ccabcc37e1cf379f56d6dae6a5
                   <td>
                     <button
                       type="button"
@@ -1192,11 +1021,8 @@ if ($subMenuResult) {
                       data-sub-menu-id="<?php echo $subId; ?>"
                       data-menu-id="<?php echo $subMenuIdValue; ?>"
                       data-sub-menu-name="<?php echo htmlspecialchars($subNameValue, ENT_QUOTES); ?>"
-<<<<<<< HEAD
-=======
                       data-sub-menu-route="<?php echo htmlspecialchars($subRouteValue, ENT_QUOTES); ?>"
                       data-sub-menu-icon="<?php echo htmlspecialchars($subIconValue, ENT_QUOTES); ?>"
->>>>>>> bc3b82053a8c25ccabcc37e1cf379f56d6dae6a5
                       data-sort-order="<?php echo $sortOrderValue; ?>"
                     >
                       <i class="fa fa-pencil"></i>
@@ -1242,8 +1068,6 @@ if ($subMenuResult) {
             <label for="add_master_name" class="control-label">Name</label>
             <input type="text" name="master_name" id="add_master_name" class="form-control" placeholder="Enter name" required>
           </div>
-<<<<<<< HEAD
-=======
 
           <div class="form-group" id="add_menu_icon_group" style="display:none;">
             <label for="add_menu_icon" class="control-label">Menu Icon</label>
@@ -1256,7 +1080,6 @@ if ($subMenuResult) {
               <?php } ?>
             </div>
           </div>
->>>>>>> bc3b82053a8c25ccabcc37e1cf379f56d6dae6a5
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
@@ -1294,8 +1117,6 @@ if ($subMenuResult) {
           </div>
 
           <div class="form-group">
-<<<<<<< HEAD
-=======
             <label for="add_sub_menu_route" class="control-label">Sub Menu Route</label>
             <input type="text" name="sub_menu_route" id="add_sub_menu_route" class="form-control" placeholder="example.php or #" value="#" required>
           </div>
@@ -1313,7 +1134,6 @@ if ($subMenuResult) {
           </div>
 
           <div class="form-group">
->>>>>>> bc3b82053a8c25ccabcc37e1cf379f56d6dae6a5
             <label for="add_sort_order" class="control-label">Sequence</label>
             <input type="number" name="sort_order" id="add_sort_order" class="form-control" min="1" placeholder="Auto if blank">
           </div>
@@ -1360,8 +1180,6 @@ if ($subMenuResult) {
           </div>
 
           <div class="form-group">
-<<<<<<< HEAD
-=======
             <label for="edit_sub_menu_route" class="control-label">Sub Menu Route</label>
             <input type="text" name="sub_menu_route" id="edit_sub_menu_route" class="form-control" required>
           </div>
@@ -1379,7 +1197,6 @@ if ($subMenuResult) {
           </div>
 
           <div class="form-group">
->>>>>>> bc3b82053a8c25ccabcc37e1cf379f56d6dae6a5
             <label for="edit_sort_order" class="control-label">Sequence</label>
             <input type="number" name="sort_order" id="edit_sort_order" class="form-control" min="1" required>
           </div>
@@ -1416,8 +1233,6 @@ if ($subMenuResult) {
             <label for="edit_master_name" class="control-label">Name</label>
             <input type="text" name="master_name" id="edit_master_name" class="form-control" required>
           </div>
-<<<<<<< HEAD
-=======
 
           <div class="form-group" id="edit_menu_icon_group" style="display:none;">
             <label for="edit_menu_icon" class="control-label">Menu Icon</label>
@@ -1430,7 +1245,6 @@ if ($subMenuResult) {
               <?php } ?>
             </div>
           </div>
->>>>>>> bc3b82053a8c25ccabcc37e1cf379f56d6dae6a5
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
@@ -1441,10 +1255,6 @@ if ($subMenuResult) {
   </div>
 </div>
 
-<<<<<<< HEAD
-<script>
-  $(document).ready(function() {
-=======
 <style>
   .icon-picker {
     display: flex;
@@ -1482,7 +1292,6 @@ if ($subMenuResult) {
   $(document).ready(function() {
     initIconPickers();
 
->>>>>>> bc3b82053a8c25ccabcc37e1cf379f56d6dae6a5
     $('#addMasterModal').on('show.bs.modal', function(event) {
       var button = $(event.relatedTarget);
       var masterType = button.data('master-type');
@@ -1492,8 +1301,6 @@ if ($subMenuResult) {
       $('#add_master_name').val('');
       $('#add-master-title').text('Add ' + masterTitle);
       $('#add_master_name').attr('placeholder', 'Enter ' + masterTitle + ' Name');
-<<<<<<< HEAD
-=======
 
       if (masterType === 'menu') {
         $('#add_menu_icon_group').show();
@@ -1501,7 +1308,6 @@ if ($subMenuResult) {
       } else {
         $('#add_menu_icon_group').hide();
       }
->>>>>>> bc3b82053a8c25ccabcc37e1cf379f56d6dae6a5
     });
 
     $('#editMasterModal').on('show.bs.modal', function(event) {
@@ -1509,18 +1315,13 @@ if ($subMenuResult) {
       var masterType = button.data('master-type');
       var masterId = button.data('master-id');
       var masterName = button.data('master-name');
-<<<<<<< HEAD
-=======
       var menuIcon = button.data('menu-icon') || 'fa fa-folder';
->>>>>>> bc3b82053a8c25ccabcc37e1cf379f56d6dae6a5
       var masterTitle = button.data('master-title');
 
       $('#edit_master_type').val(masterType);
       $('#edit_master_id').val(masterId);
       $('#edit_master_name').val(masterName);
       $('#edit-master-title').text('Edit ' + masterTitle);
-<<<<<<< HEAD
-=======
 
       if (masterType === 'menu') {
         $('#edit_menu_icon_group').show();
@@ -1528,7 +1329,6 @@ if ($subMenuResult) {
       } else {
         $('#edit_menu_icon_group').hide();
       }
->>>>>>> bc3b82053a8c25ccabcc37e1cf379f56d6dae6a5
     });
 
     $('#editSubMenuModal').on('show.bs.modal', function(event) {
@@ -1536,21 +1336,15 @@ if ($subMenuResult) {
       var subMenuId = button.data('sub-menu-id');
       var menuId = button.data('menu-id');
       var subMenuName = button.data('sub-menu-name');
-<<<<<<< HEAD
-=======
       var subMenuRoute = button.data('sub-menu-route');
       var subMenuIcon = button.data('sub-menu-icon');
->>>>>>> bc3b82053a8c25ccabcc37e1cf379f56d6dae6a5
       var sortOrder = button.data('sort-order');
 
       $('#edit_sub_menu_id').val(subMenuId);
       $('#edit_sub_menu_parent').val(menuId);
       $('#edit_sub_menu_name').val(subMenuName);
-<<<<<<< HEAD
-=======
       $('#edit_sub_menu_route').val(subMenuRoute);
       setIconPickerValue('edit_sub_menu_icon', subMenuIcon || 'fa fa-angle-double-right');
->>>>>>> bc3b82053a8c25ccabcc37e1cf379f56d6dae6a5
       $('#edit_sort_order').val(sortOrder);
     });
 
@@ -1589,20 +1383,13 @@ if ($subMenuResult) {
 
               var newRow = '';
               if (masterType === 'menu') {
-<<<<<<< HEAD
-=======
                 var menuIcon = response.menu_icon || 'fa fa-folder';
->>>>>>> bc3b82053a8c25ccabcc37e1cf379f56d6dae6a5
                   var safeMenuName = $('<div/>').text(masterName).html();
                 newRow = '<tr>' +
                   '<td>' + rowCount + '</td>' +
                   '<td>' + safeMenuName + '</td>' +
-<<<<<<< HEAD
-                  '<td><button type="button" class="btn btn-sm btn-primary open-edit-modal" data-toggle="modal" data-target="#editMasterModal" data-master-type="menu" data-master-id="' + response.master_id + '" data-master-name="' + safeMenuName + '" data-master-title="Menu"><i class="fa fa-pencil"></i></button></td>' +
-=======
                   '<td><i class="' + menuIcon + '" aria-hidden="true"></i></td>' +
                   '<td><button type="button" class="btn btn-sm btn-primary open-edit-modal" data-toggle="modal" data-target="#editMasterModal" data-master-type="menu" data-master-id="' + response.master_id + '" data-master-name="' + safeMenuName + '" data-menu-icon="' + menuIcon + '" data-master-title="Menu"><i class="fa fa-pencil"></i></button></td>' +
->>>>>>> bc3b82053a8c25ccabcc37e1cf379f56d6dae6a5
                   '<td><form method="POST" class="ajax-delete-form" style="display:inline;" onsubmit="return confirmMasterDelete(' + JSON.stringify(masterName) + ');"><input type="hidden" name="master_action" value="delete"><input type="hidden" name="master_type" value="menu"><input type="hidden" name="master_id" value="' + response.master_id + '"><button type="submit" class="btn btn-sm btn-danger"><i class="fa fa-trash"></i></button></form></td>' +
                   '</tr>';
 
@@ -1625,11 +1412,8 @@ if ($subMenuResult) {
               var menuName = response.menu_name || '';
               var subMenuName = form.find('input[name="sub_menu_name"]').val();
               var sortOrder = response.sort_order || form.find('input[name="sort_order"]').val();
-<<<<<<< HEAD
-=======
               var subMenuRoute = response.sub_menu_route || form.find('input[name="sub_menu_route"]').val() || '#';
               var subMenuIcon = response.sub_menu_icon || form.find('input[name="sub_menu_icon"]').val() || 'fa fa-angle-double-right';
->>>>>>> bc3b82053a8c25ccabcc37e1cf379f56d6dae6a5
               var targetTable = $('#sub-menu-list tbody');
               var rowCount = targetTable.find('tr').length + 1;
               var noRows = targetTable.find('tr td[colspan]').first();
@@ -1646,13 +1430,9 @@ if ($subMenuResult) {
                   '<td>' + safeMenuName + '</td>' +
                   '<td>' + $('<div/>').text(String(sortOrder)).html() + '</td>' +
                   '<td>' + safeSubMenuName + '</td>' +
-<<<<<<< HEAD
-                  '<td><button type="button" class="btn btn-sm btn-primary open-submenu-edit-modal" data-toggle="modal" data-target="#editSubMenuModal" data-sub-menu-id="' + response.sub_menu_id + '" data-menu-id="' + menuId + '" data-sub-menu-name="' + $('<div/>').text(subMenuName).html() + '" data-sort-order="' + sortOrder + '"><i class="fa fa-pencil"></i></button></td>' +
-=======
                   '<td>' + $('<div/>').text(subMenuRoute).html() + '</td>' +
                   '<td><i class="' + subMenuIcon + '" aria-hidden="true"></i></td>' +
                   '<td><button type="button" class="btn btn-sm btn-primary open-submenu-edit-modal" data-toggle="modal" data-target="#editSubMenuModal" data-sub-menu-id="' + response.sub_menu_id + '" data-menu-id="' + menuId + '" data-sub-menu-name="' + $('<div/>').text(subMenuName).html() + '" data-sub-menu-route="' + $('<div/>').text(subMenuRoute).html() + '" data-sub-menu-icon="' + $('<div/>').text(subMenuIcon).html() + '" data-sort-order="' + sortOrder + '"><i class="fa fa-pencil"></i></button></td>' +
->>>>>>> bc3b82053a8c25ccabcc37e1cf379f56d6dae6a5
                   '<td><form method="POST" class="ajax-delete-form" style="display:inline;" onsubmit="return confirmSubMenuDelete(' + JSON.stringify(subMenuName) + ');"><input type="hidden" name="sub_menu_action" value="delete"><input type="hidden" name="sub_menu_id" value="' + response.sub_menu_id + '"><button type="submit" class="btn btn-sm btn-danger"><i class="fa fa-trash"></i></button></form></td>' +
                 '</tr>'
               );
@@ -1735,14 +1515,11 @@ if ($subMenuResult) {
       $('#add_master_type').val('<?php echo htmlspecialchars($openAddModalType, ENT_QUOTES); ?>');
       $('#add-master-title').text('Add <?php echo htmlspecialchars($masters[$openAddModalType]['title'], ENT_QUOTES); ?>');
       $('#add_master_name').attr('placeholder', 'Enter <?php echo htmlspecialchars($masters[$openAddModalType]['title'], ENT_QUOTES); ?> Name');
-<<<<<<< HEAD
-=======
       if ('<?php echo htmlspecialchars($openAddModalType, ENT_QUOTES); ?>' === 'menu') {
         $('#add_menu_icon_group').show();
       } else {
         $('#add_menu_icon_group').hide();
       }
->>>>>>> bc3b82053a8c25ccabcc37e1cf379f56d6dae6a5
       $('#addMasterModal').modal('show');
     <?php } ?>
 
@@ -1756,8 +1533,6 @@ if ($subMenuResult) {
     return confirm('Delete "' + masterName + '"?');
   }
 
-<<<<<<< HEAD
-=======
   function initIconPickers() {
     $(document).on('click', '.icon-picker .icon-option', function() {
       var button = $(this);
@@ -1797,7 +1572,6 @@ if ($subMenuResult) {
     button.addClass('active');
   }
 
->>>>>>> bc3b82053a8c25ccabcc37e1cf379f56d6dae6a5
   function confirmSubMenuDelete(subMenuName) {
     return confirm('Delete sub menu "' + subMenuName + '"?');
   }
@@ -1833,8 +1607,4 @@ if ($subMenuResult) {
   }
 </script>
 
-<<<<<<< HEAD
 <?php include "header/footer.php"; ?>
-=======
-<?php include "header/footer.php"; ?>
->>>>>>> bc3b82053a8c25ccabcc37e1cf379f56d6dae6a5
