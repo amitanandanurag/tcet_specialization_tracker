@@ -28,26 +28,109 @@ $subMenuIconSelect = $subMenuHasIconColumn
 	? "COALESCE(NULLIF(TRIM(sm.sub_menu_icon), ''), 'fa fa-angle-double-right') AS sub_menu_icon"
 	: "'fa fa-angle-double-right' AS sub_menu_icon";
 
+function sidebar_seed_super_admin_settings($db_handle)
+{
+	$menuId = sidebar_resolve_system_menu_id($db_handle->conn);
+	if ($menuId <= 0) {
+		return;
+	}
+
+	$defaultSettings = array(
+		array('Profile', 'fa fa-user', 'profile.php'),
+		array('Update Password', 'fa fa-lock', 'change_password.php'),
+		array('Manage Section', 'fa fa-list-alt', 'class_crud_new.php?tab=section-list'),
+		array('Menu Master', 'fa fa-folder-open', 'class_crud_new.php?tab=menu-list'),
+		array('Sub Menu Master', 'fa fa-sitemap', 'class_crud_new.php?tab=sub-menu-list'),
+		array('Side Menu Allocation', 'fa fa-check-square-o', 'allocation_master.php')
+	);
+
+	foreach ($defaultSettings as $item) {
+		$name = mysqli_real_escape_string($db_handle->conn, $item[0]);
+		$icon = mysqli_real_escape_string($db_handle->conn, $item[1]);
+		$route = mysqli_real_escape_string($db_handle->conn, $item[2]);
+
+		$subSql = "SELECT sub_menu_id FROM st_sub_menu_master WHERE menu_id = {$menuId} AND (sub_menu_route = '$route' OR sub_menu_name = '$name') LIMIT 1";
+		$subResult = mysqli_query($db_handle->conn, $subSql);
+		if (!$subResult || mysqli_num_rows($subResult) === 0) {
+			$nextOrder = 1;
+			$orderSql = "SELECT COALESCE(MAX(sort_order), 0) + 1 AS next_order FROM st_sub_menu_master WHERE menu_id = {$menuId}";
+			$orderResult = mysqli_query($db_handle->conn, $orderSql);
+			if ($orderResult && mysqli_num_rows($orderResult) > 0) {
+				$orderRow = mysqli_fetch_assoc($orderResult);
+				$nextOrder = (int) ($orderRow['next_order'] ?? 1);
+			}
+			$insertSql = "INSERT INTO st_sub_menu_master (menu_id, sort_order, sub_menu_name, sub_menu_icon, sub_menu_route) VALUES ({$menuId}, {$nextOrder}, '$name', '$icon', '$route')";
+			mysqli_query($db_handle->conn, $insertSql);
+		}
+	}
+
+	$parentSql = "SELECT 1 FROM st_menu_allocation_master WHERE user_id = 0 AND role_id = 1 AND menu_id = {$menuId} AND sub_menu_id IS NULL LIMIT 1";
+	$parentResult = mysqli_query($db_handle->conn, $parentSql);
+	if (!$parentResult || mysqli_num_rows($parentResult) === 0) {
+		mysqli_query($db_handle->conn, "INSERT INTO st_menu_allocation_master (user_id, role_id, menu_id, sub_menu_id) VALUES (0, 1, {$menuId}, NULL)");
+	}
+
+	$settingsRows = mysqli_query($db_handle->conn, "SELECT sub_menu_id FROM st_sub_menu_master WHERE menu_id = {$menuId}");
+	if ($settingsRows) {
+		while ($settingRow = mysqli_fetch_assoc($settingsRows)) {
+			$subMenuId = (int) ($settingRow['sub_menu_id'] ?? 0);
+			if ($subMenuId > 0) {
+				$allocSql = "SELECT 1 FROM st_menu_allocation_master WHERE user_id = 0 AND role_id = 1 AND menu_id = {$menuId} AND sub_menu_id = {$subMenuId} LIMIT 1";
+				$allocResult = mysqli_query($db_handle->conn, $allocSql);
+				if (!$allocResult || mysqli_num_rows($allocResult) === 0) {
+					mysqli_query($db_handle->conn, "INSERT INTO st_menu_allocation_master (user_id, role_id, menu_id, sub_menu_id) VALUES (0, 1, {$menuId}, {$subMenuId})");
+				}
+			}
+		}
+	}
+}
+
+function sidebar_resolve_system_menu_id($conn)
+{
+	$menuSql = "SELECT menu_id FROM st_menu_master WHERE LOWER(TRIM(menu_name)) IN ('settings', 'admin') ORDER BY CASE WHEN LOWER(TRIM(menu_name)) = 'settings' THEN 0 ELSE 1 END, menu_id ASC LIMIT 1";
+	$menuResult = mysqli_query($conn, $menuSql);
+	if ($menuResult && mysqli_num_rows($menuResult) > 0) {
+		$menuRow = mysqli_fetch_assoc($menuResult);
+		return (int) ($menuRow['menu_id'] ?? 0);
+	}
+
+	$routeSql = "SELECT menu_id FROM st_sub_menu_master WHERE sub_menu_route IN ('allocation_master.php', 'profile.php', 'change_password.php') ORDER BY menu_id ASC, sort_order ASC, sub_menu_id ASC LIMIT 1";
+	$routeResult = mysqli_query($conn, $routeSql);
+	if ($routeResult && mysqli_num_rows($routeResult) > 0) {
+		$routeRow = mysqli_fetch_assoc($routeResult);
+		return (int) ($routeRow['menu_id'] ?? 0);
+	}
+
+	return 0;
+}
+
+if ((int) $usertype === 1) {
+	sidebar_seed_super_admin_settings($db_handle);
+}
+
 $menuSql = "SELECT m.menu_id, m.menu_name, $menuIconSelect
 			FROM st_menu_master m
-			WHERE EXISTS (
-				SELECT 1
-				FROM st_menu_allocation_master mar
-				WHERE mar.menu_id = m.menu_id
-				  AND mar.role_id = ?
-				  AND mar.sub_menu_id IS NULL
-			)
-			OR NOT EXISTS (
-				SELECT 1
-				FROM st_menu_allocation_master maa
-				WHERE maa.menu_id = m.menu_id
-				  AND maa.sub_menu_id IS NULL
+			WHERE (
+				EXISTS (
+					SELECT 1
+					FROM st_menu_allocation_master mar
+					WHERE mar.menu_id = m.menu_id
+					  AND mar.role_id = ?
+					  AND mar.sub_menu_id IS NULL
+				)
+				OR EXISTS (
+					SELECT 1
+					FROM st_menu_allocation_master maa
+					WHERE maa.menu_id = m.menu_id
+					  AND maa.role_id = ?
+					  AND maa.sub_menu_id IS NOT NULL
+				)
 			)
 			ORDER BY m.menu_id";
 $menuStmt = mysqli_prepare($db_handle->conn, $menuSql);
 
 if ($menuStmt) {
-	mysqli_stmt_bind_param($menuStmt, 'i', $usertype);
+	mysqli_stmt_bind_param($menuStmt, 'ii', $usertype, $usertype);
 	mysqli_stmt_execute($menuStmt);
 	$menuResult = mysqli_stmt_get_result($menuStmt);
 
@@ -68,11 +151,6 @@ if ($menuStmt) {
 						   FROM st_menu_allocation_master mar
 						   WHERE mar.sub_menu_id = sm.sub_menu_id
 							 AND mar.role_id = ?
-					   )
-					   OR NOT EXISTS (
-						   SELECT 1
-						   FROM st_menu_allocation_master maa
-						   WHERE maa.sub_menu_id = sm.sub_menu_id
 					   )
 				   )
 				   ORDER BY sm.sort_order ASC, sm.sub_menu_id ASC";
@@ -134,4 +212,9 @@ if ($menuStmt) {
 <?php } ?>
 
 </ul>
+
+<?php if (empty($menuTree)) { ?>
+<div class="text-muted" style="padding: 10px 15px;">No menu items are assigned to this role.</div>
+<?php } ?>
+
 </section>

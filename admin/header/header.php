@@ -1,5 +1,7 @@
 <?php
-session_start();
+if (session_status() !== PHP_SESSION_ACTIVE) {
+	session_start();
+}
 include_once("../database/db_connect.php");
 if (isset($_SESSION['user_session'])) {
 } else {
@@ -104,7 +106,7 @@ while ($row = $result->fetch_assoc()) {
 
 								<li class="user-footer" style="background-color: #f9f9f9; padding: 10px;">
 									<div class="pull-left">
-										<a href="setting_profile.php" class="btn btn-default btn-flat">Profile</a>
+										<a href="profile.php" class="btn btn-default btn-flat">Profile</a>
 									</div>
 									<div class="pull-right">
 										<a href="../login/logout.php" class="btn btn-danger btn-flat">Sign out</a>
