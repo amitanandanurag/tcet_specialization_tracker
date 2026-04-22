@@ -290,6 +290,56 @@ function ensure_sub_menu_allocation_for_roles($conn, $menuId, $subMenuId)
   }
 }
 
+function normalize_sub_menu_sequence_by_menu($conn)
+{
+  $menuIds = array();
+  $menuResult = mysqli_query($conn, "SELECT menu_id FROM st_menu_master ORDER BY menu_id ASC");
+  if ($menuResult) {
+    while ($menuRow = mysqli_fetch_assoc($menuResult)) {
+      $menuId = (int) ($menuRow['menu_id'] ?? 0);
+      if ($menuId > 0) {
+        $menuIds[] = $menuId;
+      }
+    }
+    mysqli_free_result($menuResult);
+  }
+
+  foreach ($menuIds as $menuId) {
+    $subSql = "SELECT sub_menu_id, COALESCE(sort_order, 0) AS sort_order
+               FROM st_sub_menu_master
+               WHERE menu_id = ?
+               ORDER BY sort_order ASC, sub_menu_id ASC";
+    $subStmt = mysqli_prepare($conn, $subSql);
+    if (!$subStmt) {
+      continue;
+    }
+
+    mysqli_stmt_bind_param($subStmt, 'i', $menuId);
+    mysqli_stmt_execute($subStmt);
+    $subResult = mysqli_stmt_get_result($subStmt);
+
+    $expectedOrder = 1;
+    while ($subResult && ($subRow = mysqli_fetch_assoc($subResult))) {
+      $subMenuId = (int) ($subRow['sub_menu_id'] ?? 0);
+      $currentOrder = (int) ($subRow['sort_order'] ?? 0);
+
+      if ($subMenuId > 0 && $currentOrder !== $expectedOrder) {
+        $updateSql = "UPDATE st_sub_menu_master SET sort_order = ? WHERE sub_menu_id = ?";
+        $updateStmt = mysqli_prepare($conn, $updateSql);
+        if ($updateStmt) {
+          mysqli_stmt_bind_param($updateStmt, 'ii', $expectedOrder, $subMenuId);
+          mysqli_stmt_execute($updateStmt);
+          mysqli_stmt_close($updateStmt);
+        }
+      }
+
+      $expectedOrder++;
+    }
+
+    mysqli_stmt_close($subStmt);
+  }
+}
+
 $activeTab = 'class-list';
 $alertType = '';
 $alertMessage = '';
@@ -808,6 +858,8 @@ if ($isAjaxRequest && $ajaxResponse !== null) {
   exit();
 }
 
+normalize_sub_menu_sequence_by_menu($db_handle->conn);
+
 $masterRows = array();
 foreach ($masters as $type => $meta) {
   $table = $meta['table'];
@@ -855,7 +907,7 @@ if ($subMenuResult) {
 
   <section class="content" style="margin-top: 20px;">
     <div class="box" style="padding: 10px;">
-      <h3><i class="fa fa-cogs"></i> Settings</h3>
+      <h3><i class="fa fa-cogs"></i> Master Data</h3>
 
       <?php if ($alertMessage !== '') { ?>
         <div class="alert alert-<?php echo htmlspecialchars($alertType); ?> alert-dismissible" style="margin-top: 15px;">
@@ -873,9 +925,6 @@ if ($subMenuResult) {
 
         <li class="<?php echo ($activeTab === 'department-list') ? 'active' : ''; ?>"><a data-toggle="tab" href="#department-list">Departments</a></li>
 
-        <li class="<?php echo ($activeTab === 'menu-list') ? 'active' : ''; ?>"><a data-toggle="tab" href="#menu-list">Menu</a></li>
-
-        <li class="<?php echo ($activeTab === 'sub-menu-list') ? 'active' : ''; ?>"><a data-toggle="tab" href="#sub-menu-list">Sub Menu</a></li>
       </ul>
 
       <div class="tab-content" style="padding-top: 20px;">
