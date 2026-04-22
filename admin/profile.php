@@ -1,9 +1,11 @@
-<?php header("Location: profile.php"); exit; ?>
 <?php
+if (session_status() !== PHP_SESSION_ACTIVE) {
+  session_start();
+}
+include "header/header.php";
+
 $profileAlertType = '';
 $profileAlertMessage = '';
-$passwordAlertType = '';
-$passwordAlertMessage = '';
 
 $currentUserId = intval($userid ?? 0);
 $currentRoleId = intval($usertype ?? 0);
@@ -84,55 +86,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile']) && 
       mysqli_rollback($db_handle->conn);
       $profileAlertType = 'danger';
       $profileAlertMessage = 'Unable to update profile right now.';
-    }
-  }
-}
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_password']) && $currentUserId > 0 && $currentRoleId > 0) {
-  $currentPassword = trim((string) ($_POST['current_password'] ?? ''));
-  $newPassword = trim((string) ($_POST['new_password'] ?? ''));
-  $confirmPassword = trim((string) ($_POST['confirm_password'] ?? ''));
-
-  if ($currentPassword === '' || $newPassword === '' || $confirmPassword === '') {
-    $passwordAlertType = 'warning';
-    $passwordAlertMessage = 'All password fields are required.';
-  } elseif ($newPassword !== $confirmPassword) {
-    $passwordAlertType = 'warning';
-    $passwordAlertMessage = 'New password and confirm password must match.';
-  } else {
-    $currentPasswordSql = "SELECT password FROM st_login WHERE user_id = ? AND role_id = ? LIMIT 1";
-    $currentPasswordStmt = mysqli_prepare($db_handle->conn, $currentPasswordSql);
-    if ($currentPasswordStmt) {
-      mysqli_stmt_bind_param($currentPasswordStmt, 'ii', $currentUserId, $currentRoleId);
-      mysqli_stmt_execute($currentPasswordStmt);
-      $currentPasswordResult = mysqli_stmt_get_result($currentPasswordStmt);
-      $currentPasswordRow = $currentPasswordResult ? mysqli_fetch_assoc($currentPasswordResult) : null;
-      mysqli_stmt_close($currentPasswordStmt);
-
-      if (!$currentPasswordRow || (string) ($currentPasswordRow['password'] ?? '') !== $currentPassword) {
-        $passwordAlertType = 'danger';
-        $passwordAlertMessage = 'Current password is incorrect.';
-      } else {
-        $updatePasswordSql = "UPDATE st_login SET password = ? WHERE user_id = ? AND role_id = ?";
-        $updatePasswordStmt = mysqli_prepare($db_handle->conn, $updatePasswordSql);
-        if ($updatePasswordStmt) {
-          mysqli_stmt_bind_param($updatePasswordStmt, 'sii', $newPassword, $currentUserId, $currentRoleId);
-          if (mysqli_stmt_execute($updatePasswordStmt)) {
-            $passwordAlertType = 'success';
-            $passwordAlertMessage = 'Password updated successfully.';
-          } else {
-            $passwordAlertType = 'danger';
-            $passwordAlertMessage = 'Unable to update password right now.';
-          }
-          mysqli_stmt_close($updatePasswordStmt);
-        } else {
-          $passwordAlertType = 'danger';
-          $passwordAlertMessage = 'Unable to prepare password update.';
-        }
-      }
-    } else {
-      $passwordAlertType = 'danger';
-      $passwordAlertMessage = 'Unable to verify current password.';
     }
   }
 }
@@ -438,60 +391,6 @@ if ($currentUserId > 0 && $currentRoleId > 0) {
             <div class="box-footer">
               <input type="hidden" name="update_profile" value="1">
               <button type="submit" class="pull-right profile-save-btn"><i class="fa fa-check"></i> Update Profile</button>
-            </div>
-          </form>
-        </div>
-
-        <div id="password" style="margin-top: 20px;"></div>
-        <div class="box profile-form-card">
-          <div class="box-header with-border">
-            <h3 class="box-title">Update Password</h3>
-          </div>
-
-          <?php if ($passwordAlertMessage !== '') { ?>
-            <div class="box-body" style="padding-bottom:0;">
-              <div class="alert alert-<?php echo htmlspecialchars($passwordAlertType); ?> alert-dismissible">
-                <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
-                <?php echo htmlspecialchars($passwordAlertMessage); ?>
-              </div>
-            </div>
-          <?php } ?>
-
-          <form class="form-horizontal" method="POST">
-            <div class="box-body">
-              <div class="form-group">
-                <label class="col-sm-3 control-label">Current Password</label>
-                <div class="col-sm-9">
-                  <div class="input-group profile-input-group">
-                    <span class="input-group-addon"><i class="fa fa-lock"></i></span>
-                    <input type="password" class="form-control" name="current_password" placeholder="Enter current password" required>
-                  </div>
-                </div>
-              </div>
-
-              <div class="form-group">
-                <label class="col-sm-3 control-label">New Password</label>
-                <div class="col-sm-9">
-                  <div class="input-group profile-input-group">
-                    <span class="input-group-addon"><i class="fa fa-key"></i></span>
-                    <input type="password" class="form-control" name="new_password" placeholder="Enter new password" required>
-                  </div>
-                </div>
-              </div>
-
-              <div class="form-group">
-                <label class="col-sm-3 control-label">Confirm Password</label>
-                <div class="col-sm-9">
-                  <div class="input-group profile-input-group">
-                    <span class="input-group-addon"><i class="fa fa-check"></i></span>
-                    <input type="password" class="form-control" name="confirm_password" placeholder="Re-enter new password" required>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div class="box-footer">
-              <input type="hidden" name="update_password" value="1">
-              <button type="submit" class="pull-right profile-save-btn"><i class="fa fa-refresh"></i> Update Password</button>
             </div>
           </form>
         </div>
