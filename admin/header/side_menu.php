@@ -1,4 +1,5 @@
 <?php
+<<<<<<< HEAD
 $menuIcons = array(
 	'students' => 'fa fa-graduation-cap',
 	'admin' => 'fa fa-user-secret',
@@ -42,6 +43,38 @@ $subMenuIcons = array(
 $menuTree = array();
 
 $menuSql = "SELECT m.menu_id, m.menu_name
+=======
+function sidebar_has_column($conn, $table, $column)
+{
+	$escapedColumn = mysqli_real_escape_string($conn, $column);
+	$result = mysqli_query($conn, "SHOW COLUMNS FROM $table LIKE '$escapedColumn'");
+	$exists = ($result && mysqli_num_rows($result) > 0);
+
+	if ($result) {
+		mysqli_free_result($result);
+	}
+
+	return $exists;
+}
+
+$menuHasIconColumn = sidebar_has_column($db_handle->conn, 'st_menu_master', 'menu_icon');
+$subMenuHasIconColumn = sidebar_has_column($db_handle->conn, 'st_sub_menu_master', 'sub_menu_icon');
+$subMenuHasRouteColumn = sidebar_has_column($db_handle->conn, 'st_sub_menu_master', 'sub_menu_route');
+
+$menuTree = array();
+
+$menuIconSelect = $menuHasIconColumn
+	? "COALESCE(NULLIF(TRIM(m.menu_icon), ''), 'fa fa-folder') AS menu_icon"
+	: "'fa fa-folder' AS menu_icon";
+$subMenuRouteSelect = $subMenuHasRouteColumn
+	? "COALESCE(NULLIF(TRIM(sm.sub_menu_route), ''), '#') AS sub_menu_route"
+	: "'#' AS sub_menu_route";
+$subMenuIconSelect = $subMenuHasIconColumn
+	? "COALESCE(NULLIF(TRIM(sm.sub_menu_icon), ''), 'fa fa-angle-double-right') AS sub_menu_icon"
+	: "'fa fa-angle-double-right' AS sub_menu_icon";
+
+$menuSql = "SELECT m.menu_id, m.menu_name, $menuIconSelect
+>>>>>>> bc3b82053a8c25ccabcc37e1cf379f56d6dae6a5
 			FROM st_menu_master m
 			WHERE EXISTS (
 				SELECT 1
@@ -68,10 +101,18 @@ if ($menuStmt) {
 		$menuId = (int) $menuRow['menu_id'];
 		$menuTree[$menuId] = array(
 			'menu_name' => $menuRow['menu_name'],
+<<<<<<< HEAD
 			'submenus' => array()
 		);
 
 		$subSql = "SELECT sm.sub_menu_id, sm.sub_menu_name
+=======
+			'menu_icon' => $menuRow['menu_icon'],
+			'submenus' => array()
+		);
+
+		$subSql = "SELECT sm.sub_menu_id, sm.sub_menu_name, $subMenuRouteSelect, $subMenuIconSelect
+>>>>>>> bc3b82053a8c25ccabcc37e1cf379f56d6dae6a5
 				   FROM st_sub_menu_master sm
 				   WHERE sm.menu_id = ?
 				   AND (
@@ -112,8 +153,15 @@ if ($menuStmt) {
 
 <?php foreach ($menuTree as $menuId => $menuData) {
 	$menuName = trim((string) $menuData['menu_name']);
+<<<<<<< HEAD
 	$menuKey = strtolower($menuName);
 	$menuIcon = isset($menuIcons[$menuKey]) ? $menuIcons[$menuKey] : 'fa fa-folder';
+=======
+	$menuIcon = trim((string) $menuData['menu_icon']);
+	if ($menuIcon === '') {
+		$menuIcon = 'fa fa-folder';
+	}
+>>>>>>> bc3b82053a8c25ccabcc37e1cf379f56d6dae6a5
 ?>
 <li class="treeview" data-menu-id="<?php echo $menuId; ?>" id="sidebar-menu-<?php echo $menuId; ?>">
 <a href="#">
@@ -127,15 +175,27 @@ if ($menuStmt) {
 	foreach ($menuData['submenus'] as $subMenu) {
 		$subId = intval($subMenu['sub_menu_id']);
 		$subName = trim((string) $subMenu['sub_menu_name']);
+<<<<<<< HEAD
 		$subKey = strtolower($subName);
 		$subRoute = isset($subMenuRoutes[$subKey]) ? $subMenuRoutes[$subKey] : '#';
 		$subIcon = isset($subMenuIcons[$subKey]) ? $subMenuIcons[$subKey] : 'fa fa-angle-double-right';
+=======
+		$subRoute = trim((string) ($subMenu['sub_menu_route'] ?? '#'));
+		$subIcon = trim((string) ($subMenu['sub_menu_icon'] ?? 'fa fa-angle-double-right'));
+		if ($subRoute === '') {
+			$subRoute = '#';
+		}
+		if ($subIcon === '') {
+			$subIcon = 'fa fa-angle-double-right';
+		}
+>>>>>>> bc3b82053a8c25ccabcc37e1cf379f56d6dae6a5
 ?>
 <li data-sub-menu-id="<?php echo $subId; ?>" id="sidebar-submenu-item-<?php echo $subId; ?>"><a href="<?php echo htmlspecialchars($subRoute); ?>"><i class="<?php echo htmlspecialchars($subIcon); ?>"></i><?php echo strtoupper(htmlspecialchars($subName)); ?></a></li>
 <?php }
 } ?>
 </ul>
 </li>
+<<<<<<< HEAD
 
 <li class="treeview">
 <a href="#">
@@ -146,5 +206,9 @@ if ($menuStmt) {
 </a>
 <ul class="treeview-menu">
 <li><a href="class_crud_new.php"><i class="fa fa-cogs"></i>MANAGE CLASS</a></li>
+=======
+<?php } ?>
+
+>>>>>>> bc3b82053a8c25ccabcc37e1cf379f56d6dae6a5
 </ul>
 </section>

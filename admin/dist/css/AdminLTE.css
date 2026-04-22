@@ -1,7 +1,11 @@
 @import url(https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,600,700,300italic,400italic,600italic);
 /*!
  *   AdminLTE v2.3.12
+<<<<<<< HEAD
  *   Author: Almsaeed Studio
+=======
+ *   Author: Almsaeed Studio - reupdated by Mohan
+>>>>>>> bc3b82053a8c25ccabcc37e1cf379f56d6dae6a5
  *	 Website: Almsaeed Studio <http://almsaeedstudio.com>
  *   License: Open source - MIT
  *           Please visit http://opensource.org/licenses/MIT for more information
@@ -18,6 +22,14 @@ body {
 .layout-boxed body {
   height: 100%;
 }
+<<<<<<< HEAD
+=======
+
+a:hover {
+  text-decoration: none;
+}
+
+>>>>>>> bc3b82053a8c25ccabcc37e1cf379f56d6dae6a5
 body {
   font-family: 'Source Sans Pro', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   font-weight: 400;
@@ -49,6 +61,10 @@ body {
 .layout-boxed {
   background: url('../img/boxed-bg.jpg') repeat fixed;
 }
+<<<<<<< HEAD
+=======
+
+>>>>>>> bc3b82053a8c25ccabcc37e1cf379f56d6dae6a5
 /*
  * Content Wrapper - contains the main content
  * ```.right-side has been deprecated as of v2.0.0 in favor of .content-wrapper  ```

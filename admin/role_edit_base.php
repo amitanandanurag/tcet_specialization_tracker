@@ -85,6 +85,7 @@ if (!$row) {
 	<div style="margin-top: 12px;">
 		<button
 			type="submit"
+<<<<<<< HEAD
 			class="btn"
 			style="background-color: #009688; color: #FFEB3B; min-width: 100px;"
 		>UPDATE</button>
@@ -95,3 +96,13 @@ if (!$row) {
 		>RESET</button>
 	</div>
 </form>
+=======
+			class="btn-submit"
+		>Save Changes</button>
+		<button
+			type="reset"
+			class="btn-reset"
+		>Reset</button>
+	</div>
+</form>
+>>>>>>> bc3b82053a8c25ccabcc37e1cf379f56d6dae6a5
