@@ -440,19 +440,20 @@ INSERT INTO `st_menu_allocation_master` (`menu_allocation_id`, `user_id`, `role_
 
 CREATE TABLE `st_menu_master` (
   `menu_id` int(11) NOT NULL,
-  `menu_name` varchar(100) NOT NULL
+  `menu_name` varchar(100) NOT NULL,
+  `menu_icon` varchar(100) NOT NULL DEFAULT 'fa fa-folder'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `st_menu_master`
 --
 
-INSERT INTO `st_menu_master` (`menu_id`, `menu_name`) VALUES
-(1, 'Students'),
-(2, 'Settings'),
-(3, 'Admin'),
-(4, 'Coordinator'),
-(5, 'Mentor');
+INSERT INTO `st_menu_master` (`menu_id`, `menu_name`, `menu_icon`) VALUES
+(1, 'Students', 'fa fa-graduation-cap'),
+(2, 'Settings', 'fa fa-cogs'),
+(3, 'Admin', 'fa fa-user-secret'),
+(4, 'Coordinator', 'fa fa-users'),
+(5, 'Mentor', 'fa fa-user');
 
 -- --------------------------------------------------------
 
@@ -707,26 +708,28 @@ CREATE TABLE `st_sub_menu_master` (
   `sub_menu_id` int(11) NOT NULL,
   `menu_id` int(11) NOT NULL,
   `sort_order` int(11) NOT NULL DEFAULT 0,
-  `sub_menu_name` varchar(100) NOT NULL
+  `sub_menu_name` varchar(100) NOT NULL,
+  `sub_menu_icon` varchar(100) NOT NULL DEFAULT 'fa fa-angle-double-right',
+  `sub_menu_route` varchar(255) NOT NULL DEFAULT '#'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `st_sub_menu_master`
 --
 
-INSERT INTO `st_sub_menu_master` (`sub_menu_id`, `menu_id`, `sort_order`, `sub_menu_name`) VALUES
-(1, 1, 1, 'Register Students'),
-(2, 1, 2, 'List of Students'),
-(3, 1, 3, 'Left Students'),
-(4, 1, 4, 'Previous Students'),
-(5, 1, 5, 'Concise Details'),
-(7, 3, 7, 'Register Admin'),
-(8, 3, 8, 'Admin Info'),
-(9, 4, 9, 'Register Coordinator'),
-(10, 4, 10, 'Coordinator Info'),
-(11, 5, 11, 'Register Mentor'),
-(12, 5, 12, 'Mentor Info'),
-(13, 2, 13, 'Manage Section');
+INSERT INTO `st_sub_menu_master` (`sub_menu_id`, `menu_id`, `sort_order`, `sub_menu_name`, `sub_menu_icon`, `sub_menu_route`) VALUES
+(1, 1, 1, 'Register Students', 'fa fa-plus', 'student_admission.php'),
+(2, 1, 2, 'List of Students', 'fa fa-info-circle', 'student-info.php'),
+(3, 1, 3, 'Left Students', 'fa fa-minus-circle', '#'),
+(4, 1, 4, 'Previous Students', 'fa fa-history', '#'),
+(5, 1, 5, 'Concise Details', 'fa fa-info-circle', 'student_concise_details.php'),
+(7, 3, 7, 'Register Admin', 'fa fa-plus', 'admin_register.php'),
+(8, 3, 8, 'Admin Info', 'fa fa-info-circle', 'admin_info.php'),
+(9, 4, 9, 'Register Coordinator', 'fa fa-plus', 'coordinator_register.php'),
+(10, 4, 10, 'Coordinator Info', 'fa fa-info-circle', 'coordinator_info.php'),
+(11, 5, 11, 'Register Mentor', 'fa fa-plus', 'mentor_register.php'),
+(12, 5, 12, 'Mentor Info', 'fa fa-info-circle', 'mentor_info.php'),
+(13, 2, 13, 'Manage Section', 'fa fa-list-alt', 'class_crud_new.php#section-list');
 
 -- --------------------------------------------------------
 
