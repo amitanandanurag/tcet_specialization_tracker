@@ -1061,7 +1061,7 @@ function updateTreeItem(mid, active) {
 function updateSubItem(sid, active) {
   const el = document.getElementById('sub_item_' + sid);
   if (el) active ? el.classList.add('active-sub') : el.classList.remove('active-sub');
-}
+}<p>hello</p>
 </script>
  
 
