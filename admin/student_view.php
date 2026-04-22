@@ -98,8 +98,7 @@ $photo = !empty($row['photo']) ? $row['photo'] : 'student.JPG';
         <div class="view-field"><div class="view-label">Nationality:</div><div class="view-value"><?php echo htmlspecialchars($row['nationality'] ?? ''); ?></div></div>
     </div>
     <div class="col-md-6">
-        <div class="view-field"><div class="view-label">Mobile:</div><div class="view-value"><?php echo htmlspecialchars($row['mobile'] ?? ''); ?></div></div>
-        <div class="view-field"><div class="view-label">Phone:</div><div class="view-value"><?php echo htmlspecialchars($row['phone'] ?? ''); ?></div></div>
+        <div class="view-field"><div class="view-label">Mobile:</div><div class="view-value"><?php echo htmlspecialchars($row['mobile'] ?? 'N/A'); ?></div></div>
         <div class="view-field"><div class="view-label">Email:</div><div class="view-value"><?php echo htmlspecialchars($row['email'] ?? ''); ?></div></div>
         <div class="view-field"><div class="view-label">City:</div><div class="view-value"><?php echo htmlspecialchars($row['city'] ?? ''); ?></div></div>
     </div>

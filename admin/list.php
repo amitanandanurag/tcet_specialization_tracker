@@ -10,61 +10,175 @@ $data = [];
 $columns = [];
 
 // ========================
-// DUMMY DATA ARRAYS
+// DATABASE CONNECTION
+// ========================
+$db_handle = new DBController();
+
+// ========================
+// DATA FETCHING FUNCTIONS
 // ========================
 
-// Students data
-$students = [
-    ['id' => 1, 'name' => 'Rahul Sharma', 'email' => 'rahul.sharma@example.com', 'department' => 'Computer Science', 'year' => '3rd Year'],
-    ['id' => 2, 'name' => 'Priya Patel', 'email' => 'priya.patel@example.com', 'department' => 'Information Technology', 'year' => '2nd Year'],
-    ['id' => 3, 'name' => 'Amit Kumar', 'email' => 'amit.kumar@example.com', 'department' => 'Computer Science', 'year' => '4th Year'],
-    ['id' => 4, 'name' => 'Sneha Reddy', 'email' => 'sneha.reddy@example.com', 'department' => 'AI & ML', 'year' => '3rd Year'],
-    ['id' => 5, 'name' => 'Vijay Singh', 'email' => 'vijay.singh@example.com', 'department' => 'Mechanical Engineering', 'year' => '2nd Year'],
-    ['id' => 6, 'name' => 'Anjali Gupta', 'email' => 'anjali.gupta@example.com', 'department' => 'Electrical Engineering', 'year' => '4th Year'],
-    ['id' => 7, 'name' => 'Rohit Verma', 'email' => 'rohit.verma@example.com', 'department' => 'Civil Engineering', 'year' => '3rd Year'],
-    ['id' => 8, 'name' => 'Kavita Nair', 'email' => 'kavita.nair@example.com', 'department' => 'Information Technology', 'year' => '2nd Year']
-];
+// Function to fetch students data
+function fetchStudents($db) {
+    $query = "SELECT 
+        s.std_id as id,
+        CONCAT(s.fname, ' ', COALESCE(s.lname, '')) as name,
+        s.email_id as email,
+        d.department_name as department,
+        s.class as year,
+        CASE 
+            WHEN s.mobile IS NOT NULL AND s.mobile != '' THEN s.mobile
+            ELSE 'N/A'
+        END as mobile
+    FROM dsms_student_master s
+    LEFT JOIN st_department_master d ON s.department_id = d.department_id
+    WHERE s.status = 1
+    ORDER BY s.std_id";
+    
+    $result = mysqli_query($db->conn, $query);
+    $students = [];
+    
+    if ($result) {
+        while ($row = mysqli_fetch_assoc($result)) {
+            $students[] = $row;
+        }
+    } else {
+        // Log error if needed
+        error_log("Students query failed: " . mysqli_error($db->conn));
+    }
+    
+    return $students;
+}
 
-// Users data
-$users = [
-    ['id' => 1, 'name' => 'Dr. Arvind Kumar', 'email' => 'arvind.kumar@tcet.edu', 'role' => 'Super Admin', 'department' => 'Computer Science'],
-    ['id' => 2, 'name' => 'Prof. Meera Sharma', 'email' => 'meera.sharma@tcet.edu', 'role' => 'Admin', 'department' => 'Information Technology'],
-    ['id' => 3, 'name' => 'Dr. Rahul Verma', 'email' => 'rahul.verma@tcet.edu', 'role' => 'Coordinator', 'department' => 'AI & ML'],
-    ['id' => 4, 'name' => 'Prof. Sneha Patil', 'email' => 'sneha.patil@tcet.edu', 'role' => 'Mentor', 'department' => 'Computer Science'],
-    ['id' => 5, 'name' => 'John Doe', 'email' => 'john.doe@tcet.edu', 'role' => 'Student', 'department' => 'Information Technology']
-];
+// Function to fetch users data
+function fetchUsers($db) {
+    $query = "SELECT 
+        l.login_id as id,
+        l.username as name,
+        l.username as email,
+        r.role_name as role,
+        d.department_name as department,
+        CASE 
+            WHEN s.mobile IS NOT NULL AND s.mobile != '' THEN s.mobile
+            ELSE 'N/A'
+        END as mobile
+    FROM st_login l
+    LEFT JOIN st_role_master r ON l.role_id = r.role_id
+    LEFT JOIN st_department_master d ON l.user_id = d.department_id
+    LEFT JOIN dsms_student_master s ON s.std_id = l.user_id
+    ORDER BY l.login_id";
+    
+    $result = mysqli_query($db->conn, $query);
+    $users = [];
+    
+    if ($result) {
+        while ($row = mysqli_fetch_assoc($result)) {
+            $users[] = $row;
+        }
+    } else {
+        error_log("Users query failed: " . mysqli_error($db->conn));
+    }
+    
+    return $users;
+}
 
-// Branches data
-$branches = [
-    ['id' => 1, 'name' => 'Computer Science', 'code' => 'CSE', 'hod' => 'Dr. Arvind Kumar', 'students_count' => 150],
-    ['id' => 2, 'name' => 'Information Technology', 'code' => 'IT', 'hod' => 'Prof. Meera Sharma', 'students_count' => 120],
-    ['id' => 3, 'name' => 'Artificial Intelligence & ML', 'code' => 'AIML', 'hod' => 'Dr. Rahul Verma', 'students_count' => 90],
-    ['id' => 4, 'name' => 'AI & Data Science', 'code' => 'AIDS', 'hod' => 'Prof. Sneha Patil', 'students_count' => 80],
-    ['id' => 5, 'name' => 'Mechanical Engineering', 'code' => 'ME', 'hod' => 'Dr. Suresh Nair', 'students_count' => 40],
-    ['id' => 6, 'name' => 'Civil Engineering', 'code' => 'CE', 'hod' => 'Prof. Anita Desai', 'students_count' => 20],
-    ['id' => 7, 'name' => 'Electrical Engineering', 'code' => 'EE', 'hod' => 'Dr. Manoj Gupta', 'students_count' => 20]
-];
+// Function to fetch branches data
+function fetchBranches($db) {
+    $query = "SELECT 
+        d.department_id as id,
+        d.department_name as name,
+        UPPER(SUBSTRING(d.department_name, 1, LOCATE(' ', d.department_name) - 1)) as code,
+        'HOD' as hod,
+        (SELECT COUNT(*) FROM dsms_student_master WHERE department_id = d.department_id AND status = 1) as students_count
+    FROM st_department_master d
+    ORDER BY d.department_id";
+    
+    $result = mysqli_query($db->conn, $query);
+    $branches = [];
+    
+    if ($result) {
+        while ($row = mysqli_fetch_assoc($result)) {
+            $branches[] = $row;
+        }
+    } else {
+        error_log("Branches query failed: " . mysqli_error($db->conn));
+    }
+    
+    return $branches;
+}
 
-// Mentors data
-$mentors = [
-    ['id' => 1, 'name' => 'Prof. Sneha Patil', 'email' => 'sneha.patil@tcet.edu', 'department' => 'Computer Science', 'students_assigned' => 25],
-    ['id' => 2, 'name' => 'Dr. Rahul Verma', 'email' => 'rahul.verma@tcet.edu', 'department' => 'AI & ML', 'students_assigned' => 18],
-    ['id' => 3, 'name' => 'Prof. Anita Desai', 'email' => 'anita.desai@tcet.edu', 'department' => 'Civil Engineering', 'students_assigned' => 8],
-    ['id' => 4, 'name' => 'Dr. Manoj Gupta', 'email' => 'manoj.gupta@tcet.edu', 'department' => 'Electrical Engineering', 'students_assigned' => 10],
-    ['id' => 5, 'name' => 'Dr. Suresh Nair', 'email' => 'suresh.nair@tcet.edu', 'department' => 'Mechanical Engineering', 'students_assigned' => 15]
-];
+// Function to fetch mentors data
+function fetchMentors($db) {
+    $query = "SELECT 
+        l.login_id as id,
+        l.username as name,
+        l.username as email,
+        d.department_name as department,
+        (SELECT COUNT(*) FROM st_mentor_student_mapping WHERE mentor_id = l.user_id) as students_assigned,
+        CASE 
+            WHEN s.mobile IS NOT NULL AND s.mobile != '' THEN s.mobile
+            ELSE 'N/A'
+        END as mobile
+    FROM st_login l
+    LEFT JOIN st_department_master d ON l.user_id = d.department_id
+    LEFT JOIN dsms_student_master s ON s.std_id = l.user_id
+    WHERE l.role_id IN (3, 4)
+    ORDER BY l.login_id";
+    
+    $result = mysqli_query($db->conn, $query);
+    $mentors = [];
+    
+    if ($result) {
+        while ($row = mysqli_fetch_assoc($result)) {
+            $mentors[] = $row;
+        }
+    } else {
+        error_log("Mentors query failed: " . mysqli_error($db->conn));
+    }
+    
+    return $mentors;
+}
 
-// Rejected students data
-$rejected_students = [
-    ['id' => 101, 'name' => 'Karan Malhotra', 'email' => 'karan.malhotra@example.com', 'status' => 'Rejected', 'reason' => 'Incomplete Documents'],
-    ['id' => 102, 'name' => 'Neha Singh', 'email' => 'neha.singh@example.com', 'status' => 'Rejected', 'reason' => 'Low Score'],
-    ['id' => 103, 'name' => 'Rohit Joshi', 'email' => 'rohit.joshi@example.com', 'status' => 'Rejected', 'reason' => 'Invalid Details'],
-    ['id' => 104, 'name' => 'Pooja Sharma', 'email' => 'pooja.sharma@example.com', 'status' => 'Rejected', 'reason' => 'Missing Requirements'],
-    ['id' => 105, 'name' => 'Amit Patel', 'email' => 'amit.patel@example.com', 'status' => 'Rejected', 'reason' => 'Incomplete Documents'],
-    ['id' => 106, 'name' => 'Sneha Reddy', 'email' => 'sneha.reddy@example.com', 'status' => 'Rejected', 'reason' => 'Low Score'],
-    ['id' => 107, 'name' => 'Vikram Singh', 'email' => 'vikram.singh@example.com', 'status' => 'Rejected', 'reason' => 'Invalid Details'],
-    ['id' => 108, 'name' => 'Anjali Gupta', 'email' => 'anjali.gupta@example.com', 'status' => 'Rejected', 'reason' => 'Missing Requirements']
-];
+// Function to fetch rejected students data
+function fetchRejectedStudents($db) {
+    $query = "SELECT 
+        s.std_id as id,
+        CONCAT(s.fname, ' ', COALESCE(s.lname, '')) as name,
+        s.email_id as email,
+        'Rejected' as status,
+        CASE 
+            WHEN s.cgpa < 2.0 THEN 'Low Score'
+            WHEN s.email_id IS NULL OR s.email_id = '' THEN 'Invalid Details'
+            ELSE 'Incomplete Documents'
+        END as reason,
+        CASE 
+            WHEN s.mobile IS NOT NULL AND s.mobile != '' THEN s.mobile
+            ELSE 'N/A'
+        END as mobile
+    FROM dsms_student_master s
+    WHERE s.status = 0
+    ORDER BY s.std_id";
+    
+    $result = mysqli_query($db->conn, $query);
+    $rejected_students = [];
+    
+    if ($result) {
+        while ($row = mysqli_fetch_assoc($result)) {
+            $rejected_students[] = $row;
+        }
+    } else {
+        error_log("Rejected students query failed: " . mysqli_error($db->conn));
+    }
+    
+    return $rejected_students;
+}
+
+// Fetch data based on type
+$students = fetchStudents($db_handle);
+$users = fetchUsers($db_handle);
+$branches = fetchBranches($db_handle);
+$mentors = fetchMentors($db_handle);
+$rejected_students = fetchRejectedStudents($db_handle);
 
 // ========================
 // SWITCH BASED ON TYPE
@@ -73,13 +187,13 @@ switch ($type) {
     case 'students':
         $page_title = 'All Students';
         $data = $students;
-        $columns = ['ID', 'Name', 'Email', 'Department', 'Year'];
+        $columns = ['ID', 'Name', 'Email', 'Department', 'Year', 'Mobile'];
         break;
         
     case 'users':
         $page_title = 'All Users';
         $data = $users;
-        $columns = ['ID', 'Name', 'Email', 'Role', 'Department'];
+        $columns = ['ID', 'Name', 'Email', 'Role', 'Department', 'Mobile'];
         break;
         
     case 'branches':
@@ -91,17 +205,17 @@ switch ($type) {
     case 'mentors':
         $page_title = 'All Mentors';
         $data = $mentors;
-        $columns = ['ID', 'Name', 'Email', 'Department', 'Students Assigned'];
+        $columns = ['ID', 'Name', 'Email', 'Department', 'Students Assigned', 'Mobile'];
         break;
         
     case 'rejected':
         $page_title = 'Rejected Students';
         $data = $rejected_students;
-        $columns = ['ID', 'Name', 'Email', 'Status', 'Rejection Reason'];
+        $columns = ['ID', 'Name', 'Email', 'Status', 'Rejection Reason', 'Mobile'];
         break;
         
     default:
-        $page_title = 'Unknown Type';
+        $page_title = 'Data List';
         $data = [];
         $columns = [];
         break;
@@ -263,6 +377,7 @@ switch ($type) {
                                                     echo '<td>' . htmlspecialchars($item['email']) . '</td>';
                                                     echo '<td><span class="badge badge-student">' . htmlspecialchars($item['department']) . '</span></td>';
                                                     echo '<td>' . htmlspecialchars($item['year']) . '</td>';
+                                                    echo '<td>' . htmlspecialchars($item['mobile']) . '</td>';
                                                     break;
                                                     
                                                 case 'users':
@@ -272,6 +387,7 @@ switch ($type) {
                                                     $role_class = 'badge-' . str_replace(' ', '-', strtolower($item['role']));
                                                     echo '<td><span class="badge ' . $role_class . '">' . htmlspecialchars($item['role']) . '</span></td>';
                                                     echo '<td>' . htmlspecialchars($item['department']) . '</td>';
+                                                    echo '<td>' . htmlspecialchars($item['mobile']) . '</td>';
                                                     break;
                                                     
                                                 case 'branches':
@@ -288,6 +404,7 @@ switch ($type) {
                                                     echo '<td>' . htmlspecialchars($item['email']) . '</td>';
                                                     echo '<td><span class="badge badge-mentor">' . htmlspecialchars($item['department']) . '</span></td>';
                                                     echo '<td><span class="badge badge-info">' . $item['students_assigned'] . '</span></td>';
+                                                    echo '<td>' . htmlspecialchars($item['mobile']) . '</td>';
                                                     break;
                                                     
                                                 case 'rejected':
@@ -296,6 +413,7 @@ switch ($type) {
                                                     echo '<td>' . htmlspecialchars($item['email']) . '</td>';
                                                     echo '<td><span class="badge badge-danger">' . htmlspecialchars($item['status']) . '</span></td>';
                                                     echo '<td><em>' . htmlspecialchars($item['reason']) . '</em></td>';
+                                                    echo '<td>' . htmlspecialchars($item['mobile']) . '</td>';
                                                     break;
                                                     
                                                 default:
