@@ -842,30 +842,27 @@ $(document).ready(function () {
 });
 
 function initIcheck() {
-  $('input.main-check').iCheck({
-    checkboxClass: 'icheckbox_flat-blue'
-  }).on('ifChanged', function () {
+  $('input.main-check').off('change.alloc').on('change.alloc', function () {
     const mid = this.value;
     if (this.checked) {
       openSubGrid(mid);
       updateTreeItem(mid, true);
     } else {
       updateTreeItem(mid, false);
-      $('input.sub-check[data-menu="' + mid + '"]').iCheck('uncheck');
       $('input.sub-check[data-menu="' + mid + '"]').each(function () {
+        this.checked = false;
         updateSubItem(this.value, false);
       });
     }
     updateAllocationSummary();
   });
 
-  $('input.sub-check').iCheck({
-    checkboxClass: 'icheckbox_flat-blue'
-  }).on('ifChanged', function () {
+  $('input.sub-check').off('change.alloc').on('change.alloc', function () {
     const sid  = this.value;
     const pmid = this.dataset.menu;
     if (this.checked) {
-      $('#menu_' + pmid).iCheck('check');
+      const parent = document.getElementById('menu_' + pmid);
+      if (parent) parent.checked = true;
       openSubGrid(pmid);
       updateTreeItem(pmid, true);
       updateSubItem(sid, true);
@@ -898,12 +895,12 @@ function loadRoleAllocation(roleId) {
     data: { role_id: roleId },
     success: function (data) {
       const menuIds = Array.isArray(data && data.menus) ? data.menus : [];
-      const subIds = Array.isArray(data && data.subs) ? data.subs : [];
+      const subIds  = Array.isArray(data && data.subs)  ? data.subs  : [];
 
       menuIds.forEach(function (mid) {
         const el = document.getElementById('menu_' + mid);
         if (el) {
-          $(el).iCheck('check');
+          el.checked = true;
           openSubGrid(mid);
           updateTreeItem(mid, true);
         }
@@ -912,12 +909,12 @@ function loadRoleAllocation(roleId) {
       subIds.forEach(function (sid) {
         const el = document.getElementById('sub_' + sid);
         if (el) {
-          $(el).iCheck('check');
+          el.checked = true;
           const pmid = el.dataset.menu;
           if (pmid) {
             const parent = document.getElementById('menu_' + pmid);
             if (parent) {
-              $(parent).iCheck('check');
+              parent.checked = true;
               openSubGrid(pmid);
               updateTreeItem(pmid, true);
             }
@@ -976,8 +973,7 @@ function loadRoleAllocatedItems(roleId) {
 }
 
 function resetSelectionState() {
-  $('input.main-check').iCheck('uncheck');
-  $('input.sub-check').iCheck('uncheck');
+  $('input.main-check, input.sub-check').prop('checked', false);
   document.querySelectorAll('.tree-item').forEach(function (t) { t.classList.remove('active-menu'); });
   document.querySelectorAll('.sub-item').forEach(function (s) { s.classList.remove('active-sub'); });
   updateAllocationSummary();
