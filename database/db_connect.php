@@ -9,7 +9,7 @@ class DBController
     public $host = "localhost";
     public $user = "root";
     public $password = "";
-    public $database = "tcet_st";
+    public $database = "tcet_st"; 
 
    public $conn;
   public $last_error = '';

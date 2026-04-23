@@ -94,7 +94,6 @@
                     <th style="background-color: #423cbc; color: white; padding: 16px">Specialization Subject</th>
                     <th style="background-color: #423cbc; color: white; padding: 16px">CGPA</th>
                     <th style="background-color: #423cbc; color: white; padding: 16px">Mobile No</th>
-                    <th style="background-color: #423cbc; color: white; padding: 16px">Academic Year</th>
                     <th style="background-color: #423cbc; color: white; padding: 16px">Roll No</th>
                     <th style="background-color: #423cbc; color: white; padding: 16px">Email</th>
                     <th style="background-color: #F97161; padding: 16px">View</th>
