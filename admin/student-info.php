@@ -14,8 +14,8 @@
           <div class="div2 box-header with-border">
             <div class="row" style="margin-bottom: 20px;">
               <div class="col-md-1">
-                <label for="select_all" class="btn btn-default" style="width: 100%;">
-                  <input type="checkbox" id="select_all"> ALL
+                <label for="select_all_header" class="btn btn-default" style="width: 100%;">
+                  <input type="checkbox" id="select_all_header"> ALL
                 </label>
               </div>
 
@@ -82,7 +82,7 @@
               <table id="myTable" class="text-center table table-striped table-bordered" width="100%">
                 <thead>
                   <tr>
-                    <th style="background-color: #423cbc; color: white; padding: 16px" data-orderable="false"><input type="checkbox" id="select_all"></th>
+                    <th style="background-color: #423cbc; color: white; padding: 16px" data-orderable="false"><input type="checkbox" id="select_all_checkbox"></th>
                     <th style="background-color: #423cbc; color: white; padding: 16px">SR. NO</th>
                     <th style="background-color: #423cbc; color: white; padding: 16px">MESSAGE</th>
                     <th style="background-color: #423cbc; color: white; padding: 16px">Reg. No</th>
@@ -241,6 +241,10 @@ $(document).ready(function() {
                 "previous": '<i class="fa fa-angle-double-left"></i> Previous',
                 "next": 'Next <i class="fa fa-angle-double-right"></i>'
             }
+        },
+        "drawCallback": function() {
+            // Re-bind select all functionality after each table draw
+            bindSelectAllEvents();
         }
     });
 
@@ -258,31 +262,47 @@ $(document).ready(function() {
         dataTable.ajax.reload();
     });
 
-    // Select All functionality
-    $('#select_all_btn').click(function() {
-        var isChecked = $(this).hasClass('active');
-        $('.selectRow').each(function() {
-            $(this).prop('checked', !isChecked);
+    // Function to bind select all events
+    function bindSelectAllEvents() {
+        // Header select all checkbox (in the table header)
+        $('#select_all_checkbox').off('click').on('click', function() {
+            var isChecked = $(this).prop('checked');
+            $('.selectRow').each(function() {
+                $(this).prop('checked', isChecked);
+            });
+            // Update the top button checkbox as well
+            $('#select_all_header').prop('checked', isChecked);
         });
-        $(this).toggleClass('active');
-        if ($(this).hasClass('active')) {
-            $(this).addClass('select-all-active');
-        } else {
-            $(this).removeClass('select-all-active');
-        }
-    });
 
-    $('#select_all_header').click(function() {
-        var status = this.checked;
-        $('.selectRow').each(function() {
-            $(this).prop('checked', status);
+        // Top button select all checkbox
+        $('#select_all_header').off('click').on('click', function() {
+            var isChecked = $(this).prop('checked');
+            $('.selectRow').each(function() {
+                $(this).prop('checked', isChecked);
+            });
+            $('#select_all_checkbox').prop('checked', isChecked);
         });
-        if (status) {
-            $('#select_all_btn').addClass('active select-all-active');
-        } else {
-            $('#select_all_btn').removeClass('active select-all-active');
-        }
-    });
+
+        // Individual row checkboxes - update header checkboxes when all are selected/deselected
+        $(document).off('change', '.selectRow').on('change', '.selectRow', function() {
+            var totalRows = $('.selectRow').length;
+            var checkedRows = $('.selectRow:checked').length;
+            
+            if (checkedRows === 0) {
+                $('#select_all_header').prop('checked', false);
+                $('#select_all_checkbox').prop('checked', false);
+            } else if (checkedRows === totalRows) {
+                $('#select_all_header').prop('checked', true);
+                $('#select_all_checkbox').prop('checked', true);
+            } else {
+                $('#select_all_header').prop('checked', false);
+                $('#select_all_checkbox').prop('checked', false);
+            }
+        });
+    }
+
+    // Initial binding
+    bindSelectAllEvents();
 });
 
 // View and Edit modals
@@ -355,6 +375,50 @@ function fnExcelReport() {
     link.click();
     document.body.removeChild(link);
 }
+
+// Send SMS function
+function send_sms() {
+    var selectedIds = [];
+    $('.selectRow:checked').each(function() {
+        selectedIds.push($(this).val());
+    });
+    
+    if (selectedIds.length === 0) {
+        $("#sms_response").html("<div class='alert alert-danger text-center'>Please select at least one student!</div>");
+        return false;
+    }
+    
+    var sms_content = $("#sms_content").val();
+    if (sms_content === "") {
+        $("#sms_response").html("<div class='alert alert-danger text-center'>Please enter SMS content!</div>");
+        return false;
+    }
+    
+    $.ajax({
+        type: "POST",
+        url: "send_sms.php",
+        data: {
+            ids: selectedIds,
+            sms_content: sms_content
+        },
+        beforeSend: function() {
+            $("#sms_response").html("<div class='alert alert-info text-center'>Sending SMS... <i class='fa fa-spinner fa-spin'></i></div>");
+        },
+        success: function(response) {
+            $("#sms_response").html("<div class='alert alert-success text-center'>SMS sent successfully to " + selectedIds.length + " student(s)!</div>");
+            $("#sms_content").val("");
+            setTimeout(function() {
+                $('#send_sms').modal('hide');
+                $("#sms_response").html("");
+            }, 2000);
+        },
+        error: function() {
+            $("#sms_response").html("<div class='alert alert-danger text-center'>Error sending SMS. Please try again!</div>");
+        }
+    });
+    
+    return false;
+}
 </script>
 
 <div class="modal fade" id="send_sms" tabindex="-1" role="dialog" aria-labelledby="edit" aria-hidden="true">
@@ -364,7 +428,7 @@ function fnExcelReport() {
         <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
         <h4 class="modal-title custom_align" id="Heading"> <i class="fa fa-send"></i> Send SMS </h4>
       </div>
-      <form method="post" onsubmit="send_sms(); return false;">
+      <form method="post" onsubmit="return send_sms();">
         <div class="modal-body">
           <div class="form-horizontal">
             <textarea class="form-control" required="required" maxlength="160" placeholder="Enter your Message (maximum words length is: 160)" id="sms_content"></textarea>
