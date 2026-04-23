@@ -621,6 +621,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_hod'])) {
                                     <button type="button" class="btn btn-default" onclick="quickAction('add_hod')">
                                         <i class="fa fa-plus-circle text-green"></i> Add Student
                                     </button>
+                                    <button type="button" class="btn btn-default" onclick="quickAction('offline_marks_entry')">
+                                        <i class="fa fa-pencil-square-o text-blue"></i> Offline Marks Entry
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -669,6 +672,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_hod'])) {
                                         break;
                                     case 'add_hod':
                                         alert('Add new HOD form - Feature coming soon');
+                                        break;
+                                    case 'offline_marks_entry':
+                                        window.location.href = 'offline_marks_entry.php';
                                         break;
                                 }
                             }
