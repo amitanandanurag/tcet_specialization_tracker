@@ -31,7 +31,7 @@ INNER JOIN st_specialization_master spec
 INNER JOIN st_specialization_subject_master subj 
     ON subj.subject_id = sm.specialization_subject_id
 
-WHERE sm.status = '1'
+WHERE sm.status = '0'
 ";
 
 //filter application  
