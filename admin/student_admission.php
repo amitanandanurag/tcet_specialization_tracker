@@ -74,28 +74,9 @@
         alert("Please select Specialization Subject for Minor Degree.");
         return false;
       }
+    }  
       // Validate Multidisciplinary field for Minor
-      var multidisciplinary = $('input[name="multidisciplinary"]:checked').val();
-      if (!multidisciplinary) {
-        alert("Please select Yes or No for Multidisciplinary field.");
-        return false;
-      }
-      if (multidisciplinary === "no") {
-        var minorCgpa = $('#minor_cgpa').val();
-        if (minorCgpa == null || minorCgpa === "") {
-          alert("Please enter CGPA for Multidisciplinary Minor.");
-          return false;
-        }
-        if (isNaN(minorCgpa)) {
-          alert("Please enter valid numeric CGPA.");
-          return false;
-        }
-        if (parseFloat(minorCgpa) < 6) {
-          alert("CGPA must be at least 6 for Multidisciplinary Minor.");
-          return false;
-        }
-      }
-    }
+      
     if (specializationText.indexOf("honours") !== -1 || specializationText.indexOf("honors") !== -1) {
       if (cgpaValue == null || cgpaValue === "") {
         alert("Please enter CGPA for Honours.");
@@ -229,7 +210,6 @@
     $('#honours_not_eligible').hide();
     $('#minor_cgpa_section').hide();
     $('#minor_cgpa').val('');
-    $('input[name="multidisciplinary"]').prop('checked', false);
     setAdmissionDetailSectionsVisible(false);
   }
 
@@ -238,6 +218,13 @@
     var cgpaRaw = $('#cgpa').val();
     var cgpa = parseFloat(cgpaRaw);
     var isHonours = specializationText.indexOf('honours') !== -1 || specializationText.indexOf('honors') !== -1;
+    var isMinor = specializationText.indexOf('minor') !== -1;
+
+    // For Minor, don't apply honours CGPA logic
+    if (isMinor) {
+      setAdmissionDetailSectionsVisible(true);
+      return;
+    }
 
     if (!isHonours) {
       $('#specialization_subject_wrapper').hide();
@@ -283,7 +270,7 @@
     }
   }
 
-  function handleSpecializationSelection() {
+ function handleSpecializationSelection() {
     var specializationText = $('#specialization_select option:selected').text().toLowerCase();
     var isMinor = specializationText.indexOf('minor') !== -1;
     var isHonours = specializationText.indexOf('honours') !== -1 || specializationText.indexOf('honors') !== -1;
@@ -291,18 +278,20 @@
     resetSpecializationConditionalUI();
 
     if (isMinor) {
-      // Show Multidisciplinary question for Minor
-      $('#multidisciplinary_section').show();
-      // Do not show subject wrapper yet - wait for multidisciplinary selection
-      $('#specialization_subject_wrapper').hide();
-      setAdmissionDetailSectionsVisible(false);
+      $('#cgpa_section').show();
+      $('#specialization_subject_wrapper').show();
+      setAdmissionDetailSectionsVisible(true);
       return;
-    } else {
-      $('#multidisciplinary_section').hide();
     }
 
     if (isHonours) {
       $('#cgpa_section').show();
+      return;
+    }
+
+    // Any other normal specialization — show sections directly
+    if (specializationText !== '' && specializationText !== 'select specialization') {
+      setAdmissionDetailSectionsVisible(true);
     }
   }
 
@@ -465,115 +454,86 @@
 
             <div class="col-md-12">
 
-              <div class="col-md-4">
-                <div class="form-group">
-                  <label>Department<span style="color: red;">*</span></label>
-                  <select class="form-control select" name="department_id" id="department_select" class="batch" style="width: 100%;" required>
-                    <option>Select Department</option>
-                    <?php
-                    $result = $db_handle->conn->query("SELECT * from st_department_master");
-                    while ($row = $result->fetch_assoc()) {
-                      $department_name = $row['department_name'];
-                      $department_id = $row['department_id'];
-                    ?>
-                      <option value="<?php echo $department_id;  ?>"><?php echo $department_name;  ?></option>
-                    <?php } ?>
-                  </select>
-                </div>
-              </div>
+  <div class="col-md-4">
+    <div class="form-group">
+      <label>Department<span style="color: red;">*</span></label>
+      <select class="form-control select" name="department_id" id="department_select" class="batch" style="width: 100%;" required>
+        <option>Select Department</option>
+        <?php
+        $result = $db_handle->conn->query("SELECT * from st_department_master");
+        while ($row = $result->fetch_assoc()) {
+          $department_name = $row['department_name'];
+          $department_id = $row['department_id'];
+        ?>
+          <option value="<?php echo $department_id; ?>"><?php echo $department_name; ?></option>
+        <?php } ?>
+      </select>
+    </div>
+  </div>
 
-              <div class="col-md-4">
-                <div class="form-group">
-                  <label>Specialization<span style="color: red;">*</span></label>
-                  <select class="form-control select" name="specialization_id" id="specialization_select" class="batch" style="width: 100%;" required>
-                    <option>Select Specialization</option>
-                    <?php
-                    $result = $db_handle->conn->query("SELECT * from st_specialization_master");
+  <div class="col-md-4">
+    <div class="form-group">
+      <label>Specialization<span style="color: red;">*</span></label>
+      <select class="form-control select" name="specialization_id" id="specialization_select" class="batch" style="width: 100%;" required>
+        <option>Select Specialization</option>
+        <?php
+        $result = $db_handle->conn->query("SELECT * from st_specialization_master");
+        while ($row = $result->fetch_assoc()) {
+          $specialization_name = $row['specialization_name'];
+          $specialization_id = $row['specialization_id'];
+        ?>
+          <option value="<?php echo $specialization_id; ?>"><?php echo $specialization_name; ?></option>
+        <?php } ?>
+      </select>
+    </div>
+  </div>
 
-                    while ($row = $result->fetch_assoc()) {
-                      $specialization_name = $row['specialization_name'];
-                      $specialization_id = $row['specialization_id'];
-                    ?>
-                      <option value="<?php echo $specialization_id;  ?>"><?php echo $specialization_name;  ?></option>
-                    <?php } ?>
-
-                  </select>
-                </div>
-              </div>
-
-              <!-- Multidisciplinary Section - Only for Minor -->
-              <div class="col-md-4" id="multidisciplinary_section" style="display: none;">
-                <div class="form-group">
-                  <label>Multidisciplinary <span style="color: red;">*</span></label>
-                  <div>
-                    <label style="margin-right: 14px; padding-top: 4px; font-weight: normal;">
-                      <input type="radio" name="multidisciplinary" value="yes"> Yes
-                    </label>
-                    <label style="font-weight: normal;">
-                      <input type="radio" name="multidisciplinary" value="no"> No
-                    </label>
-                  </div>
-                </div>
-              </div>
-
-            </div>
-
-            <div class="col-md-12">
-              <div class="col-md-4" id="specialization_subject_wrapper" style="display: none;">
-                <div class="form-group">
-                  <label>Specialization Subject<span style="color: red;">*</span></label>
-                  <select class="form-control select" name="unaided_subject" id="specialization_subject_select" class="batch" style="width: 100%;">
-                    <option>Select Specialization Subject</option>
-                    <?php
-                    $result = $db_handle->conn->query("SELECT * from st_specialization_subject_master");
-
-                    while ($row = $result->fetch_assoc()) {
-                      $subject_name = $row['subject_name'];
-                      $subject_id = $row['subject_id'];
-                    ?>
-                      <option value="<?php echo $subject_id;  ?>"><?php echo $subject_name;  ?></option>
-                    <?php } ?>
-
-                  </select>
-                </div>
-              </div>
-
-              <div class="col-md-4" id="minor_cgpa_section" style="display: none;">
-                <div class="form-group">
-                  <label>Enter Your CGPA (for Multidisciplinary Minor)<span style="color: red;">*</span></label>
-                  <input type="text" name="minor_cgpa" id="minor_cgpa" class="form-control" data-placeholder="" style="width: 100%;">
-                  <small class="text-muted">Minimum CGPA required: 6.0</small>
-                </div>
-              </div>
-            </div>
-
-            <div class="col-md-12" id="cgpa_section" style="display: none;">
-
-              <div class="col-md-4">
-                <div class="form-group">
-                  <label>Enter Your CGPA(Aggregate)<span style="color: red;">*</span></label>
-                  <input type="text" name="cgpa" id="cgpa" class="form-control" data-placeholder="" style="width: 100%;">
-                </div>
-              </div>
-
-              <div class="col-md-8" id="honours_not_eligible" style="display: none; margin-top: 30px; color: #d9534f; font-weight: 600;">
-                Not eligible to register in Honours. CGPA must be above 7.
-              </div>
-
-            </div>
-
-
-          </div>
-          <!-- /.row -->
-        </div>
-        <!-- /.box-body -->
-
+  <!-- CGPA field now beside Specialization -->
+  <div class="col-md-4" id="cgpa_section" style="display: none;">
+    <div class="form-group">
+      <label>Enter Your CGPA(Aggregate)<span style="color: red;">*</span></label>
+      <input type="text" name="cgpa" id="cgpa" class="form-control" data-placeholder="" style="width: 100%;">
+      <div id="honours_not_eligible" style="display: none; margin-top: 8px; color: #d9534f; font-weight: 600;">
+        Not eligible to register in Honours. CGPA must be above 7.
       </div>
+    </div>
+  </div>
 
+</div>
 
+<div class="col-md-12">
+  <div class="col-md-4" id="specialization_subject_wrapper" style="display: none;">
+    <div class="form-group">
+      <label>Specialization Subject<span style="color: red;">*</span></label>
+      <select class="form-control select" name="unaided_subject" id="specialization_subject_select" class="batch" style="width: 100%;">
+        <option>Select Specialization Subject</option>
+        <?php
+        $result = $db_handle->conn->query("SELECT * from st_specialization_subject_master");
+        while ($row = $result->fetch_assoc()) {
+          $subject_name = $row['subject_name'];
+          $subject_id = $row['subject_id'];
+        ?>
+          <option value="<?php echo $subject_id; ?>"><?php echo $subject_name; ?></option>
+        <?php } ?>
+      </select>
+    </div>
+  </div>
+
+  <div class="col-md-4" id="minor_cgpa_section" style="display: none;">
+    <div class="form-group">
+      <label>Enter Your CGPA (for Multidisciplinary Minor)<span style="color: red;">*</span></label>
+      <input type="text" name="minor_cgpa" id="minor_cgpa" class="form-control" data-placeholder="" style="width: 100%;">
+      <small class="text-muted">Minimum CGPA required: 6.0</small>
+    </div>
+  </div><!-- /#minor_cgpa_section -->
+</div><!-- /.col-md-12 -->
+
+          </div><!-- /.row -->
+        </div><!-- /.box-body -->
+      </div><!-- /.box OFFICIAL DETAILS -->
       <!--end formset-->
 
-      <div id="below_eligibility_sections">
+      <div id="below_eligibility_sections style="display:none;">
 
         <!-- new formset2-->
 
@@ -617,14 +577,14 @@
                     <!-- <input type="text" class="form-control" name="mobile"  data-placeholder="" style="width: 100%;" required="required"> -->
                   </div>
                 </div>
-              </div>
-              <!-- /.box-body -->
-            </div>
-
-
+               </div><!-- /.col-md-12 -->
+            </div><!-- /.row -->
+          </div><!-- /.box-body -->
+        </div><!-- /.box personal_details_section -->
+        <!--end formset2-->
             <!--end formset2-->
 
-          </div>
+          
 
           <!-- new formset3-->
 
@@ -688,9 +648,12 @@
                 </div>
               </div>
             </div>
-          </div>
+          </div><!-- /.box-body upload -->
+          </div><!-- /.box upload_documents_section -->
+      </div><!-- /#below_eligibility_sections -->
 
     </form>
+    <!--end formset3-->
     <!--end formset3-->
 
 
