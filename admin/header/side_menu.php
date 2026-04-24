@@ -38,6 +38,7 @@ function sidebar_seed_super_admin_settings($db_handle)
 	$defaultSettings = array(
 		array('Profile', 'fa fa-user', 'profile.php'),
 		array('Update Password', 'fa fa-lock', 'change_password.php'),
+		array('Offline Marks Entry', 'fa fa-pencil-square-o', 'offline_marks_entry.php'),
 		array('Manage Section', 'fa fa-list-alt', 'class_crud_new.php?tab=section-list'),
 		array('Menu Master', 'fa fa-folder-open', 'class_crud_new.php?tab=menu-list'),
 		array('Sub Menu Master', 'fa fa-sitemap', 'class_crud_new.php?tab=sub-menu-list'),
