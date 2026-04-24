@@ -92,9 +92,11 @@ if ($spec_result) {
 
 $spec_labels = [];
 $spec_totals = [];
+
 foreach ($spec_data as $sd) {
-    $spec_labels[] = '"' . $sd['name'] . '"';
-    $spec_totals[] = $sd['approved'];
+    $spec_labels[] = $sd['name']; 
+    $spec_totals[] = (int)$sd['approved'];
+    
 }
 
 // 4. Branch-wise Distribution from Database
@@ -112,13 +114,12 @@ $branch_counts = [];
 
 if ($branch_result) {
     while ($row = mysqli_fetch_assoc($branch_result)) {
-        $branch_labels[] = '"' . $row['code'] . '"';
+        $branch_labels[] = $row['code'];          // ✅ no quotes
         $branch_counts[] = (int)$row['count'];
     }
 } else {
     error_log("Branch distribution query failed: " . mysqli_error($db_handle->conn));
 }
-
 // 5. User Roles Overview from Database
 $roles_query = "SELECT 
     r.role_name,
@@ -1267,9 +1268,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_hod'])) {
         var specChart = new Chart(ctxSpec, {
             type: 'doughnut',
             data: {
-                labels: [<?php echo implode(',', $spec_labels); ?>],
+                labels: <?php echo json_encode($spec_labels); ?>,
                 datasets: [{
-                    data: [<?php echo implode(',', $spec_totals); ?>],
+                    data: <?php echo json_encode($spec_totals); ?>,
                     backgroundColor: ['#00c0ef', '#f39c12', '#00a65a'],
                     hoverBackgroundColor: ['#00acd6', '#e08e0b', '#008d4c']
                 }]
@@ -1292,10 +1293,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_hod'])) {
         var branchChart = new Chart(ctxBranch, {
             type: 'bar',
             data: {
-                labels: [<?php echo implode(',', $branch_labels); ?>],
+                labels: <?php echo json_encode($branch_labels); ?>,
                 datasets: [{
                     label: 'Total Students',
-                    data: [<?php echo implode(',', $branch_counts); ?>],
+                    data: <?php echo json_encode($branch_counts); ?>,
                     backgroundColor: 'linear-gradient(135deg, #667eea, #764ba2)',
                     backgroundColor: '#00a65a',
                     borderColor: '#008d4c',
