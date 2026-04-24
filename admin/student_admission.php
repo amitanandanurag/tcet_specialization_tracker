@@ -1,5 +1,6 @@
 <?php include "header/header.php"; ?>
-<script>function validateform() {
+<script>
+  function validateform() {
     var academic = document.myform.academic.value;
     var class1 = document.myform.class.value;
     var registration_no = document.myform.registration_no.value;
@@ -10,85 +11,83 @@
     var cgpaValue = document.getElementById("cgpa") ? document.getElementById("cgpa").value : "";
 
     if (specializationSelect && specializationSelect.selectedIndex >= 0) {
-        specializationText = specializationSelect.options[specializationSelect.selectedIndex].text.toLowerCase();
+      specializationText = specializationSelect.options[specializationSelect.selectedIndex].text.toLowerCase();
     }
 
     if (academic == null || academic == "") {
-        alert("Academic Year can't be blank.");
-        return false;
+      alert("Academic Year can't be blank.");
+      return false;
     }
     if (class1 == null || class1 == "") {
-        alert("Class can't be blank.");
-        return false;
+      alert("Class can't be blank.");
+      return false;
     }
     if (registration_no == null || registration_no == "") {
-        alert("Registration Number can't be blank.");
-        return false;
+      alert("Registration Number can't be blank.");
+      return false;
     }
     if (batch == null || batch == "") {
-        alert("Batch can't be blank.");
-        return false;
+      alert("Batch can't be blank.");
+      return false;
     }
     if (fname == null || fname == "") {
-        alert("First Name can't be blank.");
-        return false;
+      alert("First Name can't be blank.");
+      return false;
     }
-    
+
     // Check specialization types
     var isMinorMultidisciplinary = specializationText.indexOf("minor multidisciplinary") !== -1;
     var isMinor = specializationText.indexOf("minor") !== -1 && !isMinorMultidisciplinary;
     var isHonours = specializationText.indexOf("honours") !== -1 || specializationText.indexOf("honors") !== -1;
-    
+
     // Validate based on specialization type
     if (isHonours) {
-        if (cgpaValue == null || cgpaValue === "") {
-            alert("Please enter CGPA for Honours.");
-            return false;
-        }
-        if (isNaN(cgpaValue)) {
-            alert("Please enter valid numeric CGPA.");
-            return false;
-        }
-        if (parseFloat(cgpaValue) <= 7) {
-            alert("Not eligible for Honours. CGPA must be above 7.");
-            return false;
-        }
-        if ($('#specialization_subject_select').prop('selectedIndex') <= 0) {
-            alert("Please select Specialization Subject for Honours.");
-            return false;
-        }
+      if (cgpaValue == null || cgpaValue === "") {
+        alert("Please enter CGPA for Honours.");
+        return false;
+      }
+      if (isNaN(cgpaValue)) {
+        alert("Please enter valid numeric CGPA.");
+        return false;
+      }
+      if (parseFloat(cgpaValue) <= 7) {
+        alert("Not eligible for Honours. CGPA must be above 7.");
+        return false;
+      }
+      if ($('#specialization_subject_select').prop('selectedIndex') <= 0) {
+        alert("Please select Specialization Subject for Honours.");
+        return false;
+      }
+    } else if (isMinorMultidisciplinary) {
+      // No CGPA validation for Minor Multidisciplinary
+      // Only validate Minor Course and Minor Subject selection
+      var minorCourse = $('#minor_course_select').val();
+      if (!minorCourse || minorCourse == "") {
+        alert("Please select Minor Course.");
+        return false;
+      }
+
+      var minorSubject = $('#minor_subject_select').val();
+      if (!minorSubject || minorSubject == "") {
+        alert("Please select Minor Subject.");
+        return false;
+      }
+
+      // CGPA is NOT required for Minor Multidisciplinary
+    } else if (isMinor) {
+      // No CGPA validation for Minor Degree - removed constraint
+      // Just validate that fields are filled if needed
+      // Minor degree doesn't require any additional validation
     }
-    else if (isMinorMultidisciplinary) {
-        // No CGPA validation for Minor Multidisciplinary
-        // Only validate Minor Course and Minor Subject selection
-        var minorCourse = $('#minor_course_select').val();
-        if (!minorCourse || minorCourse == "") {
-            alert("Please select Minor Course.");
-            return false;
-        }
-        
-        var minorSubject = $('#minor_subject_select').val();
-        if (!minorSubject || minorSubject == "") {
-            alert("Please select Minor Subject.");
-            return false;
-        }
-        
-        // CGPA is NOT required for Minor Multidisciplinary
-    }
-    else if (isMinor) {
-        // No CGPA validation for Minor Degree - removed constraint
-        // Just validate that fields are filled if needed
-        // Minor degree doesn't require any additional validation
-    }
-    
+
     var mobile = document.myform.mobile.value;
     if (mobile && isNaN(mobile)) {
-        alert("Enter only numeric value in mobile field.");
-        return false;
+      alert("Enter only numeric value in mobile field.");
+      return false;
     }
-    
+
     return true;
-}
+  }
 </script>
 
 <script type="text/javascript">
