@@ -17,6 +17,8 @@ if (!$db_handle || !($db_handle->conn instanceof mysqli)) {
 
 	$username = trim($_POST['username']);
 	$user_password = trim($_POST['password']);
+	$ipAddress = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+	$userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'unknown';
 
 	$sql = "SELECT * FROM st_login WHERE username=?";
 	$stmt = mysqli_prepare($db_handle->conn, $sql);
@@ -39,6 +41,13 @@ if (!$db_handle || !($db_handle->conn instanceof mysqli)) {
 	mysqli_stmt_close($stmt);
 
 	if (!$row) {
+		$db_handle->writeAuditLog(
+			0,
+			'LOGIN_FAILED',
+			'st_login',
+			null,
+			"Login failed for username '{$username}' from IP {$ipAddress}. Browser: {$userAgent}"
+		);
 		echo "email or password does not exist.";
 		exit();
 	}
@@ -47,6 +56,13 @@ if (!$db_handle || !($db_handle->conn instanceof mysqli)) {
 
 	    $_SESSION['user_session'] = $row['user_id'];
 		$_SESSION['user_type'] = $row['role_id'];
+		$db_handle->writeAuditLog(
+			intval($row['user_id']),
+			'LOGIN_SUCCESS',
+			'st_login',
+			intval($row['login_id'] ?? 0),
+			"User '{$username}' logged in successfully with role {$row['role_id']} from IP {$ipAddress}. Browser: {$userAgent}"
+		);
 
 		if($_SESSION['user_type']=="1"){
 			echo "ok";
@@ -73,6 +89,13 @@ if (!$db_handle || !($db_handle->conn instanceof mysqli)) {
 		 }
 
 	} else {
+		$db_handle->writeAuditLog(
+			intval($row['user_id'] ?? 0),
+			'LOGIN_FAILED',
+			'st_login',
+			intval($row['login_id'] ?? 0),
+			"Invalid password for username '{$username}' from IP {$ipAddress}. Browser: {$userAgent}"
+		);
 		echo "email or password does not exist."; // wrong details
 	}
 }

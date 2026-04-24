@@ -47,7 +47,7 @@ LEFT JOIN st_section_master sec ON sec.id = sm.division_id
 LEFT JOIN st_department_master dep ON dep.department_id = sm.department_id
 LEFT JOIN st_specialization_master sp ON sp.specialization_id = sm.specialization_id
 LEFT JOIN st_specialization_subject_master ssb ON ssb.subject_id = sm.specialization_subject_id
-WHERE sm.student_id = $student_id AND sm.status = '1'";
+WHERE sm.student_id = $student_id";
 
 $result = $db_handle->query($sql);
 $row = $result ? $result->fetch_assoc() : null;

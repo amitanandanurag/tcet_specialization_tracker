@@ -7,7 +7,7 @@ if (isset($_REQUEST['id'])) {
     $student_id = intval($_REQUEST['id']);
     $table = 'st_student_master';
     
-    $sql = "SELECT * FROM $table WHERE student_id = $student_id AND status = '1'";
+    $sql = "SELECT * FROM $table WHERE student_id = $student_id";
     $result = $db_handle->query($sql);
     $row = $result->fetch_assoc();
     
