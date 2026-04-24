@@ -38,7 +38,7 @@ LEFT JOIN st_section_master sec ON sec.id = sm.division_id
 LEFT JOIN st_department_master dep ON dep.department_id = sm.department_id
 LEFT JOIN st_specialization_master sp ON sp.specialization_id = sm.specialization_id
 LEFT JOIN st_specialization_subject_master ssb ON ssb.subject_id = sm.specialization_subject_id
-WHERE sm.status = '1'";
+WHERE sm.status = '0'";
 
 // Apply filters
 if (!empty($select_class)) {
@@ -99,13 +99,17 @@ while ($row = mysqli_fetch_assoc($result)) {
     
     // WhatsApp
     $mobile = $row['mobile'];
-    if (!empty($mobile)) {
+   /* if (!empty($mobile)) {
         $nestedData[] = "<a href='https://wa.me/91$mobile?text=WELCOME%20TO%20THAKUR%20COLLEGE' target='_blank'>
                             <button class='btn btn-success btn-sm'><i class='fa fa-whatsapp'></i></button>
                          </a>";
     } else {
         $nestedData[] = "-";
-    }
+    }*/
+
+    $nestedData[] = "<a href='https://wa.me/91$mobile?text=WELCOME%20TO%20THAKUR%20COLLEGE' target='_blank'>
+                            <button class='btn btn-success btn-sm'><i class='fa fa-whatsapp'></i></button>
+                         </a>";
     
     // Registration No
     $nestedData[] = "<strong>{$row['registration_no']}</strong>";
@@ -134,9 +138,6 @@ while ($row = mysqli_fetch_assoc($result)) {
     
     // Mobile
     $nestedData[] = !empty($row['mobile']) ? $row['mobile'] : '-';
-    
-    // Academic Year
-    $nestedData[] = !empty($row['academic_year']) ? $row['academic_year'] : '-';
     
     // Roll No
     $nestedData[] = !empty($row['roll_no']) ? $row['roll_no'] : '-';

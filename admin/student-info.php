@@ -14,8 +14,8 @@
           <div class="div2 box-header with-border">
             <div class="row" style="margin-bottom: 20px;">
               <div class="col-md-1">
-                <label for="select_all_header" class="btn btn-default" style="width: 100%;">
-                  <input type="checkbox" id="select_all_header"> ALL
+                <label for="select_all" class="btn btn-default" style="width: 100%;">
+                  <input type="checkbox" id="select_all"> ALL
                 </label>
               </div>
 
@@ -47,27 +47,27 @@
                 <select class="form-control" id="select_section" name="select_section">
                   <option value="">Select Division</option>
                   <?php
-                      $result = $db_handle->query("SELECT * FROM `st_section_master`");
-                      while ($row = $result->fetch_assoc()) {
-                        $section_id = $row['id'];
-                        $sections = $row['sections'];
-                      ?>
-                        <option value="<?php echo $section_id; ?>"><?php echo $sections; ?></option>
-                      <?php } ?>
+                  $result = $db_handle->query("SELECT * FROM `st_section_master`");
+                  while ($row = $result->fetch_assoc()) {
+                    $section_id = $row['id'];
+                    $sections = $row['sections'];
+                  ?>
+                    <option value="<?php echo $section_id; ?>"><?php echo $sections; ?></option>
+                  <?php } ?>
                 </select>
               </div>
 
               <div class="col-md-2">
                 <select class="form-control" id="select_session" name="select_session">
                   <option value="">Select Session</option>
-                     <?php
-                      $result = $db_handle->query("SELECT * FROM `session_master`");
-                      while ($row = $result->fetch_assoc()) {
-                        $session_id  = $row['session_id'];
-                        $session = $row['session'];
-                      ?>
-                        <option value="<?php echo $session_id; ?>" <?php if ($session_id == 6) echo "selected"; ?>><?php echo $session; ?></option>
-                      <?php } ?>
+                  <?php
+                  $result = $db_handle->query("SELECT * FROM `st_session_master`");
+                  while ($row = $result->fetch_assoc()) {
+                    $session_id  = $row['session_id'];
+                    $session = $row['session_name'];
+                  ?>
+                    <option value="<?php echo $session_id; ?>" <?php if ($session_id == 6) echo "selected"; ?>><?php echo $session; ?></option>
+                  <?php } ?>
                 </select>
               </div>
 
@@ -82,7 +82,7 @@
               <table id="myTable" class="text-center table table-striped table-bordered" width="100%">
                 <thead>
                   <tr>
-                    <th style="background-color: #423cbc; color: white; padding: 16px" data-orderable="false"><input type="checkbox" id="select_all_checkbox"></th>
+                    <th style="background-color: #423cbc; color: white; padding: 16px" data-orderable="false"><input type="checkbox" id="select_all"></th>
                     <th style="background-color: #423cbc; color: white; padding: 16px">SR. NO</th>
                     <th style="background-color: #423cbc; color: white; padding: 16px">MESSAGE</th>
                     <th style="background-color: #423cbc; color: white; padding: 16px">Reg. No</th>
@@ -94,7 +94,6 @@
                     <th style="background-color: #423cbc; color: white; padding: 16px">Specialization Subject</th>
                     <th style="background-color: #423cbc; color: white; padding: 16px">CGPA</th>
                     <th style="background-color: #423cbc; color: white; padding: 16px">Mobile No</th>
-                    <th style="background-color: #423cbc; color: white; padding: 16px">Academic Year</th>
                     <th style="background-color: #423cbc; color: white; padding: 16px">Roll No</th>
                     <th style="background-color: #423cbc; color: white; padding: 16px">Email</th>
                     <th style="background-color: #F97161; padding: 16px">View</th>
@@ -168,11 +167,13 @@
     white-space: nowrap;
     text-align: center;
   }
+
   #myTable td:nth-child(5) {
     text-align: left;
     white-space: normal;
     min-width: 150px;
   }
+
   .select-all-active {
     background-color: #5cb85c !important;
     color: white !important;
@@ -180,72 +181,82 @@
 </style>
 
 <script type="text/javascript" language="javascript">
-function delete_user(id, table) {
+  function delete_user(id, table) {
     Swal.fire({
-        title: "Are you sure?",
-        text: "Once deleted, Student will be moved to left students!",
-        icon: "warning",
-        showCancelButton: true,
-        confirmButtonText: "Yes, delete it!",
-        cancelButtonText: "No, cancel!",
-        reverseButtons: true
+      title: "Are you sure?",
+      text: "Once deleted, Student will be moved to left students!",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Yes, delete it!",
+      cancelButtonText: "No, cancel!",
+      reverseButtons: true
     }).then((result) => {
-        if (result.isConfirmed) {
-            $.ajax({
-                url: 'student_delete.php',
-                type: "POST",
-                data: { id: id, table: table },
-                dataType: "json",
-                success: function(data) {
-                    Swal.fire('Deleted!', 'Student details have been moved successfully!', 'success')
-                    .then(() => {
-                        $('#myTable').DataTable().ajax.reload();
-                    });
-                },
-                error: function(error) {
-                    Swal.fire('Error!', 'There was a problem deleting the student.', 'error');
-                }
-            });
-        }
+      if (result.isConfirmed) {
+        $.ajax({
+          url: 'student_delete.php',
+          type: "POST",
+          data: {
+            id: id,
+            table: table
+          },
+          dataType: "json",
+          success: function(data) {
+            Swal.fire('Deleted!', 'Student details have been moved successfully!', 'success')
+              .then(() => {
+                $('#myTable').DataTable().ajax.reload();
+              });
+          },
+          error: function(error) {
+            Swal.fire('Error!', 'There was a problem deleting the student.', 'error');
+          }
+        });
+      }
     });
-}
+  }
 
-$(document).ready(function() {
+  $(document).ready(function() {
     // Initialize DataTable
     var dataTable = $('#myTable').DataTable({
-        "processing": true,
-        "serverSide": true,
-        "ajax": {
-            "url": "student_info_ajax.php",
-            "type": "POST",
-            "data": function(d) {
-                d.select_class = $('#select_class').val();
-                d.select_section = $('#select_section').val();
-                d.select_session = $('#select_session').val();
-            }
-        },
-        "lengthMenu": [[15, 25, 50, 100, 500], ['15', '25', '50', '100', '500']],
-        "pageLength": 15,
-        "autoWidth": false,
-        "scrollX": true,
-        "columnDefs": [
-            { "orderable": false, "targets": [0, 2, 14, 15, 16] },
-            { "className": "text-left", "targets": [4] },
-            { "className": "text-center", "targets": "_all" }
-        ],
-        "language": {
-            "processing": "<span style='color:#8b0000;font-size:20px;'> Processing data.. <i class='fa fa-spinner fa-spin'></i> </span>",
-            "search": "",
-            "searchPlaceholder": "Search...",
-            "paginate": {
-                "previous": '<i class="fa fa-angle-double-left"></i> Previous',
-                "next": 'Next <i class="fa fa-angle-double-right"></i>'
-            }
-        },
-        "drawCallback": function() {
-            // Re-bind select all functionality after each table draw
-            bindSelectAllEvents();
+      "processing": true,
+      "serverSide": true,
+      "ajax": {
+        "url": "student_info_ajax.php",
+        "type": "POST",
+        "data": function(d) {
+          d.select_class = $('#select_class').val();
+          d.select_section = $('#select_section').val();
+          d.select_session = $('#select_session').val();
         }
+      },
+      "lengthMenu": [
+        [15, 25, 50, 100, 500],
+        ['15', '25', '50', '100', '500']
+      ],
+      "pageLength": 15,
+      "autoWidth": false,
+      "scrollX": true,
+      "columnDefs": [{
+          "orderable": false,
+          "targets": [0, 2, 14, 15, 16]
+        },
+        {
+          "className": "text-left",
+          "targets": [4]
+        },
+        {
+          "className": "text-center",
+          "targets": "_all"
+        }
+      ],
+      "language": {
+        "processing": "<span style='color:#8b0000;font-size:20px;'> Processing data.. <i class='fa fa-spinner fa-spin'></i> </span>",
+        "search": "",
+        "searchPlaceholder": "Search...",
+        "paginate": {
+          "previous": '<i class="fa fa-angle-double-left"></i> Previous',
+          "next": 'Next <i class="fa fa-angle-double-right"></i>'
+        }
+      }
     });
 
     // Style search box
@@ -254,119 +265,105 @@ $(document).ready(function() {
 
     // Search button click
     $('#search').click(function() {
-        dataTable.ajax.reload();
+      dataTable.ajax.reload();
     });
 
     // Filter changes
     $('#select_class, #select_section, #select_session').change(function() {
-        dataTable.ajax.reload();
+      dataTable.ajax.reload();
     });
 
-    // Function to bind select all events
-    function bindSelectAllEvents() {
-        // Header select all checkbox (in the table header)
-        $('#select_all_checkbox').off('click').on('click', function() {
-            var isChecked = $(this).prop('checked');
-            $('.selectRow').each(function() {
-                $(this).prop('checked', isChecked);
-            });
-            // Update the top button checkbox as well
-            $('#select_all_header').prop('checked', isChecked);
-        });
+    // Select All functionality
+    $('#select_all_btn').click(function() {
+      var isChecked = $(this).hasClass('active');
+      $('.selectRow').each(function() {
+        $(this).prop('checked', !isChecked);
+      });
+      $(this).toggleClass('active');
+      if ($(this).hasClass('active')) {
+        $(this).addClass('select-all-active');
+      } else {
+        $(this).removeClass('select-all-active');
+      }
+    });
 
-        // Top button select all checkbox
-        $('#select_all_header').off('click').on('click', function() {
-            var isChecked = $(this).prop('checked');
-            $('.selectRow').each(function() {
-                $(this).prop('checked', isChecked);
-            });
-            $('#select_all_checkbox').prop('checked', isChecked);
-        });
+    $('#select_all_header').click(function() {
+      var status = this.checked;
+      $('.selectRow').each(function() {
+        $(this).prop('checked', status);
+      });
+      if (status) {
+        $('#select_all_btn').addClass('active select-all-active');
+      } else {
+        $('#select_all_btn').removeClass('active select-all-active');
+      }
+    });
+  });
 
-        // Individual row checkboxes - update header checkboxes when all are selected/deselected
-        $(document).off('change', '.selectRow').on('change', '.selectRow', function() {
-            var totalRows = $('.selectRow').length;
-            var checkedRows = $('.selectRow:checked').length;
-            
-            if (checkedRows === 0) {
-                $('#select_all_header').prop('checked', false);
-                $('#select_all_checkbox').prop('checked', false);
-            } else if (checkedRows === totalRows) {
-                $('#select_all_header').prop('checked', true);
-                $('#select_all_checkbox').prop('checked', true);
-            } else {
-                $('#select_all_header').prop('checked', false);
-                $('#select_all_checkbox').prop('checked', false);
-            }
-        });
-    }
-
-    // Initial binding
-    bindSelectAllEvents();
-});
-
-// View and Edit modals
-$(document).ready(function() {
+  // View and Edit modals
+  $(document).ready(function() {
     $(document).on('click', '#student_view', function(e) {
-        e.preventDefault();
-        var uid = $(this).data('id');
-        $('#dynamic-content').html('<div class="text-center"><i class="fa fa-spinner fa-spin fa-3x"></i></div>');
-        $('#view').modal('show');
-        $.ajax({
-            url: 'student_view.php',
-            type: 'POST',
-            data: 'id=' + uid,
-            dataType: 'html'
-        }).done(function(data) {
-            $('#dynamic-content').html(data);
-        }).fail(function() {
-            $('#dynamic-content').html('<div class="alert alert-danger">Something went wrong, Please try again...</div>');
-        });
+      e.preventDefault();
+      var uid = $(this).data('id');
+      $('#dynamic-content').html('<div class="text-center"><i class="fa fa-spinner fa-spin fa-3x"></i></div>');
+      $('#view').modal('show');
+      $.ajax({
+        url: 'student_view.php',
+        type: 'POST',
+        data: 'id=' + uid,
+        dataType: 'html'
+      }).done(function(data) {
+        $('#dynamic-content').html(data);
+      }).fail(function() {
+        $('#dynamic-content').html('<div class="alert alert-danger">Something went wrong, Please try again...</div>');
+      });
     });
 
     $(document).on('click', '#student_edit', function(e) {
-        e.preventDefault();
-        var uid = $(this).data('id');
-        $('#edit-dynamic-content').html('<div class="text-center"><i class="fa fa-spinner fa-spin fa-3x"></i></div>');
-        $('#edit').modal('show');
-        $.ajax({
-            url: 'student-edit.php',
-            type: 'POST',
-            data: 'id=' + uid,
-            dataType: 'html'
-        }).done(function(data) {
-            $('#edit-dynamic-content').html(data);
-        }).fail(function() {
-            $('#edit-dynamic-content').html('<div class="alert alert-danger">Something went wrong, Please try again...</div>');
-        });
+      e.preventDefault();
+      var uid = $(this).data('id');
+      $('#edit-dynamic-content').html('<div class="text-center"><i class="fa fa-spinner fa-spin fa-3x"></i></div>');
+      $('#edit').modal('show');
+      $.ajax({
+        url: 'student-edit.php',
+        type: 'POST',
+        data: 'id=' + uid,
+        dataType: 'html'
+      }).done(function(data) {
+        $('#edit-dynamic-content').html(data);
+      }).fail(function() {
+        $('#edit-dynamic-content').html('<div class="alert alert-danger">Something went wrong, Please try again...</div>');
+      });
     });
-});
+  });
 
-// Excel Export
-function fnExcelReport() {
+  // Excel Export
+  function fnExcelReport() {
     var table = document.getElementById("myTable");
     var excludeCols = [0, 2, 14, 15, 16];
     var tableHTML = "<table border='1' style='border-collapse:collapse;'>";
-    
+
     for (var i = 0; i < table.rows.length; i++) {
-        tableHTML += "<tr>";
-        var row = table.rows[i];
-        for (var j = 0; j < row.cells.length; j++) {
-            if (excludeCols.includes(j)) continue;
-            var cell = row.cells[j];
-            var tag = (i === 0) ? "th" : "td";
-            var cellText = cell.innerText.trim();
-            tableHTML += `<${tag} style="padding:5px;text-align:left;vertical-align:middle;">${cellText}</${tag}>`;
-        }
-        tableHTML += "</tr>";
+      tableHTML += "<tr>";
+      var row = table.rows[i];
+      for (var j = 0; j < row.cells.length; j++) {
+        if (excludeCols.includes(j)) continue;
+        var cell = row.cells[j];
+        var tag = (i === 0) ? "th" : "td";
+        var cellText = cell.innerText.trim();
+        tableHTML += `<${tag} style="padding:5px;text-align:left;vertical-align:middle;">${cellText}</${tag}>`;
+      }
+      tableHTML += "</tr>";
     }
     tableHTML += "</table>";
-    
+
     tableHTML = tableHTML.replace(/<a[^>]*>|<\/a>/gi, "");
     tableHTML = tableHTML.replace(/<img[^>]*>/gi, "");
     tableHTML = tableHTML.replace(/<input[^>]*>/gi, "");
-    
-    var blob = new Blob(['\ufeff', tableHTML], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+
+    var blob = new Blob(['\ufeff', tableHTML], {
+      type: 'application/vnd.ms-excel;charset=utf-8;'
+    });
     var url = URL.createObjectURL(blob);
     var link = document.createElement("a");
     link.href = url;
@@ -374,51 +371,7 @@ function fnExcelReport() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-}
-
-// Send SMS function
-function send_sms() {
-    var selectedIds = [];
-    $('.selectRow:checked').each(function() {
-        selectedIds.push($(this).val());
-    });
-    
-    if (selectedIds.length === 0) {
-        $("#sms_response").html("<div class='alert alert-danger text-center'>Please select at least one student!</div>");
-        return false;
-    }
-    
-    var sms_content = $("#sms_content").val();
-    if (sms_content === "") {
-        $("#sms_response").html("<div class='alert alert-danger text-center'>Please enter SMS content!</div>");
-        return false;
-    }
-    
-    $.ajax({
-        type: "POST",
-        url: "send_sms.php",
-        data: {
-            ids: selectedIds,
-            sms_content: sms_content
-        },
-        beforeSend: function() {
-            $("#sms_response").html("<div class='alert alert-info text-center'>Sending SMS... <i class='fa fa-spinner fa-spin'></i></div>");
-        },
-        success: function(response) {
-            $("#sms_response").html("<div class='alert alert-success text-center'>SMS sent successfully to " + selectedIds.length + " student(s)!</div>");
-            $("#sms_content").val("");
-            setTimeout(function() {
-                $('#send_sms').modal('hide');
-                $("#sms_response").html("");
-            }, 2000);
-        },
-        error: function() {
-            $("#sms_response").html("<div class='alert alert-danger text-center'>Error sending SMS. Please try again!</div>");
-        }
-    });
-    
-    return false;
-}
+  }
 </script>
 
 <div class="modal fade" id="send_sms" tabindex="-1" role="dialog" aria-labelledby="edit" aria-hidden="true">
@@ -428,7 +381,7 @@ function send_sms() {
         <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
         <h4 class="modal-title custom_align" id="Heading"> <i class="fa fa-send"></i> Send SMS </h4>
       </div>
-      <form method="post" onsubmit="return send_sms();">
+      <form method="post" onsubmit="send_sms(); return false;">
         <div class="modal-body">
           <div class="form-horizontal">
             <textarea class="form-control" required="required" maxlength="160" placeholder="Enter your Message (maximum words length is: 160)" id="sms_content"></textarea>
@@ -442,6 +395,7 @@ function send_sms() {
       </form>
     </div>
   </div>
+</div>
 </div>
 
 <?php include "header/footer.php"; ?>
