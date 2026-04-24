@@ -1,4 +1,9 @@
 <?php
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_start();
+}
+
+// Include header (this already has database connection and session check)
 require "header/header.php";
 
 // ========================
@@ -7,7 +12,7 @@ require "header/header.php";
 $hod_query = "SELECT 
     d.department_id,
     d.department_name as dept,
-    'Dr. ' || SUBSTRING_INDEX(l.username, ' ', 1) as hod_name,
+    CONCAT('Dr. ', SUBSTRING_INDEX(l.username, ' ', 1)) as hod_name,
     CASE 
         WHEN s.mobile IS NOT NULL AND s.mobile != '' THEN CONCAT('+91-', s.mobile)
         ELSE 'N/A'
@@ -20,6 +25,7 @@ $hod_query = "SELECT
 FROM st_department_master d
 LEFT JOIN st_login l ON l.role_id = 2 AND d.department_id = l.user_id
 LEFT JOIN dsms_student_master s ON s.department_id = d.department_id AND s.status = 1
+GROUP BY d.department_id
 ORDER BY d.department_id";
 
 $hod_result = mysqli_query($db_handle->conn, $hod_query);
@@ -34,35 +40,26 @@ if ($hod_result) {
             'status' => $row['status']
         ];
     }
-} else {
-    error_log("HOD query failed: " . mysqli_error($db_handle->conn));
 }
 
 // 2. Fetch Top Summary Cards Data from Database
-$db_handle = new DBController();
-
-// Total Students - Count from student master table
 $students_query = "SELECT COUNT(*) as total FROM dsms_student_master WHERE status = 1";
 $students_result = mysqli_query($db_handle->conn, $students_query);
 $total_students = $students_result ? mysqli_fetch_assoc($students_result)['total'] : 0;
 
-// Total Users - Count from login table
 $users_query = "SELECT COUNT(*) as total FROM st_login";
 $users_result = mysqli_query($db_handle->conn, $users_query);
 $total_users = $users_result ? mysqli_fetch_assoc($users_result)['total'] : 0;
 
-// Total Branches - Count from department master table
 $branches_query = "SELECT COUNT(*) as total FROM st_department_master";
 $branches_result = mysqli_query($db_handle->conn, $branches_query);
 $total_branches = $branches_result ? mysqli_fetch_assoc($branches_result)['total'] : 0;
 
-// Total Mentors Only - Count users with role_id 4 (Mentor) only
-// Role-based filtering: Excludes coordinators (role_id 3) and other roles
 $mentor_query = "SELECT COUNT(*) as total FROM st_login WHERE role_id = 4";
 $mentor_result = mysqli_query($db_handle->conn, $mentor_query);
 $total_mentor = $mentor_result ? mysqli_fetch_assoc($mentor_result)['total'] : 0;
 
-// 3. Fetch Specialization Overview Data from Database
+// 3. Fetch Specialization Overview Data
 $spec_query = "SELECT 
     sm.specialization_id,
     sm.specialization_name,
@@ -97,7 +94,7 @@ foreach ($spec_data as $sd) {
     $spec_totals[] = $sd['approved'];
 }
 
-// 4. Branch-wise Distribution from Database
+// 4. Branch-wise Distribution
 $branch_query = "SELECT 
     UPPER(SUBSTRING(d.department_name, 1, LOCATE(' ', d.department_name) - 1)) as code,
     COUNT(s.std_id) as count
@@ -115,11 +112,9 @@ if ($branch_result) {
         $branch_labels[] = '"' . $row['code'] . '"';
         $branch_counts[] = (int)$row['count'];
     }
-} else {
-    error_log("Branch distribution query failed: " . mysqli_error($db_handle->conn));
 }
 
-// 5. User Roles Overview from Database
+// 5. User Roles Overview
 $roles_query = "SELECT 
     r.role_name,
     COUNT(l.login_id) as count
@@ -140,7 +135,7 @@ if ($roles_result) {
     }
 }
 
-// 6. Recent Activity (Latest 5 student registrations/enrollments)
+// 6. Recent Activity
 $recent_query = "SELECT 
     s.fname,
     s.lname,
@@ -164,11 +159,9 @@ if ($recent_result) {
             'created_at' => $row['created_at'] ?: date('Y-m-d H:i:s')
         ];
     }
-} else {
-    error_log("Recent activity query failed: " . mysqli_error($db_handle->conn));
 }
 
-// 7. Academic Events (Database-driven events)
+// 7. Academic Events
 $events_query = "SELECT 
     'Application Deadline' as title,
     DATE_FORMAT(DATE_ADD(CURRENT_DATE, INTERVAL 7 DAY), '%Y-%m-%d') as start,
@@ -204,8 +197,6 @@ if ($events_result) {
             'icon' => $row['icon']
         ];
     }
-} else {
-    error_log("Academic events query failed: " . mysqli_error($db_handle->conn));
 }
 
 // Handle Edit Action (POST)
@@ -226,19 +217,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_hod'])) {
     }
 }
 
-  $result=$db_handle->conn->query("SELECT * fROM st_student_master where status='0'");
-  $rowcount=mysqli_num_rows($result);
+$result = $db_handle->conn->query("SELECT * FROM st_student_master where status='0'");
+$rowcount = mysqli_num_rows($result);
 
-  $result1=$db_handle->conn->query("SELECT * fROM st_user_master where 1=1");
-  $rowcount_user=mysqli_num_rows($result1);
+$result1 = $db_handle->conn->query("SELECT * FROM st_user_master where 1=1");
+$rowcount_user = mysqli_num_rows($result1);
 ?>
 
-<!-- Font Awesome & Ionicons for icons -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.5.0/css/font-awesome.min.css">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/ionicons/2.0.1/css/ionicons.min.css">
-
+<!-- Additional CSS for dashboard (only what's not already in header) -->
 <style>
-    /* ========== IMPROVED CSS FOR MODERN DASHBOARD ========== */
+    /* ========== ADDITIONAL CSS FOR DASHBOARD ========== */
     :root {
         --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         --card-shadow: 0 10px 20px rgba(0, 0, 0, 0.08), 0 6px 6px rgba(0, 0, 0, 0.1);
@@ -314,34 +302,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_hod'])) {
         color: #2c3e50;
     }
 
-    /* Table styling */
-    .table {
-        margin-bottom: 0;
-    }
-
-    .table thead tr th {
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-        font-weight: 600;
-        text-transform: uppercase;
-        font-size: 12px;
-        letter-spacing: 0.5px;
-        padding: 12px 15px;
-        border-bottom: 2px solid #dee2e6;
-    }
-
-    .table tbody tr {
-        transition: background-color 0.2s ease;
-    }
-
-    .table tbody tr:hover {
-        background-color: #f8f9fc;
-    }
-
-    .table td {
-        vertical-align: middle;
-        padding: 12px 15px;
-    }
-
     /* Status Badges */
     .status-badge {
         padding: 6px 12px;
@@ -388,44 +348,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_hod'])) {
         color: white;
     }
 
-    .btn-group{
-        gap: 4px;
-    }
-
-    .btn{
-        margin: 2px;
-    }
-
-    /* HOD Table special styling */
-    .hod-table-container {
-        background: white;
-        border-radius: var(--border-radius-md);
-        overflow: hidden;
-        margin-top: 20px;
-    }
-
-    /* Modal styling */
-    .modal-content {
-        border-radius: var(--border-radius-lg);
-        border: none;
-    }
-
-    .modal-header {
-        background: var(--primary-gradient);
-        color: white;
-        border-radius: var(--border-radius-lg) var(--border-radius-lg) 0 0;
-        padding: 20px;
-    }
-
-    .modal-header .close {
-        color: white;
-        opacity: 0.8;
-    }
-
-    .modal-header .close:hover {
-        opacity: 1;
-    }
-
     /* Chart containers */
     .chart-container {
         position: relative;
@@ -449,23 +371,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_hod'])) {
         text-decoration: none;
     }
 
-    /* Responsive */
-    @media (max-width: 768px) {
-        .small-box h3 {
-            font-size: 28px;
-        }
-
-        .box-header .box-title {
-            font-size: 16px;
-        }
-
-        .table td,
-        .table th {
-            padding: 8px 10px;
-            font-size: 13px;
-        }
-    }
-
     /* Counter animation */
     .counter {
         animation: fadeInUp 0.6s ease;
@@ -476,7 +381,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_hod'])) {
             opacity: 0;
             transform: translateY(20px);
         }
-
         to {
             opacity: 1;
             transform: translateY(0);
@@ -499,8 +403,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_hod'])) {
         <!-- Display edit message -->
         <?php echo $edit_message; ?>
 
-
-        <!-- ==================== DASHBOARD STATS (from original) ==================== -->
+        <!-- Dashboard Stats -->
         <div class="row" style="margin-top: 20px;">
             <div class="col-lg-3 col-xs-6">
                 <div class="small-box bg-aqua">
@@ -576,286 +479,129 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_hod'])) {
                             </thead>
                             <tbody>
                                 <?php foreach ($spec_data as $id => $sd): ?>
-                                    <tr>
-                                        <td class="text-left"><strong><?php echo $sd['name']; ?></strong></td>
-                                        <td><span class="counter" data-target="<?php echo $sd['total']; ?>">0</span></td>
-                                        <td><span class="status-badge status-available counter" data-target="<?php echo $sd['approved']; ?>">0</span></td>
-                                        <td><span class="status-badge status-meeting counter" data-target="<?php echo $sd['pending']; ?>">0</span></td>
-                                        <td>
-                                            <?php if ($sd['rejected'] > 0): ?>
-                                                <a href="list.php?type=rejected" class="status-badge status-leave" style="text-decoration: none;">
-                                                    <span class="counter" data-target="<?php echo $sd['rejected']; ?>">0</span> <i class="fa fa-external-link"></i>
-                                                </a>
-                                            <?php else: ?>
-                                                <span class="status-badge" style="background: #95a5a6; color: white;">0</span>
-                                            <?php endif; ?>
-                                        </td>
-                                    </tr>
+                                <tr>
+                                    <td class="text-left"><strong><?php echo $sd['name']; ?></strong></td>
+                                    <td><span class="counter" data-target="<?php echo $sd['total']; ?>">0</span></td>
+                                    <td><span class="status-badge status-available counter" data-target="<?php echo $sd['approved']; ?>">0</span></td>
+                                    <td><span class="status-badge status-meeting counter" data-target="<?php echo $sd['pending']; ?>">0</span></td>
+                                    <td>
+                                        <?php if ($sd['rejected'] > 0): ?>
+                                            <a href="list.php?type=rejected" class="status-badge status-leave" style="text-decoration: none;">
+                                                <span class="counter" data-target="<?php echo $sd['rejected']; ?>">0</span> <i class="fa fa-external-link"></i>
+                                            </a>
+                                        <?php else: ?>
+                                            <span class="status-badge" style="background: #95a5a6; color: white;">0</span>
+                                        <?php endif; ?>
+                                    </td>
+                                </tr>
                                 <?php endforeach; ?>
                             </tbody>
                         </table>
                     </div>
                 </div>
             </div>
+        </div>
 
-            <div class="col-md-7">
+        <!-- Quick Action Buttons Row -->
+        <div class="row">
+            <div class="col-md-12">
                 <div class="box box-info">
                     <div class="box-header with-border">
-                        <!-- Add above HOD table -->
-                        <div class="row" style="margin-bottom: 15px;">
-                            <div class="col-xs-12">
-                                <div class="btn-group" role="group">
-
-                                    <button type="button" class="btn btn-primary" onclick="quickAction('export_hod')">
-                                        <i class="fa fa-download"></i> Export Student List
-                                    </button>
-                                    <button type="button" class="btn btn-reset" onclick="quickAction('print_report')">
-                                        <i class="fa fa-print"></i> Print Report
-                                    </button>
-                                    <button type="button" class="btn btn-default" onclick="quickAction('send_bulk_email')">
-                                        <i class="fa fa-envelope-o"></i> Bulk Email HODs
-                                    </button>
-                                    <button type="button" class="btn btn-default" onclick="quickAction('add_hod')">
-                                        <i class="fa fa-plus-circle text-green"></i> Add New HOD
-                                    </button>
-                                    <button type="button" class="btn btn-default" onclick="quickAction('add_hod')">
-                                        <i class="fa fa-plus-circle text-green"></i> Add Student
-                                    </button>
-                                    <button type="button" class="btn btn-default" onclick="quickAction('offline_marks_entry')">
-                                        <i class="fa fa-pencil-square-o text-blue"></i> Offline Marks Entry
-                                    </button>
-                                </div>
-                            </div>
+                        <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-primary" onclick="quickAction('export_hod')">
+                                <i class="fa fa-download"></i> Export Student List
+                            </button>
+                            <button type="button" class="btn btn-default" onclick="quickAction('print_report')">
+                                <i class="fa fa-print"></i> Print Report
+                            </button>
+                            <button type="button" class="btn btn-default" onclick="quickAction('send_bulk_email')">
+                                <i class="fa fa-envelope-o"></i> Bulk Email HODs
+                            </button>
+                            <button type="button" class="btn btn-default" onclick="quickAction('add_hod')">
+                                <i class="fa fa-plus-circle text-green"></i> Add New HOD
+                            </button>
+                            <button type="button" class="btn btn-default" onclick="quickAction('add_student')">
+                                <i class="fa fa-plus-circle text-green"></i> Add Student
+                            </button>
+                            <button type="button" class="btn btn-default" onclick="quickAction('offline_marks_entry')">
+                                <i class="fa fa-pencil-square-o text-blue"></i> Offline Marks Entry
+                            </button>
                         </div>
-
-                        <script>
-                            // Real-time search for HOD table
-                            document.getElementById('hodSearch')?.addEventListener('keyup', function() {
-                                let filter = this.value.toLowerCase();
-                                let rows = document.querySelectorAll('.hod-table-container tbody tr');
-                                rows.forEach(row => {
-                                    let text = row.textContent.toLowerCase();
-                                    row.style.display = text.includes(filter) ? '' : 'none';
-                                });
-                            });
-
-                            function quickAction(action) {
-                                switch (action) {
-                                    case 'export_hod':
-                                        // Export table to CSV
-                                        let csv = [];
-                                        let rows = document.querySelectorAll('.hod-table-container table tr');
-                                        rows.forEach(row => {
-                                            let rowData = [];
-                                            row.querySelectorAll('td, th').forEach(cell => rowData.push(cell.innerText));
-                                            csv.push(rowData.join(','));
-                                        });
-                                        let blob = new Blob([csv.join('\n')], {
-                                            type: 'text/csv'
-                                        });
-                                        let link = document.createElement('a');
-                                        link.href = URL.createObjectURL(blob);
-                                        link.download = 'hod_list.csv';
-                                        link.click();
-                                        showToast('📊 HOD list exported!', 'success');
-                                        break;
-                                    case 'print_report':
-                                        window.print();
-                                        break;
-                                    case 'send_bulk_email':
-                                        let emails = [];
-                                        document.querySelectorAll('.hod-table-container tbody tr').forEach(row => {
-                                            let phone = row.cells[2]?.innerText;
-                                            if (phone) emails.push(phone);
-                                        });
-                                        alert('Bulk email to HODs: Coming soon!\nWill send to: ' + emails.length + ' HODs');
-                                        break;
-                                    case 'add_hod':
-                                        alert('Add new HOD form - Feature coming soon');
-                                        break;
-                                    case 'offline_marks_entry':
-                                        window.location.href = 'offline_marks_entry.php';
-                                        break;
-                                }
-                            }
-                        </script>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Branch & User Overview Row -->
+        <!-- Quick Email Section -->
         <div class="row">
             <div class="col-md-8">
-                <!-- Quick Email Section - Matches the design shown in the image -->
                 <section class="connectedSortable">
-                    <div class="box box-info" style="display: flex; flex-direction: column; height: 100%;">
+                    <div class="box box-info">
                         <div class="box-header">
                             <i class="fa fa-envelope"></i>
                             <h3 class="box-title">Quick Email</h3>
                             <div class="pull-right box-tools">
-                                <button type="button" class="btn btn-info btn-sm" data-widget="remove" data-toggle="tooltip" title="Remove">
+                                <button type="button" class="btn btn-info btn-sm" data-widget="remove">
                                     <i class="fa fa-times"></i>
                                 </button>
                             </div>
                         </div>
 
                         <?php
-                        // Email sending logic
                         $email_status = '';
                         if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_email'])) {
                             $to = trim($_POST['emailto']);
                             $subject = trim($_POST['subject']);
                             $message = trim($_POST['message']);
-                            $from_email = "noreply@tcetmumbai.in"; // Default from email
+                            $from_email = "noreply@tcetmumbai.in";
 
-                            // Basic validation
                             if (empty($to) || empty($subject) || empty($message)) {
-                                $email_status = '<div class="alert alert-danger alert-dismissible" style="margin: 10px 15px 0 15px;">
-                    <button type="button" class="close" data-dismiss="alert" aria-hidden="true">×</button>
-                    <i class="icon fa fa-ban"></i> Please fill all fields (To, Subject, Message)!
-                </div>';
+                                $email_status = '<div class="alert alert-danger">Please fill all fields!</div>';
                             } elseif (!filter_var($to, FILTER_VALIDATE_EMAIL)) {
-                                $email_status = '<div class="alert alert-danger alert-dismissible" style="margin: 10px 15px 0 15px;">
-                    <button type="button" class="close" data-dismiss="alert" aria-hidden="true">×</button>
-                    <i class="icon fa fa-ban"></i> Please enter a valid email address!
-                </div>';
+                                $email_status = '<div class="alert alert-danger">Please enter a valid email address!</div>';
                             } else {
-                                // Email headers
-                                $headers = "MIME-Version: 1.0" . "\r\n";
-                                $headers .= "Content-type: text/html; charset=UTF-8" . "\r\n";
+                                $headers = "MIME-Version: 1.0\r\n";
+                                $headers .= "Content-type: text/html; charset=UTF-8\r\n";
                                 $headers .= "From: " . $from_email . "\r\n";
-                                $headers .= "Reply-To: " . $to . "\r\n";
-                                $headers .= "X-Mailer: PHP/" . phpversion();
-
-                                // Format message as HTML
+                                
                                 $html_message = '<html><body>';
                                 $html_message .= '<h3>New Message from Dashboard</h3>';
-                                $html_message .= '<p><strong>Message:</strong></p>';
                                 $html_message .= '<p>' . nl2br(htmlspecialchars($message)) . '</p>';
-                                $html_message .= '<hr>';
-                                $html_message .= '<p><small>Sent via TCET Dashboard</small></p>';
                                 $html_message .= '</body></html>';
 
-                                // Send email
                                 if (mail($to, $subject, $html_message, $headers)) {
-                                    $email_status = '<div class="alert alert-success alert-dismissible" style="margin: 10px 15px 0 15px;">
-                        <button type="button" class="close" data-dismiss="alert" aria-hidden="true">×</button>
-                        <i class="icon fa fa-check"></i> Email sent successfully to ' . htmlspecialchars($to) . '!
-                    </div>';
+                                    $email_status = '<div class="alert alert-success">Email sent successfully!</div>';
                                 } else {
-                                    $email_status = '<div class="alert alert-warning alert-dismissible" style="margin: 10px 15px 0 15px;">
-                        <button type="button" class="close" data-dismiss="alert" aria-hidden="true">×</button>
-                        <i class="icon fa fa-warning"></i> Email could not be sent. Please check your server mail configuration.
-                    </div>';
+                                    $email_status = '<div class="alert alert-warning">Email could not be sent.</div>';
                                 }
                             }
                         }
-
-                        // Display status message
                         echo $email_status;
                         ?>
 
-                        <div class="box box-info" style="margin-bottom: 0; border-top: none; box-shadow: none;">
-                            <div class="box-header with-border" style="background: #f9f9f9;">
-                                <i class="fa fa-envelope-o"></i>
-                                <h3 class="box-title">Compose New Message</h3>
-                                <div class="box-tools pull-right">
-                                    <button type="button" class="btn btn-box-tool" data-widget="collapse">
-                                        <i class="fa fa-minus"></i>
-                                    </button>
+                        <form action="#" method="POST" id="quickEmailForm">
+                            <div class="box-body">
+                                <div class="form-group">
+                                    <label>To:</label>
+                                    <input type="email" class="form-control" name="emailto" id="emailto" placeholder="recipient@example.com" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Subject:</label>
+                                    <input type="text" class="form-control" name="subject" id="subject" placeholder="Subject" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Message:</label>
+                                    <textarea class="form-control" name="message" id="message" rows="5" required></textarea>
                                 </div>
                             </div>
-
-                            <form action="#" method="POST" id="quickEmailForm">
-                                <div class="box-body" style="padding: 20px;">
-                                    <!-- To Field -->
-                                    <div class="form-group">
-                                        <label><i class="fa fa-at text-info"></i> To:</label>
-                                        <div class="input-group">
-                                            <span class="input-group-addon"><i class="fa fa-envelope"></i></span>
-                                            <input type="email" class="form-control" name="emailto" id="emailto"
-                                                placeholder="recipient@example.com" required>
-                                        </div>
-                                        <small class="text-muted">Enter the recipient's email address</small>
-                                    </div>
-
-                                    <!-- CC Field (Optional) -->
-                                    <div class="form-group">
-                                        <label><i class="fa fa-copy text-info"></i> CC (Optional):</label>
-                                        <div class="input-group">
-                                            <span class="input-group-addon"><i class="fa fa-users"></i></span>
-                                            <input type="email" class="form-control" name="emailcc" id="emailcc"
-                                                placeholder="cc@example.com (optional)">
-                                        </div>
-                                    </div>
-
-                                    <!-- Subject Field -->
-                                    <div class="form-group">
-                                        <label><i class="fa fa-tag text-info"></i> Subject:</label>
-                                        <input type="text" class="form-control" name="subject" id="subject"
-                                            placeholder="Enter email subject" required>
-                                    </div>
-
-                                    <!-- Message Field -->
-                                    <div class="form-group">
-                                        <label><i class="fa fa-file-text text-info"></i> Message:</label>
-                                        <textarea class="form-control" name="message" id="message"
-                                            placeholder="Type your message here..."
-                                            style="width: 100%; height: 180px; resize: vertical;" required></textarea>
-                                    </div>
-
-                                    <!-- Quick Templates -->
-                                    <div class="form-group">
-                                        <label><i class="fa fa-magic text-info"></i> Quick Templates:</label>
-                                        <div class="btn-group btn-group-sm" role="group">
-                                            <button type="button" class="btn btn-default" onclick="insertTemplate('meeting')">
-                                                <i class="fa fa-calendar"></i> Meeting
-                                            </button>
-                                            <button type="button" class="btn btn-default" onclick="insertTemplate('deadline')">
-                                                <i class="fa fa-clock-o"></i> Deadline
-                                            </button>
-                                            <button type="button" class="btn btn-default" onclick="insertTemplate('approval')">
-                                                <i class="fa fa-check-circle"></i> Approval
-                                            </button>
-                                            <button type="button" class="btn btn-default" onclick="insertTemplate('reminder')">
-                                                <i class="fa fa-bell"></i> Reminder
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="box-footer clearfix" style="background: #f9f9f9; border-top: 1px solid #f0f0f0;">
-                                    <div class="pull-left">
-                                        <button type="reset" class="btn btn-default btn-flat" onclick="resetForm()">
-                                            <i class="fa fa-refresh"></i> Reset
-                                        </button>
-                                    </div>
-                                    <button type="submit" name="send_email" class="pull-right btn btn-primary btn-flat">
-                                        <i class="fa fa-paper-plane"></i> Send Email
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-
-                        <!-- Recent Email History (Optional) -->
-                        <div class="box-footer" style="border-top: 1px solid #f0f0f0; background: white;">
-                            <div class="row">
-                                <div class="col-xs-12">
-                                    <p class="text-muted" style="margin-bottom: 5px;">
-                                        <i class="fa fa-history"></i> <strong>Recent Activity</strong>
-                                    </p>
-                                    <ul class="list-unstyled" style="margin-bottom: 0; font-size: 12px;">
-                                        <li><i class="fa fa-check-circle text-success"></i> Support ticket system active</li>
-                                        <li><i class="fa fa-envelope text-info"></i> Auto-replies configured for HODs</li>
-                                        <li><i class="fa fa-database text-warning"></i> Email logs: Last 7 days</li>
-                                    </ul>
-                                </div>
+                            <div class="box-footer clearfix">
+                                <button type="submit" name="send_email" class="pull-right btn btn-primary">Send <i class="fa fa-arrow-circle-right"></i></button>
                             </div>
-                        </div>
+                        </form>
                     </div>
                 </section>
             </div>
+
             <div class="col-md-4">
                 <div class="box box-warning">
                     <div class="box-header with-border">
@@ -865,15 +611,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_hod'])) {
                         <table class="table table-striped">
                             <tbody>
                                 <?php foreach ($roles_data as $role): ?>
-                                    <tr>
-                                        <td><?php echo $role['role_name']; ?></td>
-                                        <td><span class="badge bg-blue pull-right counter" data-target="<?php echo $role['count']; ?>">0</span></td>
-                                    </tr>
+                                <tr>
+                                    <td><?php echo $role['role_name']; ?></td>
+                                    <td><span class="badge bg-blue pull-right counter" data-target="<?php echo $role['count']; ?>">0</span></td>
+                                </tr>
                                 <?php endforeach; ?>
                             </tbody>
                         </table>
                     </div>
                 </div>
+                
                 <div class="box box-danger">
                     <div class="box-header with-border">
                         <h3 class="box-title"><i class="fa fa-clock-o"></i> Recent Student Registrations</h3>
@@ -881,174 +628,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_hod'])) {
                     <div class="box-body">
                         <ul class="products-list product-list-in-box">
                             <?php foreach ($recent_students as $student): ?>
-                                <li class="item">
-                                    <div class="product-info" style="margin-left: 0;">
-                                        <a href="javascript:void(0)" class="product-title"><?php echo $student['fname'] . ' ' . $student['lname']; ?>
-                                            <span class="label label-success pull-right"><?php echo $student['registration_no']; ?></span>
-                                        </a>
-                                        <span class="product-description">
-                                            Registered on <?php echo date('d M Y, h:i A', strtotime($student['created_at'])); ?>
-                                        </span>
-                                    </div>
-                                </li>
+                            <li class="item">
+                                <div class="product-info">
+                                    <a href="javascript:void(0)" class="product-title"><?php echo $student['fname'] . ' ' . $student['lname']; ?>
+                                        <span class="label label-success pull-right"><?php echo $student['registration_no']; ?></span>
+                                    </a>
+                                    <span class="product-description">
+                                        Registered on <?php echo date('d M Y, h:i A', strtotime($student['created_at'])); ?>
+                                    </span>
+                                </div>
+                            </li>
                             <?php endforeach; ?>
                         </ul>
                     </div>
                 </div>
-                <div class="box box-danger">
+            </div>
+        </div>
+
+        <!-- Branch-wise Student Distribution -->
+        <div class="row">
+            <div class="col-md-12">
+                <div class="box box-success">
                     <div class="box-header with-border">
-                        <h3 class="box-title"><i class="fa fa-clock-o"></i> Recent Staff Registrations</h3>
+                        <h3 class="box-title"><i class="fa fa-bar-chart"></i> Branch-wise Student Distribution</h3>
+                    </div>
+                    <div class="box-body">
+                        <div class="chart-container" style="height: 280px;">
+                            <canvas id="branchChart"></canvas>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
-
-        <style>
-            /* Additional styling for Quick Email section */
-            .quick-email-section .form-group label {
-                font-weight: 600;
-                font-size: 13px;
-                margin-bottom: 5px;
-                color: #333;
-            }
-
-            .quick-email-section .input-group-addon {
-                background-color: #f4f4f4;
-                border: 1px solid #d2d6de;
-            }
-
-            .quick-email-section .form-control:focus {
-                border-color: #3c8dbc;
-                box-shadow: 0 0 0 1px rgba(60, 141, 188, 0.2);
-            }
-
-            .btn-group .btn-default {
-                background: #f4f4f4;
-                border-color: #ddd;
-                transition: all 0.2s;
-            }
-
-            .btn-group .btn-default:hover {
-                background: #3c8dbc;
-                color: white;
-                border-color: #367fa9;
-            }
-
-            #quickEmailForm textarea {
-                font-family: inherit;
-                line-height: 1.5;
-            }
-        </style>
-
-        <script>
-            // Quick template insertion function
-            function insertTemplate(type) {
-                var messageField = document.getElementById('message');
-                var subjectField = document.getElementById('subject');
-                var currentMsg = messageField.value;
-                var template = '';
-                var subjectTemplate = '';
-
-                switch (type) {
-                    case 'meeting':
-                        subjectTemplate = 'Meeting Schedule - Department Coordination';
-                        template = 'Dear Team,\n\nI hope this message finds you well. I would like to schedule a meeting to discuss the following agenda items:\n\n1. Department updates\n2. Student progress review\n3. Upcoming deadlines\n4. Any other business\n\nPlease let me know your availability for this meeting.\n\nBest regards,\nHOD Office';
-                        break;
-                    case 'deadline':
-                        subjectTemplate = 'Important Deadline Reminder';
-                        template = 'Dear All,\n\nThis is a gentle reminder about the upcoming deadline. Please ensure all required documents and submissions are completed by the due date.\n\nIf you have any questions or need clarification, please reach out at your earliest convenience.\n\nThank you for your attention to this matter.\n\nRegards,\nDepartment Administration';
-                        break;
-                    case 'approval':
-                        subjectTemplate = 'Request for Approval';
-                        template = 'Dear Sir/Madam,\n\nI am writing to kindly request your approval for the attached proposal/document. The request has been reviewed and is ready for your consideration.\n\nPlease let me know if you require any additional information or have any questions regarding this request.\n\nThank you for your time and consideration.\n\nBest regards,\n[Your Name]';
-                        break;
-                    case 'reminder':
-                        subjectTemplate = 'Friendly Reminder';
-                        template = 'Dear All,\n\nThis is a friendly reminder regarding the pending tasks/assignments. Kindly complete the necessary actions at your earliest convenience.\n\nShould you need any assistance, please don\'t hesitate to reach out.\n\nThank you for your cooperation.\n\nBest regards,\nSupport Team';
-                        break;
-                }
-
-                if (subjectTemplate && subjectField.value === '') {
-                    subjectField.value = subjectTemplate;
-                }
-
-                if (template) {
-                    if (currentMsg === '') {
-                        messageField.value = template;
-                    } else {
-                        messageField.value = currentMsg + '\n\n---\n\n' + template;
-                    }
-                    messageField.focus();
-                }
-            }
-
-            // Reset form function
-            function resetForm() {
-                document.getElementById('quickEmailForm').reset();
-                // Clear any alert messages after reset
-                setTimeout(function() {
-                    var alerts = document.querySelectorAll('.alert');
-                    alerts.forEach(function(alert) {
-                        if (alert.style.margin !== '10px 15px 0 15px') {
-                            alert.style.display = 'none';
-                        }
-                    });
-                }, 500);
-            }
-
-            // Form validation before submit
-            document.getElementById('quickEmailForm').addEventListener('submit', function(e) {
-                var emailTo = document.getElementById('emailto').value;
-                var subject = document.getElementById('subject').value;
-                var message = document.getElementById('message').value;
-
-                if (!emailTo || !subject || !message) {
-                    e.preventDefault();
-                    alert('Please fill in all required fields: To, Subject, and Message');
-                    return false;
-                }
-
-                var emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                if (!emailPattern.test(emailTo)) {
-                    e.preventDefault();
-                    alert('Please enter a valid email address');
-                    return false;
-                }
-
-                // Optional CC validation
-                var emailCc = document.getElementById('emailcc').value;
-                if (emailCc && !emailPattern.test(emailCc)) {
-                    e.preventDefault();
-                    alert('Please enter a valid CC email address');
-                    return false;
-                }
-
-                // Show sending indicator
-                var submitBtn = e.submitter;
-                if (submitBtn && submitBtn.name === 'send_email') {
-                    submitBtn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Sending...';
-                    submitBtn.disabled = true;
-                }
-            });
-
-            // Initialize tooltips
-            $(function() {
-                $('[data-toggle="tooltip"]').tooltip();
-            });
-        </script>
-
-        <div class="box box-success">
-            <div class="box-header with-border">
-                <h3 class="box-title"><i class="fa fa-bar-chart"></i> Branch-wise Student Distribution</h3>
-            </div>
-            <div class="box-body">
-                <div class="chart-container" style="height: 280px;">
-                    <canvas id="branchChart"></canvas>
-                </div>
-            </div>
-        </div>
-        <!-- ==================== DEPARTMENT HOD TABLE ==================== -->
+        <!-- Department HOD Table -->
         <div class="row">
             <div class="col-xs-12">
                 <div class="box box-primary">
@@ -1057,9 +670,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_hod'])) {
                             <i class="fa fa-users"></i> <strong>Department Heads (HOD)</strong>
                         </h3>
                         <div class="box-tools pull-right">
-                            <button type="button" class="btn btn-box-tool" data-widget="collapse">
-                                <i class="fa fa-minus"></i>
-                            </button>
+                            <input type="text" id="hodSearch" class="form-control input-sm" placeholder="Search HOD..." style="width: 200px;">
                         </div>
                     </div>
                     <div class="box-body table-responsive no-padding hod-table-container">
@@ -1075,43 +686,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_hod'])) {
                             </thead>
                             <tbody>
                                 <?php foreach ($departments_hod as $id => $hod): ?>
-                                    <tr id="row-<?php echo $id; ?>">
-                                        <td><strong><?php echo $hod['dept']; ?></strong></td>
-                                        <td><?php echo $hod['hod_name']; ?></td>
-                                        <td><?php echo $hod['phone']; ?></td>
-                                        <td>
-                                            <?php
-                                            $status_class = '';
-                                            $status_text = '';
-                                            switch ($hod['status']) {
-                                                case 'Available':
-                                                    $status_class = 'status-available';
-                                                    $status_text = 'Available';
-                                                    break;
-                                                case 'In Meeting':
-                                                    $status_class = 'status-meeting';
-                                                    $status_text = 'In Meeting';
-                                                    break;
-                                                case 'On Leave':
-                                                    $status_class = 'status-leave';
-                                                    $status_text = 'On Leave';
-                                                    break;
-                                                default:
-                                                    $status_class = 'status-available';
-                                                    $status_text = $hod['status'];
-                                            }
-                                            ?>
-                                            <span class="status-badge <?php echo $status_class; ?>">
-                                                <i class="fa <?php echo ($status_text == 'Available') ? 'fa-check-circle' : (($status_text == 'In Meeting') ? 'fa-clock-o' : 'fa-calendar-times-o'); ?>"></i>
-                                                <?php echo $status_text; ?>
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <button class="btn-action" onclick="openEditModal(<?php echo $id; ?>, '<?php echo htmlspecialchars($hod['hod_name']); ?>', '<?php echo $hod['phone']; ?>', '<?php echo $hod['status']; ?>')">
-                                                <i class="fa fa-edit"></i> Edit
-                                            </button>
-                                        </td>
-                                    </tr>
+                                <tr id="row-<?php echo $id; ?>">
+                                    <td><strong><?php echo $hod['dept']; ?></strong></td>
+                                    <td><?php echo $hod['hod_name']; ?></td>
+                                    <td><?php echo $hod['phone']; ?></td>
+                                    <td>
+                                        <?php
+                                        $status_class = '';
+                                        $status_text = '';
+                                        switch ($hod['status']) {
+                                            case 'Available':
+                                                $status_class = 'status-available';
+                                                $status_text = 'Available';
+                                                break;
+                                            case 'In Meeting':
+                                                $status_class = 'status-meeting';
+                                                $status_text = 'In Meeting';
+                                                break;
+                                            case 'On Leave':
+                                                $status_class = 'status-leave';
+                                                $status_text = 'On Leave';
+                                                break;
+                                            default:
+                                                $status_class = 'status-available';
+                                                $status_text = $hod['status'];
+                                        }
+                                        ?>
+                                        <span class="status-badge <?php echo $status_class; ?>">
+                                            <i class="fa <?php echo ($status_text == 'Available') ? 'fa-check-circle' : (($status_text == 'In Meeting') ? 'fa-clock-o' : 'fa-calendar-times-o'); ?>"></i>
+                                            <?php echo $status_text; ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <button class="btn-action" onclick="openEditModal(<?php echo $id; ?>, '<?php echo htmlspecialchars($hod['hod_name']); ?>', '<?php echo $hod['phone']; ?>', '<?php echo $hod['status']; ?>')">
+                                            <i class="fa fa-edit"></i> Edit
+                                        </button>
+                                    </td>
+                                </tr>
                                 <?php endforeach; ?>
                             </tbody>
                         </table>
@@ -1119,7 +730,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_hod'])) {
                 </div>
             </div>
         </div>
-
 
         <!-- Calendar and Schedule Row -->
         <div class="row">
@@ -1146,7 +756,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_hod'])) {
                                 $event_time = (strpos($event['start'], 'T') !== false) ? date('h:i A', strtotime($event['start'])) : 'All Day';
                                 ?>
                                 <li>
-                                    <a href="javascript:void(0)" onclick="alert('Event: <?php echo addslashes($event['title']); ?>\nDate: <?php echo $event_date; ?>\nTime: <?php echo $event_time; ?>')">
+                                    <a href="javascript:void(0)">
                                         <i class="fa <?php echo $event['icon']; ?>" style="color: <?php echo $event['color']; ?>; margin-right: 10px;"></i>
                                         <strong><?php echo $event['title']; ?></strong>
                                         <span class="pull-right text-muted small"><i class="fa fa-clock-o"></i> <?php echo $event_date; ?></span>
@@ -1165,7 +775,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_hod'])) {
     </section>
 </div>
 
-<!-- ==================== EDIT MODAL ==================== -->
+<!-- Edit Modal -->
 <div class="modal fade" id="editHodModal" tabindex="-1" role="dialog">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
@@ -1179,15 +789,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_hod'])) {
                 <div class="modal-body">
                     <input type="hidden" name="dept_id" id="edit_dept_id">
                     <div class="form-group">
-                        <label><i class="fa fa-user-tie"></i> HOD Name</label>
+                        <label>HOD Name</label>
                         <input type="text" class="form-control" name="hod_name" id="edit_hod_name" required>
                     </div>
                     <div class="form-group">
-                        <label><i class="fa fa-phone"></i> Phone Number</label>
+                        <label>Phone Number</label>
                         <input type="text" class="form-control" name="phone" id="edit_phone" required>
                     </div>
                     <div class="form-group">
-                        <label><i class="fa fa-circle"></i> Status</label>
+                        <label>Status</label>
                         <select class="form-control" name="status" id="edit_status">
                             <option value="Available">Available</option>
                             <option value="In Meeting">In Meeting</option>
@@ -1197,21 +807,65 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_hod'])) {
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
-                    <button type="submit" name="edit_hod" class="btn btn-primary"><i class="fa fa-save"></i> Save Changes</button>
+                    <button type="submit" name="edit_hod" class="btn btn-primary">Save Changes</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
 
-<!-- Include Chart.js & FullCalendar -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js'></script>
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
-
 <script>
-    // Open Edit Modal and populate fields
+    // Search functionality for HOD table
+    var searchInput = document.getElementById('hodSearch');
+    if (searchInput) {
+        searchInput.addEventListener('keyup', function() {
+            let filter = this.value.toLowerCase();
+            let rows = document.querySelectorAll('.hod-table-container tbody tr');
+            rows.forEach(row => {
+                let text = row.textContent.toLowerCase();
+                row.style.display = text.includes(filter) ? '' : 'none';
+            });
+        });
+    }
+
+    // Quick action functions
+    function quickAction(action) {
+        switch (action) {
+            case 'export_hod':
+                let csv = [];
+                let rows = document.querySelectorAll('.hod-table-container table tr');
+                rows.forEach(row => {
+                    let rowData = [];
+                    row.querySelectorAll('td, th').forEach(cell => rowData.push(cell.innerText));
+                    csv.push(rowData.join(','));
+                });
+                let blob = new Blob([csv.join('\n')], { type: 'text/csv' });
+                let link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = 'hod_list.csv';
+                link.click();
+                break;
+            case 'print_report':
+                window.print();
+                break;
+            case 'send_bulk_email':
+                alert('Bulk email feature coming soon!');
+                break;
+            case 'add_hod':
+                alert('Add HOD feature coming soon!');
+                break;
+            case 'add_student':
+                window.location.href = 'student-info.php';
+                break;
+            case 'offline_marks_entry':
+                alert('Offline marks entry feature coming soon!');
+                break;
+        }
+    }
+
+    // Open Edit Modal
     function openEditModal(id, hodName, phone, status) {
         document.getElementById('edit_dept_id').value = id;
         document.getElementById('edit_hod_name').value = hodName;
@@ -1302,7 +956,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_hod'])) {
                 datasets: [{
                     label: 'Total Students',
                     data: [<?php echo implode(',', $branch_counts); ?>],
-                    backgroundColor: 'linear-gradient(135deg, #667eea, #764ba2)',
                     backgroundColor: '#00a65a',
                     borderColor: '#008d4c',
                     borderWidth: 1,
@@ -1327,6 +980,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_hod'])) {
                 }
             }
         });
+    }
+
+    // Form reset function
+    function resetForm() {
+        document.getElementById('quickEmailForm').reset();
     }
 </script>
 
