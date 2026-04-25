@@ -10,13 +10,13 @@ if (isset($_SESSION['user_session'])) {
 
 $db_handle = new DBController();
 
-$sql = "SELECT * FROM st_login WHERE login_id='" . $_SESSION['user_session'] . "'";
+$sql = "SELECT st_login.*,st_user_master.user_name FROM st_login INNER JOIN st_user_master ON st_user_master.user_id=st_login.user_id WHERE login_id='" . $_SESSION['user_session'] . "'";
 $result = mysqli_query($db_handle->conn, $sql) or die("database error:" . mysqli_error($db_handle->conn));
 while ($row = $result->fetch_assoc()) {
 	$username = $row['username'];
 	$userid = $row['user_id'];
 	$usertype = $row['role_id'];
-	$name = $row['username'];
+	$name = $row['user_name'];
 }
 
 $sql = "SELECT * FROM st_role_master WHERE role_id='" . $usertype . "'";
@@ -133,7 +133,7 @@ while ($row = $result->fetch_assoc()) {
 						<img src="dist/img/user2-160x160.jpg" class="img-circle" alt="User Image">
 					</div>
 					<div class="pull-left info">
-						<p><?php echo $name;  ?></p>
+						<p><span><?php echo htmlspecialchars($role_name); ?></span></p>
 						<a class="badge" href="#" style="background:white; color: green;">
 							<i class="fa fa-circle text-success"></i> Online
 						</a>
