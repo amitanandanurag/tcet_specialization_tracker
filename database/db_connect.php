@@ -85,6 +85,32 @@ class DBController
           return $data;
     }
 
+ public function writeAuditLog($userId, $actionType, $affectedTable = null, $affectedRecord = null, $description = null)
+  {
+    if (!($this->conn instanceof mysqli)) {
+      return false;
+    }
+
+    $sql = "INSERT INTO st_audit_log (user_id, action_type, affected_table, affected_record, description) VALUES (?, ?, ?, ?, ?)";
+    $stmt = mysqli_prepare($this->conn, $sql);
+
+    if (!$stmt) {
+      return false;
+    }
+
+    $safeUserId = intval($userId);
+    $safeActionType = (string) $actionType;
+    $safeAffectedTable = $affectedTable !== null ? (string) $affectedTable : null;
+    $safeAffectedRecord = $affectedRecord !== null ? intval($affectedRecord) : null;
+    $safeDescription = $description !== null ? (string) $description : null;
+
+    mysqli_stmt_bind_param($stmt, "issis", $safeUserId, $safeActionType, $safeAffectedTable, $safeAffectedRecord, $safeDescription);
+    $result = mysqli_stmt_execute($stmt);
+    mysqli_stmt_close($stmt);
+
+    return $result;
+  }
+
  public function loginPage($myusername, $mypassword)
   {
     $mypassword = md5($mypassword);
