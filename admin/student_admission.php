@@ -34,15 +34,14 @@
       alert("First Name can't be blank.");
       return false;
     }
-    if (specializationText.indexOf("minor") !== -1) {
-      if ($('#specialization_subject_select').prop('selectedIndex') <= 0) {
-        alert("Please select Specialization Subject for Minor Degree.");
-        return false;
-      }
-    }  
-      // Validate Multidisciplinary field for Minor
-      
-    if (specializationText.indexOf("honours") !== -1 || specializationText.indexOf("honors") !== -1) {
+
+    // Check specialization types
+    var isMinorMultidisciplinary = specializationText.indexOf("minor multidisciplinary") !== -1;
+    var isMinor = specializationText.indexOf("minor") !== -1 && !isMinorMultidisciplinary;
+    var isHonours = specializationText.indexOf("honours") !== -1 || specializationText.indexOf("honors") !== -1;
+
+    // Validate based on specialization type
+    if (isHonours) {
       if (cgpaValue == null || cgpaValue === "") {
         alert("Please enter CGPA for Honours.");
         return false;
@@ -152,8 +151,10 @@
     $('#specialization_subject_wrapper').hide();
     $('#cgpa_section').hide();
     $('#honours_not_eligible').hide();
-    $('#minor_cgpa_section').hide();
-    $('#minor_cgpa').val('');
+    $('#minor_multidisciplinary_section').hide();
+    $('#minor_course_select').val('');
+    $('#minor_subject_section').hide();
+    $('#minor_subject_select').empty().append('<option value="">Select Minor Subject</option>');
     setAdmissionDetailSectionsVisible(false);
   }
 
@@ -203,13 +204,6 @@
     var cgpaRaw = $('#cgpa').val();
     var cgpa = parseFloat(cgpaRaw);
     var isHonours = specializationText.indexOf('honours') !== -1 || specializationText.indexOf('honors') !== -1;
-    var isMinor = specializationText.indexOf('minor') !== -1;
-
-    // For Minor, don't apply honours CGPA logic
-    if (isMinor) {
-      setAdmissionDetailSectionsVisible(true);
-      return;
-    }
 
     if (!isHonours) {
       $('#specialization_subject_wrapper').hide();
@@ -234,28 +228,7 @@
     }
   }
 
-  function handleMultidisciplinaryChange() {
-    var isMinorSelected = $('#specialization_select option:selected').text().toLowerCase().indexOf('minor') !== -1;
-    if (isMinorSelected) {
-      var multidisciplinaryValue = $('input[name="multidisciplinary"]:checked').val();
-      if (multidisciplinaryValue === 'no') {
-        $('#minor_cgpa_section').show();
-        $('#specialization_subject_wrapper').show();
-        setAdmissionDetailSectionsVisible(true);
-      } else if (multidisciplinaryValue === 'yes') {
-        $('#minor_cgpa_section').hide();
-        $('#minor_cgpa').val('');
-        $('#specialization_subject_wrapper').show();
-        setAdmissionDetailSectionsVisible(true);
-      } else {
-        $('#minor_cgpa_section').hide();
-        $('#specialization_subject_wrapper').hide();
-        setAdmissionDetailSectionsVisible(false);
-      }
-    }
-  }
-
- function handleSpecializationSelection() {
+  function handleSpecializationSelection() {
     var specializationText = $('#specialization_select option:selected').text().toLowerCase();
     var isMinorMultidisciplinary = specializationText.indexOf("minor multidisciplinary") !== -1;
     var isMinorDegree = specializationText.indexOf("minor") !== -1 && !isMinorMultidisciplinary;
@@ -263,21 +236,21 @@
 
     resetSpecializationConditionalUI();
 
-    if (isMinor) {
+    if (isMinorDegree || isMinorMultidisciplinary || isHonours) {
       $('#cgpa_section').show();
-      $('#specialization_subject_wrapper').show();
+    }
+
+    if (isMinorMultidisciplinary) {
+      $('#minor_multidisciplinary_section').show();
+      // Show below fields immediately for Minor Multidisciplinary
       setAdmissionDetailSectionsVisible(true);
       return;
     }
 
-    if (isHonours) {
-      $('#cgpa_section').show();
-      return;
-    }
-
-    // Any other normal specialization — show sections directly
-    if (specializationText !== '' && specializationText !== 'select specialization') {
+    if (isMinorDegree) {
+      // Show below fields immediately for Minor Degree
       setAdmissionDetailSectionsVisible(true);
+      return;
     }
   }
 
@@ -488,91 +461,110 @@
             </div>
 
             <div class="col-md-12">
+              <div class="col-md-4">
+                <div class="form-group">
+                  <label>Department<span style="color: red;">*</span></label>
+                  <select class="form-control select" name="department_id" id="department_select" class="batch" style="width: 100%;" required>
+                    <option>Select Department</option>
+                    <?php
+                    $result = $db_handle->conn->query("SELECT * from st_department_master");
+                    while ($row = $result->fetch_assoc()) {
+                      $department_name = $row['department_name'];
+                      $department_id = $row['department_id'];
+                    ?>
+                      <option value="<?php echo $department_id;  ?>"><?php echo $department_name;  ?></option>
+                    <?php } ?>
+                  </select>
+                </div>
+              </div>
 
-  <div class="col-md-4">
-    <div class="form-group">
-      <label>Department<span style="color: red;">*</span></label>
-      <select class="form-control select" name="department_id" id="department_select" class="batch" style="width: 100%;" required>
-        <option>Select Department</option>
-        <?php
-        $result = $db_handle->conn->query("SELECT * from st_department_master");
-        while ($row = $result->fetch_assoc()) {
-          $department_name = $row['department_name'];
-          $department_id = $row['department_id'];
-        ?>
-          <option value="<?php echo $department_id; ?>"><?php echo $department_name; ?></option>
-        <?php } ?>
-      </select>
-    </div>
-  </div>
+              <div class="col-md-4">
+                <div class="form-group">
+                  <label>Specialization<span style="color: red;">*</span></label>
+                  <select class="form-control select" name="specialization_id" id="specialization_select" class="batch" style="width: 100%;" required>
+                    <option>Select Specialization</option>
+                    <?php
+                    $result = $db_handle->conn->query("SELECT * from st_specialization_master");
+                    while ($row = $result->fetch_assoc()) {
+                      $specialization_name = $row['specialization_name'];
+                      $specialization_id = $row['specialization_id'];
+                    ?>
+                      <option value="<?php echo $specialization_id;  ?>"><?php echo $specialization_name;  ?></option>
+                    <?php } ?>
+                  </select>
+                </div>
+              </div>
 
-  <div class="col-md-4">
-    <div class="form-group">
-      <label>Specialization<span style="color: red;">*</span></label>
-      <select class="form-control select" name="specialization_id" id="specialization_select" class="batch" style="width: 100%;" required>
-        <option>Select Specialization</option>
-        <?php
-        $result = $db_handle->conn->query("SELECT * from st_specialization_master");
-        while ($row = $result->fetch_assoc()) {
-          $specialization_name = $row['specialization_name'];
-          $specialization_id = $row['specialization_id'];
-        ?>
-          <option value="<?php echo $specialization_id; ?>"><?php echo $specialization_name; ?></option>
-        <?php } ?>
-      </select>
-    </div>
-  </div>
+              <!-- CGPA Field -->
+              <div class="col-md-4" id="cgpa_section" style="display: none;">
+                <div class="form-group">
+                  <label>Enter Your CGPA (Aggregate)<span style="color: red;">*</span></label>
+                  <input type="text" name="cgpa" id="cgpa" class="form-control" placeholder="Enter CGPA" style="width: 100%;">
+                </div>
+              </div>
+            </div>
 
-  <!-- CGPA field now beside Specialization -->
-  <div class="col-md-4" id="cgpa_section" style="display: none;">
-    <div class="form-group">
-      <label>Enter Your CGPA(Aggregate)<span style="color: red;">*</span></label>
-      <input type="text" name="cgpa" id="cgpa" class="form-control" data-placeholder="" style="width: 100%;">
-      <div id="honours_not_eligible" style="display: none; margin-top: 8px; color: #d9534f; font-weight: 600;">
-        Not eligible to register in Honours. CGPA must be above 7.
+            <!-- Minor Multidisciplinary Section -->
+            <div class="col-md-12" id="minor_multidisciplinary_section" style="display: none;">
+              <div class="col-md-6">
+                <div class="form-group">
+                  <label>Minor Course <span style="color: red;">*</span></label>
+                  <select class="form-control select" name="minor_course_id" id="minor_course_select" style="width: 100%;">
+                    <option value="">Select Minor Course</option>
+                    <?php
+                    $result = $db_handle->conn->query("SELECT * FROM st_minorcourse ORDER BY course_name");
+                    if ($result && $result->num_rows > 0) {
+                      while ($row = $result->fetch_assoc()) {
+                        $course_id = $row['course_id'];
+                        $course_name = $row['course_name'];
+                        echo '<option value="' . $course_id . '">' . $course_name . '</option>';
+                      }
+                    } else {
+                      echo '<option value="">No courses available</option>';
+                    }
+                    ?>
+                  </select>
+                </div>
+              </div>
+
+              <div class="col-md-6" id="minor_subject_section" style="display: none;">
+                <div class="form-group">
+                  <label>Minor Subject <span style="color: red;">*</span></label>
+                  <select class="form-control select" name="minor_subject_id" id="minor_subject_select" style="width: 100%;">
+                    <option value="">Select Minor Subject</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-md-12">
+              <div class="col-md-4" id="specialization_subject_wrapper" style="display: none;">
+                <div class="form-group">
+                  <label>Specialization Subject<span style="color: red;">*</span></label>
+                  <select class="form-control select" name="unaided_subject" id="specialization_subject_select" class="batch" style="width: 100%;">
+                    <option>Select Specialization Subject</option>
+                    <?php
+                    $result = $db_handle->conn->query("SELECT * from st_specialization_subject_master");
+                    while ($row = $result->fetch_assoc()) {
+                      $subject_name = $row['subject_name'];
+                      $subject_id = $row['subject_id'];
+                    ?>
+                      <option value="<?php echo $subject_id;  ?>"><?php echo $subject_name;  ?></option>
+                    <?php } ?>
+                  </select>
+                </div>
+              </div>
+
+              <div class="col-md-8" id="honours_not_eligible" style="display: none; margin-top: 30px; color: #d9534f; font-weight: 600;">
+                Not eligible to register in Honours. CGPA must be above 7.
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
-  </div>
 
-</div>
-
-<div class="col-md-12">
-  <div class="col-md-4" id="specialization_subject_wrapper" style="display: none;">
-    <div class="form-group">
-      <label>Specialization Subject<span style="color: red;">*</span></label>
-      <select class="form-control select" name="unaided_subject" id="specialization_subject_select" class="batch" style="width: 100%;">
-        <option>Select Specialization Subject</option>
-        <?php
-        $result = $db_handle->conn->query("SELECT * from st_specialization_subject_master");
-        while ($row = $result->fetch_assoc()) {
-          $subject_name = $row['subject_name'];
-          $subject_id = $row['subject_id'];
-        ?>
-          <option value="<?php echo $subject_id; ?>"><?php echo $subject_name; ?></option>
-        <?php } ?>
-      </select>
-    </div>
-  </div>
-
-  <div class="col-md-4" id="minor_cgpa_section" style="display: none;">
-    <div class="form-group">
-      <label>Enter Your CGPA (for Multidisciplinary Minor)<span style="color: red;">*</span></label>
-      <input type="text" name="minor_cgpa" id="minor_cgpa" class="form-control" data-placeholder="" style="width: 100%;">
-      <small class="text-muted">Minimum CGPA required: 6.0</small>
-    </div>
-  </div><!-- /#minor_cgpa_section -->
-</div><!-- /.col-md-12 -->
-
-          </div><!-- /.row -->
-        </div><!-- /.box-body -->
-      </div><!-- /.box OFFICIAL DETAILS -->
-      <!--end formset-->
-
-      <div id="below_eligibility_sections style="display:none;">
-
-        <!-- new formset2-->
-
-        <div class="box box-default" id="personal_details_section" style="padding: 10px; display: none;">
+      <div id="below_eligibility_sections" style="display: none;">
+        <div class="box box-default" id="personal_details_section" style="padding: 10px;">
           <div class="box-header with-border" style="border-bottom: 2px solid #9C27B0;">
             <h3 class="box-title">PERSONAL DETAILS:- </h3>
             <div class="box-tools pull-right">
@@ -606,86 +598,69 @@
                       placeholder="Mobile No." style="width: 100%;" />
                   </div>
                 </div>
-               </div><!-- /.col-md-12 -->
-            </div><!-- /.row -->
-          </div><!-- /.box-body -->
-        </div><!-- /.box personal_details_section -->
-        <!--end formset2-->
-            <!--end formset2-->
-
-          
-
-          <!-- new formset3-->
-
-
-          <div class="box box-default" id="upload_documents_section" style="padding: 10px; display: none;">
-            <div class="box-header with-border" style="border-bottom: 2px solid #9C27B0;">
-              <h3 class="box-title">Upload Documents:- </h3>
-              <div class="box-tools pull-right">
-                <button type="button" class="btn btn-box-tool" data-widget="collapse"><i class="fa fa-minus"></i></button>
               </div>
             </div>
-            <div class="box-body">
-              <div class="row doc-row">
-                <div class="col-md-3 col-sm-4">
-                  <label class="doc-label" for="checkbox1">
-                    <input type="checkbox" id="checkbox1"> Mark List
-                  </label>
-                </div>
-                <div class="col-md-9 col-sm-8 doc-upload-field" id="autoUpdate1" style="display:none;">
-                  <input type="file" class="form-control" name="mark-list1" accept=".pdf,.jpg,.jpeg,.png">
-                </div>
-              </div>
+          </div>
+        </div>
 
-              <div class="row doc-row">
-                <div class="col-md-3 col-sm-4">
-                  <label class="doc-label" for="checkbox2">
-                    <input type="checkbox" id="checkbox2"> MarkSheet of Semester 1
-                  </label>
-                </div>
-                <div class="col-md-9 col-sm-8 doc-upload-field" id="autoUpdate2" style="display:none;">
-                  <input type="file" class="form-control" name="mark-list2" accept=".pdf,.jpg,.jpeg,.png">
-                </div>
+        <div class="box box-default" id="upload_documents_section" style="padding: 10px;">
+          <div class="box-header with-border" style="border-bottom: 2px solid #9C27B0;">
+            <h3 class="box-title">Upload Documents:- </h3>
+            <div class="box-tools pull-right">
+              <button type="button" class="btn btn-box-tool" data-widget="collapse"><i class="fa fa-minus"></i></button>
+            </div>
+          </div>
+          <div class="box-body">
+            <div class="row doc-row">
+              <div class="col-md-3 col-sm-4">
+                <label class="doc-label" for="checkbox1">
+                  <input type="checkbox" id="checkbox1"> Mark List
+                </label>
               </div>
-
-              <div class="row doc-row">
-                <div class="col-md-3 col-sm-4">
-                  <label class="doc-label" for="checkbox6">
-                    <input type="checkbox" id="checkbox6"> MarkSheet of Semester 2
-                  </label>
-                </div>
-                <div class="col-md-9 col-sm-8 doc-upload-field" id="autoUpdate6" style="display:none;">
-                  <input type="file" class="form-control" name="mark-list6" accept=".pdf,.jpg,.jpeg,.png">
-                </div>
-              </div>
-
-              <div class="row doc-row">
-                <div class="col-md-3 col-sm-4">
-                  <label class="doc-label" for="checkbox4">
-                    <input type="checkbox" id="checkbox4"> MarkSheet of Semester 3
-                  </label>
-                </div>
-                <div class="col-md-9 col-sm-8 doc-upload-field" id="autoUpdate4" style="display:none;">
-                  <input type="file" class="form-control" name="mark-list4" accept=".pdf,.jpg,.jpeg,.png">
-                </div>
-              </div>
-
-              <div class="row" style="margin: 20px 0 0 0;">
-                <div style="margin-top: 20px; text-align: center;">
-                  <input type="submit" name="save" value="Save Changes" class="btn-submit">
-                  <input type="reset" name="reset" value="Reset" class="btn-reset">
-                </div>
+              <div class="col-md-9 col-sm-8 doc-upload-field" id="autoUpdate1" style="display:none;">
+                <input type="file" class="form-control" name="mark-list1" accept=".pdf,.jpg,.jpeg,.png">
               </div>
             </div>
-          </div><!-- /.box-body upload -->
-          </div><!-- /.box upload_documents_section -->
-      </div><!-- /#below_eligibility_sections -->
-
+            <div class="row doc-row">
+              <div class="col-md-3 col-sm-4">
+                <label class="doc-label" for="checkbox2">
+                  <input type="checkbox" id="checkbox2"> MarkSheet of Semester 1
+                </label>
+              </div>
+              <div class="col-md-9 col-sm-8 doc-upload-field" id="autoUpdate2" style="display:none;">
+                <input type="file" class="form-control" name="mark-list2" accept=".pdf,.jpg,.jpeg,.png">
+              </div>
+            </div>
+            <div class="row doc-row">
+              <div class="col-md-3 col-sm-4">
+                <label class="doc-label" for="checkbox6">
+                  <input type="checkbox" id="checkbox6"> MarkSheet of Semester 2
+                </label>
+              </div>
+              <div class="col-md-9 col-sm-8 doc-upload-field" id="autoUpdate6" style="display:none;">
+                <input type="file" class="form-control" name="mark-list6" accept=".pdf,.jpg,.jpeg,.png">
+              </div>
+            </div>
+            <div class="row doc-row">
+              <div class="col-md-3 col-sm-4">
+                <label class="doc-label" for="checkbox4">
+                  <input type="checkbox" id="checkbox4"> MarkSheet of Semester 3
+                </label>
+              </div>
+              <div class="col-md-9 col-sm-8 doc-upload-field" id="autoUpdate4" style="display:none;">
+                <input type="file" class="form-control" name="mark-list4" accept=".pdf,.jpg,.jpeg,.png">
+              </div>
+            </div>
+            <div class="row" style="margin: 20px 0 0 0;">
+              <div style="margin-top: 20px; text-align: center;">
+                <input type="submit" name="save" value="Save Changes" class="btn-submit">
+                <input type="reset" name="reset" value="Reset" class="btn-reset">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </form>
-    <!--end formset3-->
-    <!--end formset3-->
-
-
   </section>
 </div>
 

@@ -339,5 +339,6 @@ $total_branches = count($branches);
             </div>
         <?php endif; ?>
     </div>
+    <?php include "header/footer.php"; ?>
 </body>
 </html>

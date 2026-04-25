@@ -510,7 +510,7 @@ $rowcount_user = $result1 ? mysqli_num_rows($result1) : 0;
                         <p>Total Users</p>
                     </div>
                     <div class="icon"><i class="ion ion-ios-people"></i></div>
-                    <a href="list.php?type=users" class="small-box-footer">More info <i class="fa fa-arrow-circle-right"></i></a>
+                    <a href="user-info.php?type=users" class="small-box-footer">More info <i class="fa fa-arrow-circle-right"></i></a>
                 </div>
             </div>
             <div class="col-lg-3 col-xs-6">
@@ -535,7 +535,7 @@ $rowcount_user = $result1 ? mysqli_num_rows($result1) : 0;
                         <p>Mentors</p>
                     </div>
                     <div class="icon"><i class="ion ion-person-stalker"></i></div>
-                    <a href="list.php?type=mentors" class="small-box-footer">More info <i class="fa fa-arrow-circle-right"></i></a>
+                    <a href="mentor_info.php" class="small-box-footer">More info <i class="fa fa-arrow-circle-right"></i></a>
                 </div>
             </div>
         </div>
@@ -614,11 +614,9 @@ $rowcount_user = $result1 ? mysqli_num_rows($result1) : 0;
                                 <i class="fa fa-plus-circle text-green"></i> Add New HOD
                             </button>
                             <button type="button" class="btn btn-default" onclick="quickAction('add_student')">
-                                <i class="fa fa-plus-circle text-green"></i> Add Student
+                                <i class="fa fa-plus-circle text-green"></i> List Of Student
                             </button>
-                            <button type="button" class="btn btn-default" onclick="quickAction('offline_marks_entry')">
-                                <i class="fa fa-pencil-square-o text-blue"></i> Offline Marks Entry
-                            </button>
+                            <button type="button" class="btn btn-default" onclick="window.location.href='offline_marks_entry.php'"><i class="fa fa-plus-circle text-green"></i> Offline Marks Entry</button>
                         </div>
                     </div>
                 </div>
