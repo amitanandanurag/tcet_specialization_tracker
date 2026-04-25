@@ -35,7 +35,7 @@ if (isset($_POST['register'])) {
                 $user_id = mysqli_insert_id($db_handle->conn);
 
                 $sql2 = "INSERT INTO st_login(username,password,role_id,user_id)
-                         VALUES('$username','$password','$role_id','$user_id')";
+                         VALUES('email_id','$password','$role_id','$user_id')";
 
                 if ($db_handle->query($sql2)) {
 
@@ -45,7 +45,7 @@ if (isset($_POST['register'])) {
                     echo "<script>
                         alert('Registration Successful!');
                         window.parent.closePopup();
-                        window.parent.location.href = 'student_dashboard.php';
+                        window.parent.location.href = 'index.php';
                     </script>";
                     exit();
 
@@ -227,9 +227,7 @@ if (isset($_POST['register'])) {
             <button type="submit" name="register" class="btn-register">
                 REGISTER
             </button>
-            <div style="text-align:center; margin-top:10px;">
-                <a href="forgot_password.php" style="color:white;">Forgot Password?</a>
-            </div>
+            
 
         </form>
 

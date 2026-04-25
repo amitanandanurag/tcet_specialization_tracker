@@ -295,6 +295,9 @@ include_once("../database/db_connect.php");
 
                 </div>
             </div>
+                <div style="text-align:center; margin-top:10px;">
+                <a href="forgot_password.php" style="color:white;">Forgot Password?</a>
+            </div>
             <div class="copyright">
                 <p>© 2019. All rights reserved | Designed by <a href="https://dignityitsolution.com/"
                         target="_blank">Dignity IT Solution</a></p>
