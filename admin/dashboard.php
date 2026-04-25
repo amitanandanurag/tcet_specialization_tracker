@@ -133,14 +133,10 @@ foreach ($spec_data as $sd) {
 
 // 4. Branch-wise Distribution from Database
 $branch_query = "SELECT 
-    CASE 
-        WHEN LOCATE(' ', d.department_name) > 0 
-            THEN UPPER(SUBSTRING(d.department_name, 1, LOCATE(' ', d.department_name) - 1))
-        ELSE UPPER(d.department_name)
-    END as code,
+    d.department_name as code,
     COUNT(s.student_id) as count
 FROM st_department_master d
-LEFT JOIN st_student_master s ON d.department_id = s.department_id AND s.status = 0
+LEFT JOIN st_student_master s ON d.department_id = s.department_id AND s.status = 1
 GROUP BY d.department_id, d.department_name
 ORDER BY d.department_id";
 
