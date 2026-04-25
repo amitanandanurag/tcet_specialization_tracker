@@ -1,4 +1,8 @@
 <?php
+if (!isset($dashboardRoute)) {
+	$dashboardRoute = ((int) ($usertype ?? 0) === 5) ? 'student_dashboard.php' : 'index.php';
+}
+
 function sidebar_has_column($conn, $table, $column)
 {
 	$escapedColumn = mysqli_real_escape_string($conn, $column);
@@ -236,7 +240,7 @@ if ($menuStmt) {
 ?>
 
 <ul class="sidebar-menu" id="sidebar-dynamic-menu">
-<li class="active"><a href="index.php"><i class="fa fa-user"></i><span><?php echo htmlspecialchars($role_name); ?></span></a></li>
+<li class="active"><a href="index.php"><i class="fa fa-home"></i>HOME</a></li>
 
 <?php foreach ($menuTree as $menuId => $menuData) {
 	$menuName = trim((string) $menuData['menu_name']);

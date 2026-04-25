@@ -6,6 +6,7 @@ include_once("../database/db_connect.php");
 if (isset($_SESSION['user_session'])) {
 } else {
 	header("location: ../index.php");
+	exit;
 }
 
 $db_handle = new DBController();
@@ -53,11 +54,34 @@ if ($result && $result->num_rows > 0) {
 	}
 }
 
-$sql = "SELECT * FROM st_role_master WHERE role_id='" . $usertype . "'";
-$result = mysqli_query($db_handle->conn, $sql) or die("database error:" . mysqli_error($db_handle->conn));
-while ($row = $result->fetch_assoc()) {
-	$role_name = $row['role_name'];
+$name = $username;
+$profileSql = "SELECT user_name FROM st_user_master WHERE user_id = $userid AND role_id = $usertype LIMIT 1";
+$profileResult = mysqli_query($db_handle->conn, $profileSql);
+if ($profileResult && ($profileRow = mysqli_fetch_assoc($profileResult))) {
+	$profileName = trim((string)($profileRow['user_name'] ?? ''));
+	if ($profileName !== '') {
+		$name = $profileName;
+	}
 }
+
+if ($userid <= 0 || $usertype <= 0) {
+	header("location: ../index.php");
+	exit;
+}
+
+$sql = "SELECT role_name FROM st_role_master WHERE role_id = ? LIMIT 1";
+$stmt = mysqli_prepare($db_handle->conn, $sql);
+if ($stmt) {
+	mysqli_stmt_bind_param($stmt, 'i', $usertype);
+	mysqli_stmt_execute($stmt);
+	$result = mysqli_stmt_get_result($stmt);
+	if ($row = mysqli_fetch_assoc($result)) {
+		$role_name = $row['role_name'];
+	}
+	mysqli_stmt_close($stmt);
+}
+
+$dashboardRoute = ($usertype === 5) ? 'student_dashboard.php' : 'index.php';
 ?>
 <!DOCTYPE html>
 <html>
@@ -105,7 +129,7 @@ while ($row = $result->fetch_assoc()) {
 
 		<header class="main-header">
 			<!-- Logo -->
-			<a href="index.php" class="logo">
+			<a href="<?php echo $dashboardRoute; ?>" class="logo">
 				<!-- mini logo for sidebar mini 50x50 pixels -->
 				<span class="logo-mini"><img src="images/booklogo.webp" class="py-2" height="40px" /></span>
 				<!-- logo for regular state and mobile devices -->
@@ -167,7 +191,7 @@ while ($row = $result->fetch_assoc()) {
 						<img src="dist/img/user2-160x160.jpg" class="img-circle" alt="User Image">
 					</div>
 					<div class="pull-left info">
-						<p><?php echo $name;  ?></p>
+						<p><span><?php echo htmlspecialchars($role_name); ?></span></p>
 						<a class="badge" href="#" style="background:white; color: green;">
 							<i class="fa fa-circle text-success"></i> Online
 						</a>
