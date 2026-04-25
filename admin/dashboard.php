@@ -59,16 +59,15 @@ $mentor_query = "SELECT COUNT(*) as total FROM st_login WHERE role_id = 4";
 $mentor_result = mysqli_query($db_handle->conn, $mentor_query);
 $total_mentor = $mentor_result ? mysqli_fetch_assoc($mentor_result)['total'] : 0;
 
-// 3. Fetch Specialization Overview Data
 $spec_query = "SELECT 
     sm.specialization_id,
     sm.specialization_name,
-    COUNT(e.enrollment_id) as total,
-    SUM(CASE WHEN e.status = 'Active' THEN 1 ELSE 0 END) as approved,
-    SUM(CASE WHEN e.status = 'Suspended' THEN 1 ELSE 0 END) as rejected,
-    SUM(CASE WHEN e.status = 'Completed' THEN 1 ELSE 0 END) as pending
+    COUNT(s.student_id) as total,
+    SUM(CASE WHEN s.status = 1 THEN 1 ELSE 0 END) as approved,
+    SUM(CASE WHEN s.status = 0 THEN 1 ELSE 0 END) as pending,
+    0 as rejected
 FROM st_specialization_master sm
-LEFT JOIN st_enrollment e ON sm.specialization_id = e.specialization_id
+LEFT JOIN st_student_master s ON sm.specialization_id = s.specialization_id
 GROUP BY sm.specialization_id, sm.specialization_name
 ORDER BY sm.specialization_id";
 
@@ -91,15 +90,15 @@ $spec_labels = [];
 $spec_totals = [];
 foreach ($spec_data as $sd) {
     $spec_labels[] = '"' . $sd['name'] . '"';
-    $spec_totals[] = $sd['approved'];
+    $spec_totals[] = $sd['total'];
 }
 
-// 4. Branch-wise Distribution
+// 4. Branch-wise Distribution from Database
 $branch_query = "SELECT 
-    UPPER(SUBSTRING(d.department_name, 1, LOCATE(' ', d.department_name) - 1)) as code,
-    COUNT(s.std_id) as count
+    d.department_name as code,
+    COUNT(s.student_id) as count
 FROM st_department_master d
-LEFT JOIN dsms_student_master s ON d.department_id = s.department_id AND s.status = 1
+LEFT JOIN st_student_master s ON d.department_id = s.department_id AND s.status = 1
 GROUP BY d.department_id, d.department_name
 ORDER BY d.department_id";
 
@@ -112,6 +111,8 @@ if ($branch_result) {
         $branch_labels[] = '"' . $row['code'] . '"';
         $branch_counts[] = (int)$row['count'];
     }
+} else {
+    error_log("Branch distribution query failed: " . mysqli_error($db_handle->conn));
 }
 
 // 5. User Roles Overview
@@ -432,7 +433,7 @@ $rowcount_user = mysqli_num_rows($result1);
                         <p>Total Branches</p>
                     </div>
                     <div class="icon"><i class="ion ion-ios-book"></i></div>
-                    <a href="list.php?type=branches" class="small-box-footer">More info <i class="fa fa-arrow-circle-right"></i></a>
+                    <a href="branch_info.php" class="small-box-footer">More info <i class="fa fa-arrow-circle-right"></i></a>
                 </div>
             </div>
             <div class="col-lg-3 col-xs-6">

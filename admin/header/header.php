@@ -6,24 +6,63 @@ include_once("../database/db_connect.php");
 if (isset($_SESSION['user_session'])) {
 } else {
 	header("location: ../index.php");
+	exit;
 }
 
 $db_handle = new DBController();
 
-$sql = "SELECT * FROM st_login WHERE login_id='" . $_SESSION['user_session'] . "'";
-$result = mysqli_query($db_handle->conn, $sql) or die("database error:" . mysqli_error($db_handle->conn));
-while ($row = $result->fetch_assoc()) {
-	$username = $row['username'];
-	$userid = $row['user_id'];
-	$usertype = $row['role_id'];
-	$name = $row['username'];
+$sessionUserId = (int) ($_SESSION['user_session'] ?? 0);
+$sessionRoleId = (int) ($_SESSION['user_type'] ?? 0);
+$username = '';
+$userid = 0;
+$usertype = 0;
+$name = '';
+$role_name = '';
+
+$sql = "SELECT l.username, l.user_id, l.role_id,
+			   COALESCE(NULLIF(TRIM(s.fname), ''), NULLIF(TRIM(u.user_name), ''), l.username) AS display_name
+		FROM st_login l
+		LEFT JOIN st_user_master u ON u.user_id = l.user_id AND u.role_id = l.role_id
+		LEFT JOIN st_student_master s ON s.student_id = l.user_id AND l.role_id = 5
+		WHERE l.user_id = ?" . ($sessionRoleId > 0 ? " AND l.role_id = ?" : "") . "
+		LIMIT 1";
+$stmt = mysqli_prepare($db_handle->conn, $sql);
+if ($stmt) {
+	if ($sessionRoleId > 0) {
+		mysqli_stmt_bind_param($stmt, 'ii', $sessionUserId, $sessionRoleId);
+	} else {
+		mysqli_stmt_bind_param($stmt, 'i', $sessionUserId);
+	}
+	mysqli_stmt_execute($stmt);
+	$result = mysqli_stmt_get_result($stmt);
+	if ($row = mysqli_fetch_assoc($result)) {
+		$username = $row['username'];
+		$userid = (int) $row['user_id'];
+		$usertype = (int) $row['role_id'];
+		$name = $row['display_name'];
+		$_SESSION['user_type'] = $usertype;
+	}
+	mysqli_stmt_close($stmt);
 }
 
-$sql = "SELECT * FROM st_role_master WHERE role_id='" . $usertype . "'";
-$result = mysqli_query($db_handle->conn, $sql) or die("database error:" . mysqli_error($db_handle->conn));
-while ($row = $result->fetch_assoc()) {
-	$role_name = $row['role_name'];
+if ($userid <= 0 || $usertype <= 0) {
+	header("location: ../index.php");
+	exit;
 }
+
+$sql = "SELECT role_name FROM st_role_master WHERE role_id = ? LIMIT 1";
+$stmt = mysqli_prepare($db_handle->conn, $sql);
+if ($stmt) {
+	mysqli_stmt_bind_param($stmt, 'i', $usertype);
+	mysqli_stmt_execute($stmt);
+	$result = mysqli_stmt_get_result($stmt);
+	if ($row = mysqli_fetch_assoc($result)) {
+		$role_name = $row['role_name'];
+	}
+	mysqli_stmt_close($stmt);
+}
+
+$dashboardRoute = ($usertype === 5) ? 'student_dashboard.php' : 'index.php';
 ?>
 <!DOCTYPE html>
 <html>
@@ -71,7 +110,7 @@ while ($row = $result->fetch_assoc()) {
 
 		<header class="main-header">
 			<!-- Logo -->
-			<a href="index.php" class="logo">
+			<a href="<?php echo $dashboardRoute; ?>" class="logo">
 				<!-- mini logo for sidebar mini 50x50 pixels -->
 				<span class="logo-mini"><img src="images/booklogo.webp" class="py-2" height="40px" /></span>
 				<!-- logo for regular state and mobile devices -->
