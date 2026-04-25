@@ -40,15 +40,24 @@ LEFT JOIN st_specialization_master sp ON sp.specialization_id = sm.specializatio
 LEFT JOIN st_specialization_subject_master ssb ON ssb.subject_id = sm.specialization_subject_id
 WHERE sm.status = '0'";
 
-// Apply filters
+// Collect filters
+$filters = [];
+
 if (!empty($select_class)) {
-    $sql .= " AND sm.class_id = '" . mysqli_real_escape_string($db_handle->conn, $select_class) . "'";
+    $filters[] = "sm.class_id = '" . mysqli_real_escape_string($db_handle->conn, $select_class) . "'";
 }
+
 if (!empty($select_section)) {
-    $sql .= " AND sm.division_id = '" . mysqli_real_escape_string($db_handle->conn, $select_section) . "'";
+    $filters[] = "sm.division_id = '" . mysqli_real_escape_string($db_handle->conn, $select_section) . "'";
 }
+
 if (!empty($select_session)) {
-    $sql .= " AND sm.academic_year = '" . mysqli_real_escape_string($db_handle->conn, $select_session) . "'";
+    $filters[] = "sm.academic_year = '" . mysqli_real_escape_string($db_handle->conn, $select_session) . "'";
+}
+
+// Apply filters to query
+if (!empty($filters)) {
+    $sql .= " AND " . implode(" AND ", $filters);
 }
 
 // Search
@@ -113,6 +122,8 @@ while ($row = mysqli_fetch_assoc($result)) {
     
     // Registration No
     $nestedData[] = "<strong>{$row['registration_no']}</strong>";
+
+    $nestedData[] = !empty($row['academic_year']) ? $row['academic_year'] : '-';
     
     // Name
     $nestedData[] = "<div align='left'><strong>" . htmlspecialchars($row['fname']) . "</strong></div>";

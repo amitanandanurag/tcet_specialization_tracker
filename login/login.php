@@ -77,3 +77,4 @@ if (!$db_handle || !($db_handle->conn instanceof mysqli)) {
 	}
 }
 ?>
+
