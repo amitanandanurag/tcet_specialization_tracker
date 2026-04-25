@@ -3,6 +3,37 @@ session_start();
 require "../database/db_connect.php";
 $db_handle = new DBController();
 
+$sessionUserId = intval($_SESSION['user_id'] ?? $_SESSION['user_session'] ?? 0);
+$sessionRoleId = intval($_SESSION['user_type'] ?? 0);
+
+$coordinatorRoleIds = [];
+$roleLookupResult = $db_handle->query("SELECT role_id, UPPER(role_name) AS role_name FROM st_role_master");
+if ($roleLookupResult) {
+    while ($roleRow = mysqli_fetch_assoc($roleLookupResult)) {
+        $roleTitle = (string) $roleRow['role_name'];
+        if (strpos($roleTitle, 'COORDINATOR') !== false || strpos($roleTitle, 'HOD') !== false) {
+            $coordinatorRoleIds[] = (int) $roleRow['role_id'];
+        }
+    }
+}
+
+if (empty($coordinatorRoleIds)) {
+    $coordinatorRoleIds = [3];
+}
+
+$departmentFilterSql = '';
+$isCoordinator = in_array($sessionRoleId, $coordinatorRoleIds, true);
+if ($isCoordinator && $sessionUserId > 0) {
+    $deptSql = "SELECT department_id FROM st_user_master WHERE user_id = $sessionUserId AND role_id = $sessionRoleId LIMIT 1";
+    $deptResult = $db_handle->query($deptSql);
+    if ($deptResult && ($deptRow = mysqli_fetch_assoc($deptResult))) {
+        $departmentId = intval($deptRow['department_id'] ?? 0);
+        if ($departmentId > 0) {
+            $departmentFilterSql = " AND sm.department_id = $departmentId";
+        }
+    }
+}
+
 $requestData = $_REQUEST;
 $select_class = $_POST['select_class'] ?? '';
 $select_section = $_POST['select_section'] ?? '';
@@ -22,7 +53,7 @@ LEFT JOIN st_section_master sec ON sec.id = sm.division_id
 LEFT JOIN st_department_master dep ON dep.department_id = sm.department_id
 LEFT JOIN st_specialization_master sp ON sp.specialization_id = sm.specialization_id
 LEFT JOIN st_specialization_subject_master ssb ON ssb.subject_id = sm.specialization_subject_id
-WHERE sm.status = '0'";
+WHERE sm.status = '0'" . $departmentFilterSql;
 
 if (!empty($select_class)) {
     $baseSql .= " AND sm.class_id = '" . mysqli_real_escape_string($db_handle->conn, $select_class) . "'";
@@ -76,7 +107,7 @@ $sql = "SELECT
 {$baseSql}";
 
 // Total counts
-$totalDataQuery = "SELECT COUNT(*) AS total FROM st_student_master sm WHERE sm.status = '0'";
+$totalDataQuery = "SELECT COUNT(*) AS total FROM st_student_master sm WHERE sm.status = '0'" . $departmentFilterSql;
 $totalDataResult = $db_handle->query($totalDataQuery);
 $totalDataRow = $totalDataResult ? mysqli_fetch_assoc($totalDataResult) : ['total' => 0];
 $totalData = (int) ($totalDataRow['total'] ?? 0);

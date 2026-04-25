@@ -54,7 +54,9 @@ if (!$db_handle || !($db_handle->conn instanceof mysqli)) {
 
 	if($row['password']==$user_password){
 
-	    $_SESSION['user_session'] = $row['user_id'];
+	    $_SESSION['user_session'] = $row['login_id'];
+	    $_SESSION['user_login_id'] = $row['login_id'];
+	    $_SESSION['user_id'] = $row['user_id'];
 		$_SESSION['user_type'] = $row['role_id'];
 		$db_handle->writeAuditLog(
 			intval($row['user_id']),
