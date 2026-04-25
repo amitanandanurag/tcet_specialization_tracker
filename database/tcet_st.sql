@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Apr 23, 2026 at 10:30 AM
+-- Generation Time: Apr 25, 2026 at 11:12 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -36,6 +36,17 @@ CREATE TABLE `st_audit_log` (
   `description` text DEFAULT NULL,
   `performed_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `st_audit_log`
+--
+
+INSERT INTO `st_audit_log` (`audit_id`, `user_id`, `action_type`, `affected_table`, `affected_record`, `description`, `performed_at`) VALUES
+(1, 1, 'LOGIN_SUCCESS', 'st_login', 1, 'User \'amit@tcetmumbai.in\' logged in successfully with role 1 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-24 13:40:46'),
+(2, 1, 'LOGIN_SUCCESS', 'st_login', 1, 'User \'amit@tcetmumbai.in\' logged in successfully with role 1 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-24 13:41:49'),
+(3, 0, 'LOGIN_FAILED', 'st_login', NULL, 'Login failed for username \'superadmin@tcetmumbai.in\' from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-25 08:56:44'),
+(4, 1, 'LOGIN_SUCCESS', 'st_login', 1, 'User \'superadmin@tcetmumbai.in\' logged in successfully with role 1 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-25 08:58:11'),
+(5, 1, 'LOGIN_SUCCESS', 'st_login', 1, 'User \'superadmin@tcetmumbai.in\' logged in successfully with role 1 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-25 09:03:30');
 
 -- --------------------------------------------------------
 
@@ -216,8 +227,11 @@ CREATE TABLE `st_login` (
 --
 
 INSERT INTO `st_login` (`login_id`, `username`, `password`, `role_id`, `user_id`, `created_at`) VALUES
-(1, 'amit@tcetmumbai.in', 'Amit@1234', 1, 1, '2026-04-13 09:12:17'),
-(2, 'anurag@gmail.com', 'Admin@123', 2, 2, '2026-04-14 13:23:17');
+(1, 'superadmin@tcetmumbai.in', 'Amit@1234', 1, 1, '2026-04-23 09:44:44'),
+(2, 'admin@tcetmumbai.in', 'Amit@1234', 2, 2, '2026-04-23 09:45:37'),
+(3, 'coordinator@tcetmumbai.in', 'Amit@1234', 3, 3, '2026-04-23 09:48:36'),
+(4, 'mentor@tcetmumbai.in', 'Amit@1234', 4, 4, '2026-04-23 09:48:36'),
+(5, 'student@tcetmumbai.in', 'Amit@1234', 5, 5, '2026-04-23 09:50:00');
 
 -- --------------------------------------------------------
 
@@ -322,7 +336,9 @@ INSERT INTO `st_menu_allocation_master` (`menu_allocation_id`, `user_id`, `role_
 (236, 0, 2, 5, 13),
 (237, 0, 2, 5, NULL),
 (238, 0, 2, 5, 20),
-(239, 0, 2, 5, 21);
+(239, 0, 2, 5, 21),
+(240, 0, 1, 5, 47),
+(241, 0, 1, 4, 48);
 
 -- --------------------------------------------------------
 
@@ -346,6 +362,115 @@ INSERT INTO `st_menu_master` (`menu_id`, `menu_name`, `menu_icon`) VALUES
 (3, 'coordinator', 'fa fa-user-secret'),
 (4, 'mentor', 'fa fa-users'),
 (5, 'Settings', 'fa fa-user');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `st_minorcourse`
+--
+
+CREATE TABLE `st_minorcourse` (
+  `course_id` int(11) NOT NULL,
+  `course_name` varchar(100) NOT NULL,
+  `course_type` varchar(50) NOT NULL,
+  `coordinator` varchar(100) DEFAULT NULL,
+  `total_credits` int(11) DEFAULT 18
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `st_minorcourse`
+--
+
+INSERT INTO `st_minorcourse` (`course_id`, `course_name`, `course_type`, `coordinator`, `total_credits`) VALUES
+(1, 'Performing Arts - Music', 'Certification', NULL, 18),
+(2, 'Performing Arts - Dance', 'Certification', NULL, 18),
+(3, 'Performing Arts - Drama', 'Certification', NULL, 18),
+(4, 'Life Sciences - Science of Energy', 'MOOCs', 'Dr. Rajni Bahuguna', 18),
+(5, 'Life Sciences - Biotechnology', 'MOOCs', NULL, 18),
+(6, 'Mathematical Computing', 'MOOCs', 'Dr. Vivek Bharatiya', 18),
+(7, 'Finance Management', 'MOOCs', 'Mr. Sudhir Mundra', 18),
+(8, 'Life Skills - Health & Nutrition', 'Institute', NULL, 18),
+(9, 'Life Skills - Social & Welfare', 'MOOCs', 'Dr. Vinita Gupta', 18),
+(10, 'Life Skills - Physical Education (NCC)', 'Institute', 'Commandar Vijaypratap Singh', 18);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `st_minorsubject`
+--
+
+CREATE TABLE `st_minorsubject` (
+  `subject_id` int(11) NOT NULL,
+  `course_id` int(11) NOT NULL,
+  `semester_id` int(11) NOT NULL,
+  `subject_name` varchar(255) NOT NULL,
+  `duration` varchar(20) DEFAULT '12 weeks',
+  `detail` text DEFAULT NULL,
+  `credits` int(11) DEFAULT 3
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `st_minorsubject`
+--
+
+INSERT INTO `st_minorsubject` (`subject_id`, `course_id`, `semester_id`, `subject_name`, `duration`, `detail`, `credits`) VALUES
+(1, 1, 3, 'Raga studies', '12 weeks', NULL, 3),
+(2, 1, 4, 'Study of Tala', '12 weeks', NULL, 3),
+(3, 1, 5, 'Hindustani music', '12 weeks', NULL, 3),
+(4, 1, 6, 'Folk music', '12 weeks', NULL, 3),
+(5, 1, 7, 'Western music', '12 weeks', NULL, 3),
+(6, 2, 3, 'History of Dance', '12 weeks', NULL, 3),
+(7, 2, 4, 'Indian Culture', '12 weeks', NULL, 3),
+(8, 2, 5, 'Techniques of Dance', '12 weeks', NULL, 3),
+(9, 2, 6, 'Performance Practice', '12 weeks', NULL, 3),
+(10, 2, 7, 'Dance on Camera', '12 weeks', NULL, 3),
+(11, 3, 3, 'Indian theatre', '12 weeks', NULL, 3),
+(12, 3, 4, 'Basic vocal practice', '12 weeks', NULL, 3),
+(13, 3, 5, 'Event management', '12 weeks', NULL, 3),
+(14, 3, 6, 'Camera, light, sound', '12 weeks', NULL, 3),
+(15, 3, 7, 'Projects on short films', '12 weeks', NULL, 3),
+(16, 4, 3, 'Non-Conventional Energy Resources', '12 weeks', 'https://nptel.ac.in/courses/121106014', 3),
+(17, 4, 4, 'Waste to Energy Conversion', '12 weeks', 'https://nptel.ac.in/courses/103107125', 3),
+(18, 4, 5, 'Mass Momentum And Energy Balances In Engineering Analysis', '12 weeks', 'https://nptel.ac.in/courses/105105186', 3),
+(19, 4, 6, 'Renewable Energy Engineering: Solar, Wind and Biomass Energy Systems', '12 weeks', 'https://nptel.ac.in/courses/103103206', 3),
+(20, 4, 7, 'Energy Efficiency, Acoustics and Daylighting in Building', '12 weeks', 'https://nptel.ac.in/courses/105102175', 3),
+(21, 4, 8, 'Energy Resources, Economics and Environment', '12 weeks', 'https://nptel.ac.in/courses/109101171', 3),
+(22, 5, 3, 'Basics of Biology', '12 weeks', 'https://onlinecourses.nptel.ac.in/noc23_bt25', 3),
+(23, 5, 4, 'Structural Biology', '12 weeks', 'https://onlinecourses.nptel.ac.in/noc23_bt23', 3),
+(24, 5, 5, 'Aspects Of Biochemical Engineering', '12 weeks', 'https://onlinecourses.nptel.ac.in/noc23_bt08', 3),
+(25, 5, 6, 'Computational Systems Biology', '12 weeks', 'https://onlinecourses.nptel.ac.in/noc23_bt14', 3),
+(26, 5, 7, 'Bioinformatics: Algorithms and Applications', '12 weeks', 'https://onlinecourses.nptel.ac.in/noc23_bt12', 3),
+(27, 5, 8, 'Material and Energy Balances', '12 weeks', 'https://onlinecourses.nptel.ac.in/noc23_bt16', 3),
+(28, 6, 3, 'Essentials of Data Science with R Software-1: Probability & Statistical Inference', '12 weeks', 'https://archive.nptel.ac.in/courses/111/104/111104146/', 3),
+(29, 6, 4, 'Essentials Of Data Science With R Software-2: Sampling Theory And Linear Regression Analysis', '12 weeks', 'https://archive.nptel.ac.in/courses/111/104/111104147/', 3),
+(30, 6, 5, 'Numerical Linear Algebra', '12 weeks', 'https://archive.nptel.ac.in/courses/111/107/111107106/', 3),
+(31, 6, 6, 'Convex Optimization', '12 weeks', 'https://archive.nptel.ac.in/courses/111/104/111104068/', 3),
+(32, 6, 7, 'Regression Analysis', '12 weeks', 'https://archive.nptel.ac.in/courses/111/105/111105042/', 3),
+(33, 6, 8, 'Applied Multivariate Statistical Modelling', '12 weeks', 'https://archive.nptel.ac.in/courses/111/105/111105091/', 3),
+(34, 7, 3, 'Financial Statement Analysis and Reporting', '12 weeks', 'https://onlinecourses.nptel.ac.in/noc23_mg12', 3),
+(35, 7, 4, 'Financial Accounting', '12 weeks', 'https://onlinecourses.nptel.ac.in/noc23_mg65', 3),
+(36, 7, 5, 'Financial Derivatives & Risk Management', '12 weeks', 'https://onlinecourses.nptel.ac.in/noc23_mg34', 3),
+(37, 7, 6, 'Financial Institutions And Markets', '12 weeks', 'https://onlinecourses.nptel.ac.in/noc23_mg46', 3),
+(38, 7, 7, 'Safety and Risk Analytics', '12 weeks', 'https://onlinecourses.nptel.ac.in/noc23_mg48', 3),
+(39, 7, 8, 'Artificial Intelligence (AI) for Investments', '12 weeks', 'https://onlinecourses.nptel.ac.in/noc23_mg63', 3),
+(40, 8, 3, 'Basic Food Science-I', '12 weeks', 'Basic concept on Food, Nutrition and Nutrients, Carbohydrates, Lipids, Proteins', 3),
+(41, 8, 4, 'Basic Food Science-II', '12 weeks', 'Dietary Fibre, Minerals & Trace Elements, Vitamins, Water, Methods of Cooking and Preventing Nutrient Losses', 3),
+(42, 8, 5, 'Human Nutrition-I', '12 weeks', 'Minimum Nutritional Requirement, Energy in Human Nutrition, Growth & Development from infancy to adulthood, Growth monitoring and promotion', 3),
+(43, 8, 6, 'Human Nutrition-II', '12 weeks', 'Nutrition During Pregnancy, Nutrition during Lactation, Nutrition during Infancy', 3),
+(44, 8, 7, 'Therapeutic Nutrition', '12 weeks', 'Principles of nutrition care, Etiology, Food allergy and food intolerance', 3),
+(45, 8, 8, 'Public Health Nutrition', '12 weeks', 'Introduction to Nutritional deficiency diseases, Causes, Social Health problems, Nutrition for Special conditions, Food Security', 3),
+(46, 9, 3, 'Concept of Society and Social Issues in India - Social Justice & Regional Imbalance', '12 weeks', 'https://onlinecourses.swayam2.ac.in/cec21_hs31', 3),
+(47, 9, 4, 'Woman Empowerment - Gender Justice and Workplace Security', '12 weeks', 'https://onlinecourses.nptel.ac.in/noc20_mg42', 3),
+(48, 9, 5, 'Health, Hygiene and Diseases - Disaster Management', '12 weeks', 'http://ecoursesonline.iasri.res.in/course/view.php?id=187', 3),
+(49, 9, 6, 'Environment Education for Sustainable Development', '12 weeks', 'https://onlinecourses.nptel.ac.in/noc22_hs61/preview', 3),
+(50, 9, 7, 'Youth Empowerment Programs - Education & Awareness Activities', '12 weeks', 'https://onlinecourses.nptel.ac.in/noc23_hs74/preview | https://onlinecourses.swayam2.ac.in/aic23_ge05/preview', 3),
+(51, 9, 8, 'Voluntary Organization (VOs) and Government Organization (GOs)', '12 weeks', 'https://nptel.ac.in/courses/110106141', 3),
+(52, 10, 1, 'NCC Programme I', '12 weeks', 'NCC General, National Integration-1, National Integration-2', 3),
+(53, 10, 2, 'NCC Programme II', '12 weeks', 'Personality Development, Leadership, Communication, Health & Hygiene, Nutrition, Social Service, Community Development', 3),
+(54, 10, 3, 'NCC Programme III', '12 weeks', 'Disaster Management, Adventure, Border & Coastal Area', 3),
+(55, 10, 4, 'NCC Programme IV', '12 weeks', 'Environmental Awareness and Conservation, General Awareness, Armed Forces', 3),
+(56, 10, 5, 'NCC Programme V', '12 weeks', 'Obstacle Training, Defence Entrance Examination & SSB Training, Government New Initiatives, Infantry Weapons', 3),
+(57, 10, 6, 'NCC Programme VI', '12 weeks', 'Communication, Emotional Intelligence, Defence Entrance Exams and SSB Training, Indian Armed Forces, Medical and Paramedical Services of Armed Forces', 3);
 
 -- --------------------------------------------------------
 
@@ -385,6 +510,33 @@ CREATE TABLE `st_nptel_records` (
   `offline_exam_score` decimal(5,2) DEFAULT NULL,
   `offline_exam_date` date DEFAULT NULL,
   `recorded_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `st_offline_marks_entry`
+--
+
+CREATE TABLE `st_offline_marks_entry` (
+  `entry_id` int(11) NOT NULL,
+  `student_id` int(11) NOT NULL,
+  `semester_id` int(11) NOT NULL,
+  `course_name` varchar(200) NOT NULL,
+  `nptel_status` enum('Pass','Fail') NOT NULL,
+  `nptel_exam_score` decimal(5,2) DEFAULT NULL,
+  `nptel_assignment_raw` decimal(5,2) DEFAULT NULL,
+  `nptel_assignment_converted` decimal(5,2) DEFAULT NULL,
+  `ise1_marks` decimal(5,2) DEFAULT NULL,
+  `ise2_marks` decimal(5,2) DEFAULT NULL,
+  `ese_written_marks` decimal(5,2) DEFAULT NULL,
+  `college_total_score` decimal(6,2) DEFAULT NULL,
+  `final_score` decimal(6,2) DEFAULT NULL,
+  `remarks` text DEFAULT NULL,
+  `created_by` int(11) DEFAULT NULL,
+  `updated_by` int(11) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -455,6 +607,31 @@ INSERT INTO `st_section_master` (`id`, `sections`, `date`) VALUES
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `st_semester`
+--
+
+CREATE TABLE `st_semester` (
+  `semester_id` int(11) NOT NULL,
+  `semester_name` varchar(20) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `st_semester`
+--
+
+INSERT INTO `st_semester` (`semester_id`, `semester_name`) VALUES
+(1, 'Semester I'),
+(2, 'Semester II'),
+(3, 'Semester III'),
+(4, 'Semester IV'),
+(5, 'Semester V'),
+(6, 'Semester VI'),
+(7, 'Semester VII'),
+(8, 'Semester VIII');
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `st_semester_master`
 --
 
@@ -518,8 +695,9 @@ CREATE TABLE `st_specialization_master` (
 
 INSERT INTO `st_specialization_master` (`specialization_id`, `specialization_name`, `min_cgpa`, `kt_allowed`, `sem_from`, `sem_to`, `is_exclusive`) VALUES
 (1, 'Honours Degree', 7.00, 0, 4, 8, 1),
-(2, 'Minor Degree', 0.00, 1, NULL, NULL, 0),
-(3, 'Honours with Research', 7.50, 0, 7, 8, 1);
+(2, 'Honours with Research', 7.50, 0, 7, 8, 1),
+(3, 'Minor Degree', 7.00, 1, NULL, NULL, 0),
+(4, 'Minor Multidisciplinary', 0.00, 0, NULL, NULL, 0);
 
 -- --------------------------------------------------------
 
@@ -529,36 +707,37 @@ INSERT INTO `st_specialization_master` (`specialization_id`, `specialization_nam
 
 CREATE TABLE `st_specialization_subject_master` (
   `subject_id` int(11) NOT NULL,
-  `subject_name` text NOT NULL
+  `subject_name` text NOT NULL,
+  `specialization_id` int(10) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `st_specialization_subject_master`
 --
 
-INSERT INTO `st_specialization_subject_master` (`subject_id`, `subject_name`) VALUES
-(1, 'Artificial Intelligence and Machine Learning'),
-(2, 'Data Science'),
-(3, 'Advance Web Development'),
-(4, 'Advanced Cyber secur4y and Quantum Cryptography'),
-(5, 'Cyber Security'),
-(6, 'Finance Management'),
-(7, 'Sector Specific Specialization in Artificial Intelligence'),
-(8, 'Innovation, Entrepreneurial and Venture Development'),
-(9, 'Blockchain'),
-(10, 'Business Development, Marketing and Finance'),
-(11, 'VLSI Design & Technology'),
-(12, 'Sector Specific Specialization in 13'),
-(13, '3D Printing'),
-(14, 'Internet of Things'),
-(15, 'Railway Technology'),
-(16, 'Energy Engineering'),
-(17, 'Infrastructure Engineering'),
-(18, 'Green Technology and Sustainability'),
-(19, 'Robotics'),
-(20, 'Electric Vehicle Technology'),
-(21, 'Mathematical Computing'),
-(22, 'Sector Specific Specialization in 2');
+INSERT INTO `st_specialization_subject_master` (`subject_id`, `subject_name`, `specialization_id`) VALUES
+(1, 'Artificial Intelligence and Machine Learning', 1),
+(2, 'Data Science', 1),
+(3, 'Advance Web Development', 1),
+(4, 'Advanced Cyber secur4y and Quantum Cryptography', 1),
+(5, 'Cyber Security', 1),
+(6, 'Finance Management', 1),
+(7, 'Sector Specific Specialization in Artificial Intelligence', 1),
+(8, 'Innovation, Entrepreneurial and Venture Development', 1),
+(9, 'Blockchain', 1),
+(10, 'Business Development, Marketing and Finance', 1),
+(11, 'VLSI Design & Technology', 1),
+(12, 'Sector Specific Specialization in 13', 1),
+(13, '3D Printing', 1),
+(14, 'Internet of Things', 1),
+(15, 'Railway Technology', 1),
+(16, 'Energy Engineering', 1),
+(17, 'Infrastructure Engineering', 1),
+(18, 'Green Technology and Sustainability', 1),
+(19, 'Robotics', 1),
+(20, 'Electric Vehicle Technology', 1),
+(21, 'Mathematical Computing', 1),
+(22, 'Sector Specific Specialization in 2', 1);
 
 -- --------------------------------------------------------
 
@@ -1192,7 +1371,12 @@ INSERT INTO `st_student_master` (`student_id`, `academic_year`, `registration_no
 (595, '2025-26', '', 5, 0, 0, '10', 13, 1, 5, 8.91, 'Anand kalirana', '', '', '', 0, '', '', '', '0000-00-00 00:00:00'),
 (596, '2025-26', '', 5, 0, 0, '16', 13, 1, 5, 7.23, 'Shreya Mishra', '', '', '', 0, '', '', '', '0000-00-00 00:00:00'),
 (597, '2025-26', '', 5, 0, 0, '31', 13, 1, 5, 8.04, 'Yatin varma', '', '', '', 0, '', '', '', '0000-00-00 00:00:00'),
-(598, '2025-26', '', 5, 0, 0, '1', 13, 1, 19, 7.60, 'Girik Arora', '', '', '', 0, '', '', '', '0000-00-00 00:00:00');
+(598, '2025-26', '', 5, 0, 0, '1', 13, 1, 19, 7.60, 'Girik Arora', '', '', '', 0, '', '', '', '0000-00-00 00:00:00'),
+(599, '2026 - 2027', 'B1032243044', 2, 5, 1, '33', 1, 3, 18, NULL, 'Why AmI', '8997232773', 'why@tcetmumbai.in', NULL, 1, '[]', '[]', '[]', '2026-04-23 09:33:22'),
+(600, '2026 - 2027', '9324877888', 3, 4, 2, '65', 4, 4, NULL, NULL, 'Mohan Yadav', '9302738289', 'rex@tcetmumbai.in', NULL, 1, '[]', '[]', '[]', '2026-04-23 09:55:22'),
+(601, '2026 - 2027', '8988878889', 3, 4, 1, '67', 2, 4, NULL, NULL, 'Maini', '2382398938', 'maini@tcetmumbai.in', NULL, 1, '[]', '[]', '[]', '2026-04-24 09:28:45'),
+(602, '2026 - 2027', '785877899', 2, 4, 1, '66', NULL, 4, NULL, NULL, 'Rishi Raj', '3434334433', 'rtsrt@tcetmumbai.in', NULL, 1, '[]', '[]', '[]', '2026-04-24 10:58:13'),
+(603, '2026 - 2027', '83299383289', 2, 4, 2, '22', 1, 4, NULL, NULL, 'Rish Dubey', '2199210921', 'r@tcetmumbai.in', NULL, 1, '[]', '[]', '[]', '2026-04-24 11:29:14');
 
 -- --------------------------------------------------------
 
@@ -1286,7 +1470,9 @@ INSERT INTO `st_sub_menu_master` (`sub_menu_id`, `menu_id`, `sort_order`, `sub_m
 (23, 5, 5, 'Menu', 'fa fa-folder', 'class_crud_new.php?tab=menu-list'),
 (24, 5, 6, 'Sub Menu', 'fa fa-folder', 'class_crud_new.php?tab=sub-menu-list'),
 (25, 5, 7, 'Side Menu Allocation', 'fa fa-check-square-o', 'allocation_master.php'),
-(46, 5, 4, 'Manage Section', 'fa fa-list-alt', 'class_crud_new.php?tab=section-list');
+(46, 5, 4, 'Manage Section', 'fa fa-list-alt', 'class_crud_new.php?tab=section-list'),
+(47, 5, 8, 'Offline Marks Entry', 'fa fa-pencil-square-o', 'offline_marks_entry.php'),
+(48, 4, 3, 'Mentor Allocation', 'fa fa-exchange', 'mentor_allocation.php');
 
 -- --------------------------------------------------------
 
@@ -1323,7 +1509,8 @@ CREATE TABLE `st_user_master` (
 INSERT INTO `st_user_master` (`user_id`, `user_name`, `email_id`, `phone_number`, `department_id`, `role_id`, `student_id`) VALUES
 (1, 'Anurag Mishra', 'amit@tcetmumbai.in', '8080590516', 1, 1, 0),
 (2, 'Amit Kumar', 'anurag@tcetmumbai.in', '8080590516', 1, 2, 0),
-(3, 'Ashutosh Pandey', 'asdf@tcetmumbai.in', '234', 2, 2, 0);
+(3, 'Ashutosh Pandey', 'asdf@tcetmumbai.in', '234', 2, 2, 0),
+(4, 'Ashutosh', '1032251400@tcetmumbai.in', '9702420582', 1, 4, 0);
 
 -- --------------------------------------------------------
 
@@ -1429,6 +1616,20 @@ ALTER TABLE `st_menu_master`
   ADD PRIMARY KEY (`menu_id`);
 
 --
+-- Indexes for table `st_minorcourse`
+--
+ALTER TABLE `st_minorcourse`
+  ADD PRIMARY KEY (`course_id`);
+
+--
+-- Indexes for table `st_minorsubject`
+--
+ALTER TABLE `st_minorsubject`
+  ADD PRIMARY KEY (`subject_id`),
+  ADD KEY `course_id` (`course_id`),
+  ADD KEY `semester_id` (`semester_id`);
+
+--
 -- Indexes for table `st_minor_certificates`
 --
 ALTER TABLE `st_minor_certificates`
@@ -1439,6 +1640,13 @@ ALTER TABLE `st_minor_certificates`
 --
 ALTER TABLE `st_nptel_records`
   ADD PRIMARY KEY (`nptel_id`);
+
+--
+-- Indexes for table `st_offline_marks_entry`
+--
+ALTER TABLE `st_offline_marks_entry`
+  ADD PRIMARY KEY (`entry_id`),
+  ADD UNIQUE KEY `uniq_offline_marks` (`student_id`,`semester_id`,`course_name`);
 
 --
 -- Indexes for table `st_research_records`
@@ -1457,6 +1665,12 @@ ALTER TABLE `st_role_master`
 --
 ALTER TABLE `st_section_master`
   ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `st_semester`
+--
+ALTER TABLE `st_semester`
+  ADD PRIMARY KEY (`semester_id`);
 
 --
 -- Indexes for table `st_semester_master`
@@ -1528,7 +1742,7 @@ ALTER TABLE `unaided_sub`
 -- AUTO_INCREMENT for table `st_audit_log`
 --
 ALTER TABLE `st_audit_log`
-  MODIFY `audit_id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `audit_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `st_batch_master`
@@ -1582,7 +1796,7 @@ ALTER TABLE `st_enrollment`
 -- AUTO_INCREMENT for table `st_login`
 --
 ALTER TABLE `st_login`
-  MODIFY `login_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `login_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `st_mentor_student_mapping`
@@ -1594,13 +1808,19 @@ ALTER TABLE `st_mentor_student_mapping`
 -- AUTO_INCREMENT for table `st_menu_allocation_master`
 --
 ALTER TABLE `st_menu_allocation_master`
-  MODIFY `menu_allocation_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=240;
+  MODIFY `menu_allocation_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=242;
 
 --
 -- AUTO_INCREMENT for table `st_menu_master`
 --
 ALTER TABLE `st_menu_master`
   MODIFY `menu_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+
+--
+-- AUTO_INCREMENT for table `st_minorsubject`
+--
+ALTER TABLE `st_minorsubject`
+  MODIFY `subject_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=58;
 
 --
 -- AUTO_INCREMENT for table `st_minor_certificates`
@@ -1613,6 +1833,12 @@ ALTER TABLE `st_minor_certificates`
 --
 ALTER TABLE `st_nptel_records`
   MODIFY `nptel_id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `st_offline_marks_entry`
+--
+ALTER TABLE `st_offline_marks_entry`
+  MODIFY `entry_id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `st_research_records`
@@ -1648,7 +1874,7 @@ ALTER TABLE `st_session_master`
 -- AUTO_INCREMENT for table `st_specialization_master`
 --
 ALTER TABLE `st_specialization_master`
-  MODIFY `specialization_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `specialization_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `st_specialization_subject_master`
@@ -1660,7 +1886,7 @@ ALTER TABLE `st_specialization_subject_master`
 -- AUTO_INCREMENT for table `st_student_master`
 --
 ALTER TABLE `st_student_master`
-  MODIFY `student_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=599;
+  MODIFY `student_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=604;
 
 --
 -- AUTO_INCREMENT for table `st_student_master_old`
@@ -1672,7 +1898,7 @@ ALTER TABLE `st_student_master_old`
 -- AUTO_INCREMENT for table `st_sub_menu_master`
 --
 ALTER TABLE `st_sub_menu_master`
-  MODIFY `sub_menu_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=47;
+  MODIFY `sub_menu_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=49;
 
 --
 -- AUTO_INCREMENT for table `st_user_log_master`
@@ -1684,13 +1910,24 @@ ALTER TABLE `st_user_log_master`
 -- AUTO_INCREMENT for table `st_user_master`
 --
 ALTER TABLE `st_user_master`
-  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `unaided_sub`
 --
 ALTER TABLE `unaided_sub`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+
+--
+-- Constraints for dumped tables
+--
+
+--
+-- Constraints for table `st_minorsubject`
+--
+ALTER TABLE `st_minorsubject`
+  ADD CONSTRAINT `st_minorsubject_ibfk_1` FOREIGN KEY (`course_id`) REFERENCES `st_minorcourse` (`course_id`),
+  ADD CONSTRAINT `st_minorsubject_ibfk_2` FOREIGN KEY (`semester_id`) REFERENCES `st_semester` (`semester_id`);
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
