@@ -10,13 +10,47 @@ if (isset($_SESSION['user_session'])) {
 
 $db_handle = new DBController();
 
-$sql = "SELECT * FROM st_login WHERE login_id='" . $_SESSION['user_session'] . "'";
-$result = mysqli_query($db_handle->conn, $sql) or die("database error:" . mysqli_error($db_handle->conn));
-while ($row = $result->fetch_assoc()) {
+$sessionLoginId = intval($_SESSION['user_login_id'] ?? $_SESSION['user_session'] ?? 0);
+$sessionUserId = intval($_SESSION['user_id'] ?? $_SESSION['user_session'] ?? 0);
+$sessionRoleId = intval($_SESSION['user_type'] ?? 0);
+
+$username = '';
+$userid = 0;
+$usertype = 0;
+$name = '';
+
+$sql = "SELECT * FROM st_login WHERE login_id='" . $sessionLoginId . "' LIMIT 1";
+$result = mysqli_query($db_handle->conn, $sql);
+
+if ($result && $result->num_rows > 0) {
+	$row = $result->fetch_assoc();
 	$username = $row['username'];
-	$userid = $row['user_id'];
-	$usertype = $row['role_id'];
+	$userid = intval($row['user_id']);
+	$usertype = intval($row['role_id']);
 	$name = $row['username'];
+} else {
+	if ($sessionUserId > 0 && $sessionRoleId > 0) {
+		$fallbackSql = "SELECT * FROM st_login WHERE user_id='" . $sessionUserId . "' AND role_id='" . $sessionRoleId . "' ORDER BY login_id DESC LIMIT 1";
+	} else {
+		$fallbackSql = "SELECT * FROM st_login WHERE user_id='" . $sessionUserId . "' ORDER BY login_id DESC LIMIT 1";
+	}
+
+	$fallbackResult = mysqli_query($db_handle->conn, $fallbackSql);
+	if ($fallbackResult && $fallbackResult->num_rows > 0) {
+		$row = $fallbackResult->fetch_assoc();
+		$username = $row['username'];
+		$userid = intval($row['user_id']);
+		$usertype = intval($row['role_id']);
+		$name = $row['username'];
+
+		$_SESSION['user_session'] = $row['login_id'];
+		$_SESSION['user_login_id'] = $row['login_id'];
+		$_SESSION['user_id'] = $row['user_id'];
+		$_SESSION['user_type'] = $row['role_id'];
+	} else {
+		header("location: ../index.php");
+		exit();
+	}
 }
 
 $sql = "SELECT * FROM st_role_master WHERE role_id='" . $usertype . "'";
