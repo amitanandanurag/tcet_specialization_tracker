@@ -14,8 +14,8 @@
           <div class="div2 box-header with-border">
             <div class="row" style="margin-bottom: 20px;">
               <div class="col-md-1">
-                <label for="select_all" class="btn btn-default" style="width: 100%;">
-                  <input type="checkbox" id="select_all"> ALL
+                <label for="select_all_main" class="btn btn-default" id="select_all_btn" style="width: 100%;">
+                  <input type="checkbox" id="select_all_main"> ALL
                 </label>
               </div>
 
@@ -68,6 +68,11 @@
                     $session = $row['session_name'];
                   ?>
                     <option value="<?php echo $session_id; ?>" <?php if ($session_id == 6) echo "selected"; ?>><?php echo $session; ?></option>
+                  $result = $db_handle->query("SELECT DISTINCT academic_year FROM `st_student_master` WHERE academic_year IS NOT NULL AND academic_year != '' ORDER BY academic_year DESC");
+                  while ($row = $result->fetch_assoc()) {
+                    $academic_year = $row['academic_year'];
+                  ?>
+                    <option value="<?php echo htmlspecialchars($academic_year); ?>"><?php echo htmlspecialchars($academic_year); ?></option>
                   <?php } ?>
                 </select>
               </div>
@@ -83,7 +88,7 @@
               <table id="myTable" class="text-center table table-striped table-bordered" width="100%">
                 <thead>
                   <tr>
-                    <th style="background-color: #423cbc; color: white; padding: 16px" data-orderable="false"><input type="checkbox" id="select_all"></th>
+                    <th style="background-color: #423cbc; color: white; padding: 16px" data-orderable="false"><input type="checkbox" id="select_all_header"></th>
                     <th style="background-color: #423cbc; color: white; padding: 16px">SR. NO</th>
                     <th style="background-color: #423cbc; color: white; padding: 16px">MESSAGE</th>
                     <th style="background-color: #423cbc; color: white; padding: 16px">Reg. No</th>
@@ -96,6 +101,7 @@
                     <th style="background-color: #423cbc; color: white; padding: 16px">Specialization Subject</th>
                     <th style="background-color: #423cbc; color: white; padding: 16px">CGPA</th>
                     <th style="background-color: #423cbc; color: white; padding: 16px">Mobile No</th>
+                    <th style="background-color: #423cbc; color: white; padding: 16px">Session</th>
                     <th style="background-color: #423cbc; color: white; padding: 16px">Roll No</th>
                     <th style="background-color: #423cbc; color: white; padding: 16px">Email</th>
                     <th style="background-color: #F97161; padding: 16px">View</th>
@@ -229,6 +235,36 @@
             d.select_class = $('#select_class').val();
             d.select_section = $('#select_section').val();
             d.select_session = $('#select_session').val();
+    var dataTable = $('#myTable').DataTable({
+        "processing": true,
+        "serverSide": true,
+        "ajax": {
+            "url": "student_info_ajax.php",
+            "type": "POST",
+            "data": function(d) {
+                d.select_class = $('#select_class').val();
+                d.select_section = $('#select_section').val();
+                d.select_session = $('#select_session').val();
+                d.search_value = d.search.value;
+            }
+        },
+        "lengthMenu": [[15, 25, 50, 100, 500], ['15', '25', '50', '100', '500']],
+        "pageLength": 15,
+        "autoWidth": false,
+        "scrollX": true,
+        "columnDefs": [
+            { "orderable": false, "targets": [0, 2, 15, 16, 17] },
+            { "className": "text-left", "targets": [4] },
+            { "className": "text-center", "targets": "_all" }
+        ],
+        "language": {
+            "processing": "<span style='color:#8b0000;font-size:20px;'> Processing data.. <i class='fa fa-spinner fa-spin'></i> </span>",
+            "search": "Search:",
+            "searchPlaceholder": "Search by Reg No, Name, Roll No, Email, Mobile...",
+            "paginate": {
+                "previous": '<i class="fa fa-angle-double-left"></i> Previous',
+                "next": 'Next <i class="fa fa-angle-double-right"></i>'
+            }
         }
     },
 
@@ -256,7 +292,7 @@
 
     // Style search box
     $('div.dataTables_filter input').addClass('form-control');
-    $('div.dataTables_filter input').attr('placeholder', 'Search...');
+    $('div.dataTables_filter input').attr('placeholder', 'Search by Reg No, Name, Roll No, Email, Mobile...');
 
     // Search button click
     $('#search').click(function() {
@@ -294,6 +330,33 @@
       }
     });
   });
+    $('#select_all_btn, #select_all_main, #select_all_header').click(function() {
+        var isChecked = $('#select_all_main').prop('checked');
+        var nextState = !isChecked;
+
+        if ($(this).is('#select_all_main') || $(this).is('#select_all_header')) {
+            nextState = $(this).prop('checked');
+        }
+
+        $('#select_all_main, #select_all_header').prop('checked', nextState);
+        $('.selectRow').each(function() {
+            $(this).prop('checked', nextState);
+        });
+
+        if (nextState) {
+            $('#select_all_btn').addClass('active select-all-active');
+        } else {
+            $('#select_all_btn').removeClass('active select-all-active');
+        }
+    });
+
+    $('div.dataTables_filter input').unbind().bind('keyup', function() {
+        clearTimeout($.data(this, 'timer'));
+        $(this).data('timer', setTimeout(() => {
+            dataTable.search(this.value).draw();
+        }, 300));
+    });
+});
 
   // View and Edit modals
   $(document).ready(function() {
@@ -335,7 +398,7 @@
   // Excel Export
   function fnExcelReport() {
     var table = document.getElementById("myTable");
-    var excludeCols = [0, 2, 14, 15, 16];
+    var excludeCols = [0, 2, 15, 16, 17];
     var tableHTML = "<table border='1' style='border-collapse:collapse;'>";
 
     for (var i = 0; i < table.rows.length; i++) {

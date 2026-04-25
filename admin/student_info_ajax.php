@@ -3,12 +3,84 @@ session_start();
 require "../database/db_connect.php";
 $db_handle = new DBController();
 
+$sessionUserId = intval($_SESSION['user_id'] ?? $_SESSION['user_session'] ?? 0);
+$sessionRoleId = intval($_SESSION['user_type'] ?? 0);
+
+$coordinatorRoleIds = [];
+$roleLookupResult = $db_handle->query("SELECT role_id, UPPER(role_name) AS role_name FROM st_role_master");
+if ($roleLookupResult) {
+    while ($roleRow = mysqli_fetch_assoc($roleLookupResult)) {
+        $roleTitle = (string) $roleRow['role_name'];
+        if (strpos($roleTitle, 'COORDINATOR') !== false || strpos($roleTitle, 'HOD') !== false) {
+            $coordinatorRoleIds[] = (int) $roleRow['role_id'];
+        }
+    }
+}
+
+if (empty($coordinatorRoleIds)) {
+    $coordinatorRoleIds = [3];
+}
+
+$departmentFilterSql = '';
+$isCoordinator = in_array($sessionRoleId, $coordinatorRoleIds, true);
+if ($isCoordinator && $sessionUserId > 0) {
+    $deptSql = "SELECT department_id FROM st_user_master WHERE user_id = $sessionUserId AND role_id = $sessionRoleId LIMIT 1";
+    $deptResult = $db_handle->query($deptSql);
+    if ($deptResult && ($deptRow = mysqli_fetch_assoc($deptResult))) {
+        $departmentId = intval($deptRow['department_id'] ?? 0);
+        if ($departmentId > 0) {
+            $departmentFilterSql = " AND sm.department_id = $departmentId";
+        }
+    }
+}
+
 $requestData = $_REQUEST;
 $select_class = $_POST['select_class'] ?? '';
 $select_section = $_POST['select_section'] ?? '';
 $select_session = $_POST['select_session'] ?? '';
+$searchValue = '';
 
-// Build main query
+if (!empty($requestData['search']['value'])) {
+    $searchValue = mysqli_real_escape_string($db_handle->conn, $requestData['search']['value']);
+} elseif (!empty($_POST['search_value'])) {
+    $searchValue = mysqli_real_escape_string($db_handle->conn, $_POST['search_value']);
+}
+
+// Build shared FROM/WHERE so all filters apply consistently.
+$baseSql = "FROM st_student_master sm
+LEFT JOIN st_class_master cl ON cl.class_id = sm.class_id
+LEFT JOIN st_section_master sec ON sec.id = sm.division_id
+LEFT JOIN st_department_master dep ON dep.department_id = sm.department_id
+LEFT JOIN st_specialization_master sp ON sp.specialization_id = sm.specialization_id
+LEFT JOIN st_specialization_subject_master ssb ON ssb.subject_id = sm.specialization_subject_id
+WHERE sm.status = '0'" . $departmentFilterSql;
+
+if (!empty($select_class)) {
+    $baseSql .= " AND sm.class_id = '" . mysqli_real_escape_string($db_handle->conn, $select_class) . "'";
+}
+if (!empty($select_section)) {
+    $baseSql .= " AND sm.division_id = '" . mysqli_real_escape_string($db_handle->conn, $select_section) . "'";
+}
+if (!empty($select_session)) {
+    $baseSql .= " AND sm.academic_year = '" . mysqli_real_escape_string($db_handle->conn, $select_session) . "'";
+}
+if (!empty($searchValue)) {
+    $baseSql .= " AND (
+        sm.registration_no LIKE '%$searchValue%'
+        OR sm.fname LIKE '%$searchValue%'
+        OR sm.lname LIKE '%$searchValue%'
+        OR sm.roll_no LIKE '%$searchValue%'
+        OR sm.email LIKE '%$searchValue%'
+        OR sm.mobile LIKE '%$searchValue%'
+        OR cl.class_name LIKE '%$searchValue%'
+        OR sec.sections LIKE '%$searchValue%'
+        OR dep.department_name LIKE '%$searchValue%'
+        OR sp.specialization_name LIKE '%$searchValue%'
+        OR ssb.subject_name LIKE '%$searchValue%'
+        OR sm.academic_year LIKE '%$searchValue%'
+    )";
+}
+
 $sql = "SELECT
     sm.student_id,
     sm.registration_no,
@@ -59,26 +131,24 @@ if (!empty($select_session)) {
 if (!empty($filters)) {
     $sql .= " AND " . implode(" AND ", $filters);
 }
+{$baseSql}";
 
-// Search
-if (!empty($requestData['search']['value'])) {
-    $search = mysqli_real_escape_string($db_handle->conn, $requestData['search']['value']);
-    $sql .= " AND (sm.registration_no LIKE '%$search%' 
-                OR sm.fname LIKE '%$search%' 
-                OR sm.roll_no LIKE '%$search%'
-                OR sm.email LIKE '%$search%'
-                OR sm.mobile LIKE '%$search%')";
-}
+// Total counts
+$totalDataQuery = "SELECT COUNT(*) AS total FROM st_student_master sm WHERE sm.status = '0'" . $departmentFilterSql;
+$totalDataResult = $db_handle->query($totalDataQuery);
+$totalDataRow = $totalDataResult ? mysqli_fetch_assoc($totalDataResult) : ['total' => 0];
+$totalData = (int) ($totalDataRow['total'] ?? 0);
 
-// Total count
-$totalData = mysqli_num_rows($db_handle->query($sql));
-$totalFiltered = $totalData;
+$totalFilteredQuery = "SELECT COUNT(*) AS total {$baseSql}";
+$totalFilteredResult = $db_handle->query($totalFilteredQuery);
+$totalFilteredRow = $totalFilteredResult ? mysqli_fetch_assoc($totalFilteredResult) : ['total' => 0];
+$totalFiltered = (int) ($totalFilteredRow['total'] ?? 0);
 
 // Ordering
 $orderColumn = 'sm.student_id';
 $orderDir = 'DESC';
 if (isset($requestData['order'][0]['column'])) {
-    $columns = ['student_id', 'student_id', 'student_id', 'registration_no', 'fname', 'class_display', 'section_display', 'department_name', 'specialization_name', 'specialization_subject_name', 'cgpa', 'mobile', 'academic_year', 'roll_no', 'email'];
+    $columns = ['sm.student_id', 'sm.student_id', 'sm.student_id', 'sm.registration_no', 'sm.fname', 'class_display', 'section_display', 'department_name', 'specialization_name', 'specialization_subject_name', 'sm.cgpa', 'sm.mobile', 'sm.academic_year', 'sm.roll_no', 'sm.email'];
     $colIndex = intval($requestData['order'][0]['column']);
     if (isset($columns[$colIndex])) {
         $orderColumn = $columns[$colIndex];
@@ -108,14 +178,6 @@ while ($row = mysqli_fetch_assoc($result)) {
     
     // WhatsApp
     $mobile = $row['mobile'];
-   /* if (!empty($mobile)) {
-        $nestedData[] = "<a href='https://wa.me/91$mobile?text=WELCOME%20TO%20THAKUR%20COLLEGE' target='_blank'>
-                            <button class='btn btn-success btn-sm'><i class='fa fa-whatsapp'></i></button>
-                         </a>";
-    } else {
-        $nestedData[] = "-";
-    }*/
-
     $nestedData[] = "<a href='https://wa.me/91$mobile?text=WELCOME%20TO%20THAKUR%20COLLEGE' target='_blank'>
                             <button class='btn btn-success btn-sm'><i class='fa fa-whatsapp'></i></button>
                          </a>";
@@ -149,6 +211,9 @@ while ($row = mysqli_fetch_assoc($result)) {
     
     // Mobile
     $nestedData[] = !empty($row['mobile']) ? $row['mobile'] : '-';
+
+    // Session
+    $nestedData[] = !empty($row['academic_year']) ? $row['academic_year'] : '-';
     
     // Roll No
     $nestedData[] = !empty($row['roll_no']) ? $row['roll_no'] : '-';

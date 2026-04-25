@@ -1,118 +1,137 @@
 <?php
 include "header/header.php";
 
-// Database connection (adjust as needed)
-// $db_handle->conn should already be available
+if (!isset($_POST['save'])) {
+    echo "<script>alert('Invalid request.'); window.location.href='student-info.php';</script>";
+    exit;
+}
 
-if (isset($_POST['save'])) {
+$student_id = intval($_POST['student_id'] ?? 0);
+if ($student_id <= 0) {
+    echo "<script>alert('Invalid student selected.'); window.location.href='student-info.php';</script>";
+    exit;
+}
 
-    // Sanitize and collect form data
-    $academic_year = mysqli_real_escape_string($db_handle->conn, $_POST['academic']);
-    $registration_no = mysqli_real_escape_string($db_handle->conn, $_POST['registration_no']);
-    $roll_no = mysqli_real_escape_string($db_handle->conn, $_POST['roll_no']);
-    $class_id = mysqli_real_escape_string($db_handle->conn, $_POST['class']);
-    $division_id = mysqli_real_escape_string($db_handle->conn, $_POST['batch']);
-    $grad_year = mysqli_real_escape_string($db_handle->conn, $_POST['batch_id']);
-    $department_id = mysqli_real_escape_string($db_handle->conn, $_POST['department_id']);
-    $specialization_id = mysqli_real_escape_string($db_handle->conn, $_POST['specialization_id']);
-    $specialisation_subject_id = isset($_POST['unaided_subject']) ? mysqli_real_escape_string($db_handle->conn, $_POST['unaided_subject']) : NULL;
-    $cgpa = isset($_POST['cgpa']) && $_POST['cgpa'] != '' ? mysqli_real_escape_string($db_handle->conn, $_POST['cgpa']) : NULL;
-    $fname = mysqli_real_escape_string($db_handle->conn, $_POST['fname']);
-    $mobile = isset($_POST['mobile']) ? mysqli_real_escape_string($db_handle->conn, $_POST['mobile']) : NULL;
-    $email = isset($_POST['email']) ? mysqli_real_escape_string($db_handle->conn, $_POST['email']) : NULL;
+$conn = $db_handle->conn;
 
-    // Handle file uploads for mark_list
-    $mark_list_files = [];
-    $upload_dir = "uploads/marklists/";
+$existingResult = mysqli_query($conn, "SELECT photo, mark_list FROM st_student_master WHERE student_id = {$student_id} LIMIT 1");
+$existingRow = $existingResult ? mysqli_fetch_assoc($existingResult) : null;
 
-    // Create directory if not exists
-    if (!file_exists($upload_dir)) {
-        mkdir($upload_dir, 0777, true);
+if (!$existingRow) {
+    echo "<script>alert('Student record not found.'); window.location.href='student-info.php';</script>";
+    exit;
+}
+
+$academic_year = mysqli_real_escape_string($conn, $_POST['academic'] ?? '');
+$registration_no = mysqli_real_escape_string($conn, $_POST['registration_no'] ?? '');
+$join_date = mysqli_real_escape_string($conn, $_POST['join_date'] ?? '');
+$class_id = intval($_POST['class'] ?? 0);
+$division_id = intval($_POST['batch'] ?? 0);
+$grad_year = !empty($_POST['batch_id']) && is_numeric($_POST['batch_id']) ? intval($_POST['batch_id']) : null;
+$roll_no = mysqli_real_escape_string($conn, $_POST['roll_no'] ?? '');
+$department_id = !empty($_POST['department_id']) && is_numeric($_POST['department_id']) ? intval($_POST['department_id']) : null;
+$specialization_id = !empty($_POST['specialization_id']) && is_numeric($_POST['specialization_id']) ? intval($_POST['specialization_id']) : null;
+$specialization_subject_id = !empty($_POST['unaided_subject']) && is_numeric($_POST['unaided_subject']) ? intval($_POST['unaided_subject']) : null;
+$cgpa = ($_POST['cgpa'] ?? '') !== '' && is_numeric($_POST['cgpa']) ? number_format((float) $_POST['cgpa'], 2, '.', '') : null;
+$fname = mysqli_real_escape_string($conn, $_POST['fname'] ?? '');
+$mname = mysqli_real_escape_string($conn, $_POST['mname'] ?? '');
+$lname = mysqli_real_escape_string($conn, $_POST['lname'] ?? '');
+$dob = mysqli_real_escape_string($conn, $_POST['dob'] ?? '');
+$gender = mysqli_real_escape_string($conn, $_POST['gender'] ?? '');
+$nationality = mysqli_real_escape_string($conn, $_POST['nation'] ?? 'INDIAN');
+$apaar_id = mysqli_real_escape_string($conn, $_POST['appar'] ?? '');
+$uan = mysqli_real_escape_string($conn, $_POST['uan'] ?? '');
+$pan = mysqli_real_escape_string($conn, $_POST['pan'] ?? '');
+$permanent_address = mysqli_real_escape_string($conn, $_POST['permanent'] ?? '');
+$present_address = mysqli_real_escape_string($conn, $_POST['present'] ?? '');
+$city = mysqli_real_escape_string($conn, $_POST['city'] ?? '');
+$pincode = mysqli_real_escape_string($conn, $_POST['pincode'] ?? '');
+$country = mysqli_real_escape_string($conn, $_POST['country'] ?? 'India');
+$state = mysqli_real_escape_string($conn, $_POST['state'] ?? 'Maharashtra');
+$phone = mysqli_real_escape_string($conn, $_POST['phone'] ?? '');
+$mobile = mysqli_real_escape_string($conn, $_POST['mobile'] ?? '');
+$email = mysqli_real_escape_string($conn, $_POST['email'] ?? '');
+
+$photo = $existingRow['photo'] ?? '';
+if (isset($_FILES['photo']) && $_FILES['photo']['error'] === 0 && !empty($_FILES['photo']['name'])) {
+    $photoDir = "student_photo/";
+    if (!file_exists($photoDir)) {
+        mkdir($photoDir, 0777, true);
     }
 
-    // Check for semester mark lists
-    $semester_fields = ['mark-list1', 'mark-list2', 'mark-list4', 'mark-list6'];
-    foreach ($semester_fields as $field) {
-        if (isset($_FILES[$field]) && $_FILES[$field]['error'] == 0) {
-            $file_name = time() . '_' . $registration_no . '_' . $field . '_' . basename($_FILES[$field]['name']);
-            $target_path = $upload_dir . $file_name;
+    $photoExt = strtolower(pathinfo($_FILES['photo']['name'], PATHINFO_EXTENSION));
+    $photoName = time() . '_student_' . $student_id . '.' . $photoExt;
+    $photoPath = $photoDir . $photoName;
 
-            if (move_uploaded_file($_FILES[$field]['tmp_name'], $target_path)) {
-                $mark_list_files[] = $file_name;
-            }
-        }
-    }
-
-    // Store mark_list as comma-separated string or JSON
-    $mark_list = !empty($mark_list_files) ? implode(',', $mark_list_files) : NULL;
-
-    // Handle semester marks (m_sem1, m_sem2, m_sem3) - you may want to store JSON data
-    // For now, we'll store placeholder values or you can collect from additional form fields
-    $m_sem1 = '[]'; // Store as JSON if you have marks data
-    $m_sem2 = '[]';
-    $m_sem3 = '[]';
-
-    // Status default is 1 (active)
-    $status = 1;
-
-    // Check if registration number already exists
-    $check_sql = "SELECT registration_no FROM st_student_master WHERE registration_no = '$registration_no'";
-    $check_result = mysqli_query($db_handle->conn, $check_sql);
-
-    if (mysqli_num_rows($check_result) > 0) {
-        echo "<script>alert('Registration number already exists!');</script>";
-    } else {
-        // Insert into database
-        $sql = "INSERT INTO st_student_master (
-                    academic_year, 
-                    registration_no, 
-                    class_id, 
-                    division_id, 
-                    grad_year, 
-                    roll_no, 
-                    department_id, 
-                    specialization_id, 
-                    specialisation_subject_id, 
-                    cgpa, 
-                    fname, 
-                    mobile, 
-                    email, 
-                    mark_list, 
-                    status,
-                    m_sem1,
-                    m_sem2,
-                    m_sem3,
-                    created_at
-                ) VALUES (
-                    '$academic_year',
-                    '$registration_no',
-                    '$class_id',
-                    '$division_id',
-                    '$grad_year',
-                    '$roll_no',
-                    '$department_id',
-                    '$specialization_id',
-                    " . ($specialisation_subject_id ? "'$specialisation_subject_id'" : "NULL") . ",
-                    " . ($cgpa ? "'$cgpa'" : "NULL") . ",
-                    '$fname',
-                    " . ($mobile ? "'$mobile'" : "NULL") . ",
-                    " . ($email ? "'$email'" : "NULL") . ",
-                    " . ($mark_list ? "'$mark_list'" : "NULL") . ",
-                    '$status',
-                    '$m_sem1',
-                    '$m_sem2',
-                    '$m_sem3',
-                    NOW()
-                )";
-
-        if (mysqli_query($db_handle->conn, $sql)) {
-            $student_id = mysqli_insert_id($db_handle->conn);
-            echo "<script>alert('Student registered successfully! Student ID: " . $student_id . "'); window.location.href='student_list.php';</script>";
-        } else {
-            echo "<script>alert('Error: " . mysqli_error($db_handle->conn) . "');</script>";
-        }
+    if (move_uploaded_file($_FILES['photo']['tmp_name'], $photoPath)) {
+        $photo = $photoName;
     }
 }
-?>
 
-<!-- Your existing HTML form goes here -->
+$markList = $existingRow['mark_list'] ?? '';
+if (isset($_FILES['mark-list']) && $_FILES['mark-list']['error'] === 0 && !empty($_FILES['mark-list']['name'])) {
+    $uploadDir = "uploads/marklists/";
+    if (!file_exists($uploadDir)) {
+        mkdir($uploadDir, 0777, true);
+    }
+
+    $fileExt = strtolower(pathinfo($_FILES['mark-list']['name'], PATHINFO_EXTENSION));
+    $safeRegNo = preg_replace('/[^a-zA-Z0-9]/', '_', $registration_no);
+    $markFileName = time() . '_' . $safeRegNo . '_marklist.' . $fileExt;
+    $targetPath = $uploadDir . $markFileName;
+
+    if (move_uploaded_file($_FILES['mark-list']['tmp_name'], $targetPath)) {
+        $markList = $markFileName;
+    }
+}
+
+$duplicateSql = "SELECT student_id FROM st_student_master WHERE registration_no = '{$registration_no}' AND student_id != {$student_id} LIMIT 1";
+$duplicateResult = mysqli_query($conn, $duplicateSql);
+if ($duplicateResult && mysqli_num_rows($duplicateResult) > 0) {
+    echo "<script>alert('Registration number already exists for another student.'); window.history.back();</script>";
+    exit;
+}
+
+$updateSql = "UPDATE st_student_master SET
+    academic_year = '{$academic_year}',
+    registration_no = '{$registration_no}',
+    joining_date = " . ($join_date !== '' ? "'{$join_date}'" : "NULL") . ",
+    class_id = " . ($class_id > 0 ? $class_id : "NULL") . ",
+    division_id = " . ($division_id > 0 ? $division_id : "NULL") . ",
+    grad_year = " . ($grad_year !== null ? $grad_year : "NULL") . ",
+    roll_no = " . ($roll_no !== '' ? "'{$roll_no}'" : "NULL") . ",
+    department_id = " . ($department_id !== null ? $department_id : "NULL") . ",
+    specialization_id = " . ($specialization_id !== null ? $specialization_id : "NULL") . ",
+    specialization_subject_id = " . ($specialization_subject_id !== null ? $specialization_subject_id : "NULL") . ",
+    cgpa = " . ($cgpa !== null ? "'{$cgpa}'" : "NULL") . ",
+    fname = '{$fname}',
+    mname = " . ($mname !== '' ? "'{$mname}'" : "NULL") . ",
+    lname = " . ($lname !== '' ? "'{$lname}'" : "NULL") . ",
+    dob = " . ($dob !== '' ? "'{$dob}'" : "NULL") . ",
+    gender = " . ($gender !== '' ? "'{$gender}'" : "NULL") . ",
+    nationality = " . ($nationality !== '' ? "'{$nationality}'" : "NULL") . ",
+    apaar_id = " . ($apaar_id !== '' ? "'{$apaar_id}'" : "NULL") . ",
+    uan = " . ($uan !== '' ? "'{$uan}'" : "NULL") . ",
+    pan = " . ($pan !== '' ? "'{$pan}'" : "NULL") . ",
+    permanent_address = " . ($permanent_address !== '' ? "'{$permanent_address}'" : "NULL") . ",
+    present_address = " . ($present_address !== '' ? "'{$present_address}'" : "NULL") . ",
+    city = " . ($city !== '' ? "'{$city}'" : "NULL") . ",
+    pincode = " . ($pincode !== '' ? "'{$pincode}'" : "NULL") . ",
+    country = " . ($country !== '' ? "'{$country}'" : "NULL") . ",
+    state = " . ($state !== '' ? "'{$state}'" : "NULL") . ",
+    phone = " . ($phone !== '' ? "'{$phone}'" : "NULL") . ",
+    mobile = " . ($mobile !== '' ? "'{$mobile}'" : "NULL") . ",
+    email = " . ($email !== '' ? "'{$email}'" : "NULL") . ",
+    photo = " . ($photo !== '' ? "'{$photo}'" : "NULL") . ",
+    mark_list = " . ($markList !== '' ? "'{$markList}'" : "NULL") . "
+WHERE student_id = {$student_id}";
+
+$updateResult = mysqli_query($conn, $updateSql);
+
+if ($updateResult) {
+    echo "<script>alert('Student details updated successfully.'); window.location.href='student-info.php';</script>";
+    exit;
+}
+
+echo "<script>alert('Error while updating student: " . mysqli_real_escape_string($conn, mysqli_error($conn)) . "'); window.history.back();</script>";
+?>
