@@ -6,44 +6,15 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 // Include header (this already has database connection and session check)
 require "header/header.php";
 
-$coordinator_role_ids = [];
-$mentor_role_ids = [];
-
-$role_lookup_sql = "SELECT role_id, UPPER(role_name) AS role_name FROM st_role_master";
-$role_lookup_result = mysqli_query($db_handle->conn, $role_lookup_sql);
-if ($role_lookup_result) {
-    while ($role_row = mysqli_fetch_assoc($role_lookup_result)) {
-        $role_id = (int)$role_row['role_id'];
-        $role_title = (string)$role_row['role_name'];
-
-        if (strpos($role_title, 'COORDINATOR') !== false || strpos($role_title, 'HOD') !== false) {
-            $coordinator_role_ids[] = $role_id;
-        }
-        if (strpos($role_title, 'MENTOR') !== false) {
-            $mentor_role_ids[] = $role_id;
-        }
-    }
-}
-
-if (empty($coordinator_role_ids)) {
-    $coordinator_role_ids = [3];
-}
-if (empty($mentor_role_ids)) {
-    $mentor_role_ids = [4];
-}
-
-$coordinator_role_id_list = implode(',', array_map('intval', $coordinator_role_ids));
-$mentor_role_id_list = implode(',', array_map('intval', $mentor_role_ids));
-
 // ========================
 // 1. FETCH HOD DATA FROM DATABASE
 // ========================
 $hod_query = "SELECT 
     d.department_id,
     d.department_name as dept,
-    COALESCE(u.user_name, CONCAT('Dr. ', SUBSTRING_INDEX(l.username, ' ', 1)), 'N/A') as hod_name,
+    CONCAT('Dr. ', SUBSTRING_INDEX(l.username, ' ', 1)) as hod_name,
     CASE 
-        WHEN u.phone_number IS NOT NULL AND u.phone_number != '' THEN CONCAT('+91-', u.phone_number)
+        WHEN s.mobile IS NOT NULL AND s.mobile != '' THEN CONCAT('+91-', s.mobile)
         ELSE 'N/A'
     END as phone,
     CASE 
@@ -52,18 +23,9 @@ $hod_query = "SELECT
         ELSE 'Available'
     END as status
 FROM st_department_master d
-LEFT JOIN (
-    SELECT 
-        department_id,
-        MIN(user_id) AS user_id,
-        MIN(user_name) AS user_name,
-        MIN(phone_number) AS phone_number,
-        MIN(role_id) AS role_id
-    FROM st_user_master
-    WHERE role_id IN ($coordinator_role_id_list)
-    GROUP BY department_id
-) u ON u.department_id = d.department_id
-LEFT JOIN st_login l ON l.user_id = u.user_id AND l.role_id = u.role_id
+LEFT JOIN st_login l ON l.role_id = 2 AND d.department_id = l.user_id
+LEFT JOIN dsms_student_master s ON s.department_id = d.department_id AND s.status = 1
+GROUP BY d.department_id
 ORDER BY d.department_id";
 
 $hod_result = mysqli_query($db_handle->conn, $hod_query);
@@ -81,7 +43,7 @@ if ($hod_result) {
 }
 
 // 2. Fetch Top Summary Cards Data from Database
-$students_query = "SELECT COUNT(*) as total FROM st_student_master WHERE status = 0";
+$students_query = "SELECT COUNT(*) as total FROM dsms_student_master WHERE status = 1";
 $students_result = mysqli_query($db_handle->conn, $students_query);
 $total_students = $students_result ? mysqli_fetch_assoc($students_result)['total'] : 0;
 
@@ -93,19 +55,20 @@ $branches_query = "SELECT COUNT(*) as total FROM st_department_master";
 $branches_result = mysqli_query($db_handle->conn, $branches_query);
 $total_branches = $branches_result ? mysqli_fetch_assoc($branches_result)['total'] : 0;
 
-$mentor_query = "SELECT COUNT(*) as total FROM st_login WHERE role_id IN ($mentor_role_id_list)";
+$mentor_query = "SELECT COUNT(*) as total FROM st_login WHERE role_id = 4";
 $mentor_result = mysqli_query($db_handle->conn, $mentor_query);
 $total_mentor = $mentor_result ? mysqli_fetch_assoc($mentor_result)['total'] : 0;
 
+// 3. Fetch Specialization Overview Data
 $spec_query = "SELECT 
     sm.specialization_id,
     sm.specialization_name,
-    COUNT(s.student_id) as total,
-    SUM(CASE WHEN s.status = 1 THEN 1 ELSE 0 END) as approved,
-    SUM(CASE WHEN s.status = 0 THEN 1 ELSE 0 END) as pending,
-    0 as rejected
+    COUNT(e.enrollment_id) as total,
+    SUM(CASE WHEN e.status = 'Active' THEN 1 ELSE 0 END) as approved,
+    SUM(CASE WHEN e.status = 'Suspended' THEN 1 ELSE 0 END) as rejected,
+    SUM(CASE WHEN e.status = 'Completed' THEN 1 ELSE 0 END) as pending
 FROM st_specialization_master sm
-LEFT JOIN st_student_master s ON sm.specialization_id = s.specialization_id
+LEFT JOIN st_enrollment e ON sm.specialization_id = e.specialization_id
 GROUP BY sm.specialization_id, sm.specialization_name
 ORDER BY sm.specialization_id";
 
@@ -128,19 +91,15 @@ $spec_labels = [];
 $spec_totals = [];
 foreach ($spec_data as $sd) {
     $spec_labels[] = '"' . $sd['name'] . '"';
-    $spec_totals[] = $sd['total'];
+    $spec_totals[] = $sd['approved'];
 }
 
-// 4. Branch-wise Distribution from Database
+// 4. Branch-wise Distribution
 $branch_query = "SELECT 
-    CASE 
-        WHEN LOCATE(' ', d.department_name) > 0 
-            THEN UPPER(SUBSTRING(d.department_name, 1, LOCATE(' ', d.department_name) - 1))
-        ELSE UPPER(d.department_name)
-    END as code,
-    COUNT(s.student_id) as count
+    UPPER(SUBSTRING(d.department_name, 1, LOCATE(' ', d.department_name) - 1)) as code,
+    COUNT(s.std_id) as count
 FROM st_department_master d
-LEFT JOIN st_student_master s ON d.department_id = s.department_id AND s.status = 0
+LEFT JOIN dsms_student_master s ON d.department_id = s.department_id AND s.status = 1
 GROUP BY d.department_id, d.department_name
 ORDER BY d.department_id";
 
@@ -153,8 +112,6 @@ if ($branch_result) {
         $branch_labels[] = '"' . $row['code'] . '"';
         $branch_counts[] = (int)$row['count'];
     }
-} else {
-    error_log("Branch distribution query failed: " . mysqli_error($db_handle->conn));
 }
 
 // 5. User Roles Overview
@@ -181,13 +138,13 @@ if ($roles_result) {
 // 6. Recent Activity
 $recent_query = "SELECT 
     s.fname,
-    '' as lname,
-    s.registration_no,
-    COALESCE(e.enrolled_at, s.created_at) as created_at
-FROM st_student_master s
-LEFT JOIN st_enrollment e ON s.student_id = e.student_id
-WHERE s.status = 0
-ORDER BY COALESCE(e.enrolled_at, s.created_at) DESC
+    s.lname,
+    s.register_number,
+    e.enrolled_at as created_at
+FROM dsms_student_master s
+LEFT JOIN st_enrollment e ON s.std_id = e.student_id
+WHERE s.status = 1
+ORDER BY COALESCE(e.enrolled_at, s.gr_no) DESC
 LIMIT 5";
 
 $recent_result = mysqli_query($db_handle->conn, $recent_query);
@@ -198,7 +155,7 @@ if ($recent_result) {
         $recent_students[] = [
             'fname' => $row['fname'],
             'lname' => $row['lname'],
-            'registration_no' => $row['registration_no'],
+            'registration_no' => $row['register_number'],
             'created_at' => $row['created_at'] ?: date('Y-m-d H:i:s')
         ];
     }
@@ -260,56 +217,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_hod'])) {
     }
 }
 
-$logged_user_id = (int)($userid ?? 0);
-$logged_dept_id = 0;
+$result = $db_handle->conn->query("SELECT * FROM st_student_master where status='0'");
+$rowcount = mysqli_num_rows($result);
 
-$dept_lookup_sql = "SELECT department_id FROM st_user_master WHERE user_id = $logged_user_id AND role_id = " . (int)($usertype ?? 0) . " LIMIT 1";
-$dept_lookup_result = mysqli_query($db_handle->conn, $dept_lookup_sql);
-if ($dept_lookup_result && ($dept_row = mysqli_fetch_assoc($dept_lookup_result))) {
-    $logged_dept_id = (int)($dept_row['department_id'] ?? 0);
-}
-
-if ($logged_dept_id <= 0) {
-    $logged_dept_id = (int)($userid ?? 0);
-}
-
-$is_coordinator = in_array((int)($usertype ?? 0), $coordinator_role_ids, true);
-$is_mentor = in_array((int)($usertype ?? 0), $mentor_role_ids, true);
-$current_branch_name = '';
-
-if (($is_coordinator || $is_mentor) && $logged_dept_id > 0) {
-    $branch_name_sql = "SELECT department_name FROM st_department_master WHERE department_id = $logged_dept_id LIMIT 1";
-    $branch_name_result = mysqli_query($db_handle->conn, $branch_name_sql);
-    if ($branch_name_result && ($branch_row = mysqli_fetch_assoc($branch_name_result))) {
-        $current_branch_name = (string)($branch_row['department_name'] ?? '');
-    }
-}
-
-$student_count_sql = "SELECT COUNT(*) as total 
-                      FROM st_student_master 
-                      WHERE status = 0";
-
-if ($is_coordinator && $logged_dept_id > 0) {
-    $student_count_sql .= " AND department_id = $logged_dept_id";
-} elseif ($is_mentor && $logged_user_id > 0) {
-    $student_count_sql .= " AND student_id IN (
-            SELECT student_id
-            FROM st_mentor_student_mapping
-            WHERE mentor_id = $logged_user_id
-    )";
-}
-
-$count_result = mysqli_query($db_handle->conn, $student_count_sql);
-
-if ($count_result) {
-    $row = mysqli_fetch_assoc($count_result);
-    $rowcount = (int)$row['total'];
-} else {
-    $rowcount = 0;
-}
-
-$result1 = $db_handle->conn->query("SELECT user_id FROM st_user_master");
-$rowcount_user = $result1 ? mysqli_num_rows($result1) : 0;
+$result1 = $db_handle->conn->query("SELECT * FROM st_user_master where 1=1");
+$rowcount_user = mysqli_num_rows($result1);
 ?>
 
 <!-- Additional CSS for dashboard (only what's not already in header) -->
@@ -510,22 +422,17 @@ $rowcount_user = $result1 ? mysqli_num_rows($result1) : 0;
                         <p>Total Users</p>
                     </div>
                     <div class="icon"><i class="ion ion-ios-people"></i></div>
-                    <a href="user-info.php?type=users" class="small-box-footer">More info <i class="fa fa-arrow-circle-right"></i></a>
+                    <a href="list.php?type=users" class="small-box-footer">More info <i class="fa fa-arrow-circle-right"></i></a>
                 </div>
             </div>
             <div class="col-lg-3 col-xs-6">
                 <div class="small-box bg-yellow">
                     <div class="inner">
-                        <?php if ($current_branch_name !== '') { ?>
-                            <h3 style="font-size: 30px; line-height: 1.2; margin-bottom: 8px;"><?php echo htmlspecialchars($current_branch_name); ?></h3>
-                            <p>Your Branch</p>
-                        <?php } else { ?>
-                            <h3 class="counter" data-target="<?php echo $total_branches; ?>">0</h3>
-                            <p>Total Branches</p>
-                        <?php } ?>
+                        <h3 class="counter" data-target="<?php echo $total_branches; ?>">0</h3>
+                        <p>Total Branches</p>
                     </div>
                     <div class="icon"><i class="ion ion-ios-book"></i></div>
-                    <a href="<?php echo $current_branch_name !== '' ? 'branch_info.php?department_id=' . intval($logged_dept_id) : 'branch_info.php'; ?>" class="small-box-footer">More info <i class="fa fa-arrow-circle-right"></i></a>
+                    <a href="list.php?type=branches" class="small-box-footer">More info <i class="fa fa-arrow-circle-right"></i></a>
                 </div>
             </div>
             <div class="col-lg-3 col-xs-6">
@@ -535,7 +442,7 @@ $rowcount_user = $result1 ? mysqli_num_rows($result1) : 0;
                         <p>Mentors</p>
                     </div>
                     <div class="icon"><i class="ion ion-person-stalker"></i></div>
-                    <a href="mentor_info.php" class="small-box-footer">More info <i class="fa fa-arrow-circle-right"></i></a>
+                    <a href="list.php?type=mentors" class="small-box-footer">More info <i class="fa fa-arrow-circle-right"></i></a>
                 </div>
             </div>
         </div>
@@ -614,9 +521,11 @@ $rowcount_user = $result1 ? mysqli_num_rows($result1) : 0;
                                 <i class="fa fa-plus-circle text-green"></i> Add New HOD
                             </button>
                             <button type="button" class="btn btn-default" onclick="quickAction('add_student')">
-                                <i class="fa fa-plus-circle text-green"></i> List Of Student
+                                <i class="fa fa-plus-circle text-green"></i> Add Student
                             </button>
-                            <button type="button" class="btn btn-default" onclick="window.location.href='offline_marks_entry.php'"><i class="fa fa-plus-circle text-green"></i> Offline Marks Entry</button>
+                            <button type="button" class="btn btn-default" onclick="quickAction('offline_marks_entry')">
+                                <i class="fa fa-pencil-square-o text-blue"></i> Offline Marks Entry
+                            </button>
                         </div>
                     </div>
                 </div>
