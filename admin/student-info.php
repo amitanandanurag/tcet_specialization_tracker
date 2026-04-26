@@ -30,30 +30,31 @@
                   <i class="fa fa-print"></i> EXCEL
                 </button>
               </div>
-
-              <div class="col-md-2">
-                <select class="form-control" id="select_class" name="select_class">
-                  <option value="">Select Class</option>
-                  <?php
-                  $result = $db_handle->query("SELECT class_id AS id, class_name AS class FROM `st_class_master`");
-                  while ($row = $result->fetch_assoc()) {
-                    echo '<option value="' . $row['id'] . '">' . $row['class'] . '</option>';
-                  }
-                  ?>
-                </select>
-              </div>
+              <div class="col-md-2">  
+              <select class="form-control" id="select_class" style="border:2px solid #0FCFA9; border-radius:6px;">
+                    <option value="" hidden>Class</option>
+                    <?php
+                    $result = $db_handle->query("SELECT * FROM st_class_master");
+                    while ($row = $result->fetch_assoc()) {
+                      ?>
+                      <option value="<?php echo $row['class_id']; ?>">
+                        <?php echo $row['class_name']; ?>
+                      </option>
+                    <?php } ?>
+                  </select>
+                  </div>
 
               <div class="col-md-2">
                 <select class="form-control" id="select_section" name="select_section">
                   <option value="">Select Division</option>
                   <?php
-                      $result = $db_handle->query("SELECT * FROM `st_section_master`");
-                      while ($row = $result->fetch_assoc()) {
-                        $section_id = $row['id'];
-                        $sections = $row['sections'];
-                      ?>
-                        <option value="<?php echo $section_id; ?>"><?php echo $sections; ?></option>
-                      <?php } ?>
+                  $result = $db_handle->query("SELECT * FROM `st_section_master`");
+                  while ($row = $result->fetch_assoc()) {
+                    $section_id = $row['id'];
+                    $sections = $row['sections'];
+                  ?>
+                    <option value="<?php echo $section_id; ?>"><?php echo $sections; ?></option>
+                  <?php } ?>
                 </select>
               </div>
 
@@ -61,6 +62,12 @@
                 <select class="form-control" id="select_session" name="select_session">
                   <option value="">Select Session</option>
                   <?php
+                  $result = $db_handle->query("SELECT * FROM `st_session_master`");
+                  while ($row = $result->fetch_assoc()) {
+                    $session_id  = $row['session_id'];
+                    $session = $row['session_name'];
+                  ?>
+                    <option value="<?php echo $session_id; ?>" <?php if ($session_id == 6) echo "selected"; ?>><?php echo $session; ?></option>
                   $result = $db_handle->query("SELECT DISTINCT academic_year FROM `st_student_master` WHERE academic_year IS NOT NULL AND academic_year != '' ORDER BY academic_year DESC");
                   while ($row = $result->fetch_assoc()) {
                     $academic_year = $row['academic_year'];
@@ -85,6 +92,7 @@
                     <th style="background-color: #423cbc; color: white; padding: 16px">SR. NO</th>
                     <th style="background-color: #423cbc; color: white; padding: 16px">MESSAGE</th>
                     <th style="background-color: #423cbc; color: white; padding: 16px">Reg. No</th>
+                    <th style="background-color: #423cbc; color: white; padding: 16px">Academic year</th>
                     <th style="background-color: #423cbc; color: white; padding: 16px">Name</th>
                     <th style="background-color: #423cbc; color: white; padding: 16px">Class</th>
                     <th style="background-color: #423cbc; color: white; padding: 16px">Division</th>
@@ -167,11 +175,13 @@
     white-space: nowrap;
     text-align: center;
   }
+
   #myTable td:nth-child(5) {
     text-align: left;
     white-space: normal;
     min-width: 150px;
   }
+
   .select-all-active {
     background-color: #5cb85c !important;
     color: white !important;
@@ -179,38 +189,52 @@
 </style>
 
 <script type="text/javascript" language="javascript">
-function delete_user(id, table) {
+  function delete_user(id, table) {
     Swal.fire({
-        title: "Are you sure?",
-        text: "Once deleted, Student will be moved to left students!",
-        icon: "warning",
-        showCancelButton: true,
-        confirmButtonText: "Yes, delete it!",
-        cancelButtonText: "No, cancel!",
-        reverseButtons: true
+      title: "Are you sure?",
+      text: "Once deleted, Student will be moved to left students!",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Yes, delete it!",
+      cancelButtonText: "No, cancel!",
+      reverseButtons: true
     }).then((result) => {
-        if (result.isConfirmed) {
-            $.ajax({
-                url: 'student_delete.php',
-                type: "POST",
-                data: { id: id, table: table },
-                dataType: "json",
-                success: function(data) {
-                    Swal.fire('Deleted!', 'Student details have been moved successfully!', 'success')
-                    .then(() => {
-                        $('#myTable').DataTable().ajax.reload();
-                    });
-                },
-                error: function(error) {
-                    Swal.fire('Error!', 'There was a problem deleting the student.', 'error');
-                }
-            });
-        }
+      if (result.isConfirmed) {
+        $.ajax({
+          url: 'student_delete.php',
+          type: "POST",
+          data: {
+            id: id,
+            table: table
+          },
+          dataType: "json",
+          success: function(data) {
+            Swal.fire('Deleted!', 'Student details have been moved successfully!', 'success')
+              .then(() => {
+                $('#myTable').DataTable().ajax.reload();
+              });
+          },
+          error: function(error) {
+            Swal.fire('Error!', 'There was a problem deleting the student.', 'error');
+          }
+        });
+      }
     });
-}
+  }
 
-$(document).ready(function() {
+  $(document).ready(function() {
     // Initialize DataTable
+  var dataTable = $('#myTable').DataTable({
+    processing: true,
+    serverSide: true,
+
+    ajax: {
+        url: "student_info_ajax.php",
+        type: "POST",
+        data: function (d) {
+            d.select_class = $('#select_class').val();
+            d.select_section = $('#select_section').val();
+            d.select_session = $('#select_session').val();
     var dataTable = $('#myTable').DataTable({
         "processing": true,
         "serverSide": true,
@@ -242,7 +266,29 @@ $(document).ready(function() {
                 "next": 'Next <i class="fa fa-angle-double-right"></i>'
             }
         }
-    });
+    },
+
+    pageLength: 15,
+    lengthMenu: [[15, 25, 50, 100], [15, 25, 50, 100]],
+    autoWidth: false,
+    scrollX: true,
+
+    columnDefs: [
+        { orderable: false, targets: [0, 2, 15, 16, 17] }, // disable sorting
+        { className: "text-left", targets: [4] },          // name column
+        { className: "text-center", targets: "_all" }      // center all
+    ],
+
+    language: {
+        processing: "<span style='color:#8b0000;font-size:20px;'>Processing... <i class='fa fa-spinner fa-spin'></i></span>",
+        search: "",
+        searchPlaceholder: "Search...",
+        paginate: {
+            previous: '<i class="fa fa-angle-double-left"></i> Previous',
+            next: 'Next <i class="fa fa-angle-double-right"></i>'
+        }
+    }
+});
 
     // Style search box
     $('div.dataTables_filter input').addClass('form-control');
@@ -250,15 +296,40 @@ $(document).ready(function() {
 
     // Search button click
     $('#search').click(function() {
-        dataTable.ajax.reload();
+      dataTable.ajax.reload();
     });
 
     // Filter changes
     $('#select_class, #select_section, #select_session').change(function() {
-        dataTable.ajax.reload();
+      dataTable.ajax.reload();
     });
 
     // Select All functionality
+    $('#select_all_btn').click(function() {
+      var isChecked = $(this).hasClass('active');
+      $('.selectRow').each(function() {
+        $(this).prop('checked', !isChecked);
+      });
+      $(this).toggleClass('active');
+      if ($(this).hasClass('active')) {
+        $(this).addClass('select-all-active');
+      } else {
+        $(this).removeClass('select-all-active');
+      }
+    });
+
+    $('#select_all_header').click(function() {
+      var status = this.checked;
+      $('.selectRow').each(function() {
+        $(this).prop('checked', status);
+      });
+      if (status) {
+        $('#select_all_btn').addClass('active select-all-active');
+      } else {
+        $('#select_all_btn').removeClass('active select-all-active');
+      }
+    });
+  });
     $('#select_all_btn, #select_all_main, #select_all_header').click(function() {
         var isChecked = $('#select_all_main').prop('checked');
         var nextState = !isChecked;
@@ -287,68 +358,70 @@ $(document).ready(function() {
     });
 });
 
-// View and Edit modals
-$(document).ready(function() {
+  // View and Edit modals
+  $(document).ready(function() {
     $(document).on('click', '#student_view', function(e) {
-        e.preventDefault();
-        var uid = $(this).data('id');
-        $('#dynamic-content').html('<div class="text-center"><i class="fa fa-spinner fa-spin fa-3x"></i></div>');
-        $('#view').modal('show');
-        $.ajax({
-            url: 'student_view.php',
-            type: 'POST',
-            data: 'id=' + uid,
-            dataType: 'html'
-        }).done(function(data) {
-            $('#dynamic-content').html(data);
-        }).fail(function() {
-            $('#dynamic-content').html('<div class="alert alert-danger">Something went wrong, Please try again...</div>');
-        });
+      e.preventDefault();
+      var uid = $(this).data('id');
+      $('#dynamic-content').html('<div class="text-center"><i class="fa fa-spinner fa-spin fa-3x"></i></div>');
+      $('#view').modal('show');
+      $.ajax({
+        url: 'student_view.php',
+        type: 'POST',
+        data: 'id=' + uid,
+        dataType: 'html'
+      }).done(function(data) {
+        $('#dynamic-content').html(data);
+      }).fail(function() {
+        $('#dynamic-content').html('<div class="alert alert-danger">Something went wrong, Please try again...</div>');
+      });
     });
 
     $(document).on('click', '#student_edit', function(e) {
-        e.preventDefault();
-        var uid = $(this).data('id');
-        $('#edit-dynamic-content').html('<div class="text-center"><i class="fa fa-spinner fa-spin fa-3x"></i></div>');
-        $('#edit').modal('show');
-        $.ajax({
-            url: 'student-edit.php',
-            type: 'POST',
-            data: 'id=' + uid,
-            dataType: 'html'
-        }).done(function(data) {
-            $('#edit-dynamic-content').html(data);
-        }).fail(function() {
-            $('#edit-dynamic-content').html('<div class="alert alert-danger">Something went wrong, Please try again...</div>');
-        });
+      e.preventDefault();
+      var uid = $(this).data('id');
+      $('#edit-dynamic-content').html('<div class="text-center"><i class="fa fa-spinner fa-spin fa-3x"></i></div>');
+      $('#edit').modal('show');
+      $.ajax({
+        url: 'student-edit.php',
+        type: 'POST',
+        data: 'id=' + uid,
+        dataType: 'html'
+      }).done(function(data) {
+        $('#edit-dynamic-content').html(data);
+      }).fail(function() {
+        $('#edit-dynamic-content').html('<div class="alert alert-danger">Something went wrong, Please try again...</div>');
+      });
     });
-});
+  });
 
-// Excel Export
-function fnExcelReport() {
+  // Excel Export
+  function fnExcelReport() {
     var table = document.getElementById("myTable");
     var excludeCols = [0, 2, 15, 16, 17];
     var tableHTML = "<table border='1' style='border-collapse:collapse;'>";
-    
+
     for (var i = 0; i < table.rows.length; i++) {
-        tableHTML += "<tr>";
-        var row = table.rows[i];
-        for (var j = 0; j < row.cells.length; j++) {
-            if (excludeCols.includes(j)) continue;
-            var cell = row.cells[j];
-            var tag = (i === 0) ? "th" : "td";
-            var cellText = cell.innerText.trim();
-            tableHTML += `<${tag} style="padding:5px;text-align:left;vertical-align:middle;">${cellText}</${tag}>`;
-        }
-        tableHTML += "</tr>";
+      tableHTML += "<tr>";
+      var row = table.rows[i];
+      for (var j = 0; j < row.cells.length; j++) {
+        if (excludeCols.includes(j)) continue;
+        var cell = row.cells[j];
+        var tag = (i === 0) ? "th" : "td";
+        var cellText = cell.innerText.trim();
+        tableHTML += `<${tag} style="padding:5px;text-align:left;vertical-align:middle;">${cellText}</${tag}>`;
+      }
+      tableHTML += "</tr>";
     }
     tableHTML += "</table>";
-    
+
     tableHTML = tableHTML.replace(/<a[^>]*>|<\/a>/gi, "");
     tableHTML = tableHTML.replace(/<img[^>]*>/gi, "");
     tableHTML = tableHTML.replace(/<input[^>]*>/gi, "");
-    
-    var blob = new Blob(['\ufeff', tableHTML], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+
+    var blob = new Blob(['\ufeff', tableHTML], {
+      type: 'application/vnd.ms-excel;charset=utf-8;'
+    });
     var url = URL.createObjectURL(blob);
     var link = document.createElement("a");
     link.href = url;
@@ -356,7 +429,7 @@ function fnExcelReport() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-}
+  }
 </script>
 
 <div class="modal fade" id="send_sms" tabindex="-1" role="dialog" aria-labelledby="edit" aria-hidden="true">
@@ -380,6 +453,7 @@ function fnExcelReport() {
       </form>
     </div>
   </div>
+</div>
 </div>
 
 <?php include "header/footer.php"; ?>

@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Apr 25, 2026 at 11:12 AM
+-- Generation Time: Apr 25, 2026 at 06:15 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -34,23 +34,17 @@ CREATE TABLE `st_audit_log` (
   `affected_table` varchar(100) DEFAULT NULL,
   `affected_record` int(11) DEFAULT NULL,
   `description` text DEFAULT NULL,
-  `performed_at` timestamp NOT NULL DEFAULT current_timestamp()
+  `username` varchar(200) DEFAULT NULL,
+  `ip_address` varchar(45) DEFAULT NULL,
+  `browser_user_agent` text DEFAULT NULL,
+  `session_duration_seconds` int(11) DEFAULT NULL,
+  `logout_at` timestamp NULL DEFAULT NULL,
+  `performed_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  KEY `action_type` (`action_type`),
+  KEY `user_id` (`user_id`),
+  KEY `performed_at` (`performed_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data for table `st_audit_log`
---
-
-INSERT INTO `st_audit_log` (`audit_id`, `user_id`, `action_type`, `affected_table`, `affected_record`, `description`, `performed_at`) VALUES
-(1, 1, 'LOGIN_SUCCESS', 'st_login', 1, 'User \'amit@tcetmumbai.in\' logged in successfully with role 1 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-24 13:40:46'),
-(2, 1, 'LOGIN_SUCCESS', 'st_login', 1, 'User \'amit@tcetmumbai.in\' logged in successfully with role 1 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-24 13:41:49'),
-(3, 0, 'LOGIN_FAILED', 'st_login', NULL, 'Login failed for username \'superadmin@tcetmumbai.in\' from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-25 08:56:44'),
-(4, 1, 'LOGIN_SUCCESS', 'st_login', 1, 'User \'superadmin@tcetmumbai.in\' logged in successfully with role 1 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-25 08:58:11'),
-(5, 1, 'LOGIN_SUCCESS', 'st_login', 1, 'User \'superadmin@tcetmumbai.in\' logged in successfully with role 1 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-25 09:03:30');
-
--- --------------------------------------------------------
-
---
 -- Table structure for table `st_batch_master`
 --
 
@@ -231,7 +225,8 @@ INSERT INTO `st_login` (`login_id`, `username`, `password`, `role_id`, `user_id`
 (2, 'admin@tcetmumbai.in', 'Amit@1234', 2, 2, '2026-04-23 09:45:37'),
 (3, 'coordinator@tcetmumbai.in', 'Amit@1234', 3, 3, '2026-04-23 09:48:36'),
 (4, 'mentor@tcetmumbai.in', 'Amit@1234', 4, 4, '2026-04-23 09:48:36'),
-(5, 'student@tcetmumbai.in', 'Amit@1234', 5, 5, '2026-04-23 09:50:00');
+(5, 'student@tcetmumbai.in', 'Amit@1234', 5, 5, '2026-04-23 09:50:00'),
+(6, 'aakash@tcetmumbai.in', 'Amit@1234', 3, 6, '2026-04-25 15:04:36');
 
 -- --------------------------------------------------------
 
@@ -270,43 +265,29 @@ INSERT INTO `st_menu_allocation_master` (`menu_allocation_id`, `user_id`, `role_
 (3, 0, 1, 1, 2),
 (6, 0, 1, 1, 5),
 (7, 0, 1, 2, NULL),
-(17, 0, 3, 1, NULL),
-(18, 0, 3, 1, 2),
-(19, 0, 3, 1, 5),
-(20, 0, 3, 2, NULL),
 (22, 0, 4, 1, NULL),
 (23, 0, 4, 1, 2),
 (24, 0, 4, 1, 5),
 (25, 0, 1, 3, NULL),
-(27, 0, 3, 3, NULL),
 (28, 0, 4, 3, NULL),
 (32, 0, 1, 3, 7),
-(34, 0, 3, 3, 7),
 (35, 0, 4, 3, 7),
 (36, 0, 1, 3, 8),
-(38, 0, 3, 3, 8),
 (39, 0, 4, 3, 8),
 (47, 0, 1, 4, NULL),
-(49, 0, 3, 4, NULL),
 (50, 0, 4, 4, NULL),
 (54, 0, 1, 4, 9),
-(56, 0, 3, 4, 9),
 (57, 0, 4, 4, 9),
 (58, 0, 1, 4, 10),
-(60, 0, 3, 4, 10),
 (61, 0, 4, 4, 10),
 (69, 0, 1, 5, NULL),
-(71, 0, 3, 5, NULL),
 (72, 0, 4, 5, NULL),
 (76, 0, 1, 5, 11),
-(78, 0, 3, 5, 11),
 (79, 0, 4, 5, 11),
 (80, 0, 1, 5, 12),
-(82, 0, 3, 5, 12),
 (83, 0, 4, 5, 12),
 (91, 0, 4, 2, NULL),
 (93, 0, 1, 2, 13),
-(95, 0, 3, 2, 13),
 (96, 0, 4, 2, 13),
 (147, 0, 1, 2, 20),
 (148, 0, 1, 2, 21),
@@ -321,24 +302,51 @@ INSERT INTO `st_menu_allocation_master` (`menu_allocation_id`, `user_id`, `role_
 (157, 0, 1, 5, 24),
 (158, 0, 1, 5, 25),
 (159, 0, 1, 5, 46),
-(224, 0, 2, 1, 1),
-(225, 0, 2, 1, NULL),
-(226, 0, 2, 1, 2),
-(227, 0, 2, 2, 7),
-(228, 0, 2, 2, NULL),
-(229, 0, 2, 2, 8),
-(230, 0, 2, 3, 9),
-(231, 0, 2, 3, NULL),
-(232, 0, 2, 3, 10),
-(233, 0, 2, 4, 11),
-(234, 0, 2, 4, NULL),
-(235, 0, 2, 4, 12),
-(236, 0, 2, 5, 13),
-(237, 0, 2, 5, NULL),
-(238, 0, 2, 5, 20),
-(239, 0, 2, 5, 21),
 (240, 0, 1, 5, 47),
-(241, 0, 1, 4, 48);
+(241, 0, 1, 4, 48),
+(247, 0, 5, 1, 1),
+(248, 0, 5, 1, NULL),
+(249, 0, 5, 5, 20),
+(250, 0, 5, 5, NULL),
+(251, 0, 5, 5, 21),
+(252, 0, 2, 1, 1),
+(253, 0, 2, 1, NULL),
+(254, 0, 2, 1, 2),
+(255, 0, 2, 2, 7),
+(256, 0, 2, 2, NULL),
+(257, 0, 2, 2, 8),
+(258, 0, 2, 3, 9),
+(259, 0, 2, 3, NULL),
+(260, 0, 2, 3, 10),
+(261, 0, 2, 4, 11),
+(262, 0, 2, 4, NULL),
+(263, 0, 2, 4, 12),
+(264, 0, 2, 4, 48),
+(265, 0, 2, 5, 13),
+(266, 0, 2, 5, NULL),
+(267, 0, 2, 5, 20),
+(268, 0, 2, 5, 21),
+(269, 0, 2, 5, 47),
+(270, 0, 3, 1, 1),
+(271, 0, 3, 1, NULL),
+(272, 0, 3, 1, 2),
+(273, 0, 3, 1, 5),
+(274, 0, 3, 2, 7),
+(275, 0, 3, 2, NULL),
+(276, 0, 3, 2, 8),
+(277, 0, 3, 3, 9),
+(278, 0, 3, 3, NULL),
+(279, 0, 3, 3, 10),
+(280, 0, 3, 4, 11),
+(281, 0, 3, 4, NULL),
+(282, 0, 3, 4, 12),
+(283, 0, 3, 5, 13),
+(284, 0, 3, 5, NULL),
+(285, 0, 3, 5, 20),
+(286, 0, 3, 5, 21),
+(287, 0, 3, 5, 47),
+(288, 0, 4, 1, 1),
+(289, 0, 1, 5, 49);
 
 -- --------------------------------------------------------
 
@@ -1455,7 +1463,7 @@ CREATE TABLE `st_sub_menu_master` (
 --
 
 INSERT INTO `st_sub_menu_master` (`sub_menu_id`, `menu_id`, `sort_order`, `sub_menu_name`, `sub_menu_icon`, `sub_menu_route`) VALUES
-(1, 1, 1, 'Register Students', 'fa fa-plus', 'student_admission.php'),
+(1, 1, 1, 'Enroll', 'fa fa-folder', 'student_admission.php'),
 (2, 1, 2, 'List of Students', 'fa fa-info-circle', 'student-info.php'),
 (5, 1, 3, 'Concise Details', 'fa fa-info-circle', 'student_concise_details.php'),
 (7, 2, 1, 'Register Admin', 'fa fa-plus', 'admin_register.php'),
@@ -1472,7 +1480,8 @@ INSERT INTO `st_sub_menu_master` (`sub_menu_id`, `menu_id`, `sort_order`, `sub_m
 (25, 5, 7, 'Side Menu Allocation', 'fa fa-check-square-o', 'allocation_master.php'),
 (46, 5, 4, 'Manage Section', 'fa fa-list-alt', 'class_crud_new.php?tab=section-list'),
 (47, 5, 8, 'Offline Marks Entry', 'fa fa-pencil-square-o', 'offline_marks_entry.php'),
-(48, 4, 3, 'Mentor Allocation', 'fa fa-exchange', 'mentor_allocation.php');
+(48, 4, 3, 'Mentor Allocation', 'fa fa-exchange', 'mentor_allocation.php'),
+(49, 5, 9, 'Audit Log', 'fa fa-history', 'audit_log.php');
 
 -- --------------------------------------------------------
 
@@ -1510,7 +1519,9 @@ INSERT INTO `st_user_master` (`user_id`, `user_name`, `email_id`, `phone_number`
 (1, 'Anurag Mishra', 'amit@tcetmumbai.in', '8080590516', 1, 1, 0),
 (2, 'Amit Kumar', 'anurag@tcetmumbai.in', '8080590516', 1, 2, 0),
 (3, 'Ashutosh Pandey', 'asdf@tcetmumbai.in', '234', 2, 2, 0),
-(4, 'Ashutosh', '1032251400@tcetmumbai.in', '9702420582', 1, 4, 0);
+(4, 'Ashutosh', '1032251400@tcetmumbai.in', '9702420582', 1, 4, 0),
+(5, 'Preet Prajapati', 'preet@tcetmumbai.in', '8080590516', 3, 5, 0),
+(6, 'Akash Pandey', 'aakash@tcetmumbai.in', '8080590516', 3, 3, 0);
 
 -- --------------------------------------------------------
 
@@ -1742,7 +1753,7 @@ ALTER TABLE `unaided_sub`
 -- AUTO_INCREMENT for table `st_audit_log`
 --
 ALTER TABLE `st_audit_log`
-  MODIFY `audit_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `audit_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=34;
 
 --
 -- AUTO_INCREMENT for table `st_batch_master`
@@ -1796,7 +1807,7 @@ ALTER TABLE `st_enrollment`
 -- AUTO_INCREMENT for table `st_login`
 --
 ALTER TABLE `st_login`
-  MODIFY `login_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `login_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT for table `st_mentor_student_mapping`
@@ -1808,7 +1819,7 @@ ALTER TABLE `st_mentor_student_mapping`
 -- AUTO_INCREMENT for table `st_menu_allocation_master`
 --
 ALTER TABLE `st_menu_allocation_master`
-  MODIFY `menu_allocation_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=242;
+  MODIFY `menu_allocation_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=290;
 
 --
 -- AUTO_INCREMENT for table `st_menu_master`
@@ -1898,7 +1909,7 @@ ALTER TABLE `st_student_master_old`
 -- AUTO_INCREMENT for table `st_sub_menu_master`
 --
 ALTER TABLE `st_sub_menu_master`
-  MODIFY `sub_menu_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=49;
+  MODIFY `sub_menu_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=50;
 
 --
 -- AUTO_INCREMENT for table `st_user_log_master`
@@ -1910,7 +1921,7 @@ ALTER TABLE `st_user_log_master`
 -- AUTO_INCREMENT for table `st_user_master`
 --
 ALTER TABLE `st_user_master`
-  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT for table `unaided_sub`

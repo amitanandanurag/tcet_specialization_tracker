@@ -10,4 +10,6 @@ if ((int) ($_SESSION['user_type'] ?? 0) === 5) {
 
 
 include "Dashboard.php";
+
+?>
 ?>

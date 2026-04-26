@@ -103,7 +103,7 @@
             </thead>
           </table>
 
-      //data table
+     
           <table id="myTable" class="table table-bordered" style="border:1px solid #4e54c8;">
             <thead>
               <tr>

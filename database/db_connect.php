@@ -85,13 +85,76 @@ class DBController
           return $data;
     }
 
- public function writeAuditLog($userId, $actionType, $affectedTable = null, $affectedRecord = null, $description = null)
+  private function auditLogColumnExists($columnName)
+  {
+    $safeColumn = mysqli_real_escape_string($this->conn, $columnName);
+    $result = mysqli_query($this->conn, "SHOW COLUMNS FROM st_audit_log LIKE '$safeColumn'");
+    $exists = ($result && mysqli_num_rows($result) > 0);
+
+    if ($result) {
+      mysqli_free_result($result);
+    }
+
+    return $exists;
+  }
+
+  public function ensureAuditLogTable()
   {
     if (!($this->conn instanceof mysqli)) {
       return false;
     }
 
-    $sql = "INSERT INTO st_audit_log (user_id, action_type, affected_table, affected_record, description) VALUES (?, ?, ?, ?, ?)";
+    $createSql = "CREATE TABLE IF NOT EXISTS st_audit_log (
+      audit_id int(11) NOT NULL AUTO_INCREMENT,
+      user_id int(11) NOT NULL DEFAULT 0,
+      action_type varchar(100) NOT NULL,
+      affected_table varchar(100) DEFAULT NULL,
+      affected_record int(11) DEFAULT NULL,
+      description text DEFAULT NULL,
+      username varchar(200) DEFAULT NULL,
+      ip_address varchar(45) DEFAULT NULL,
+      browser_user_agent text DEFAULT NULL,
+      session_duration_seconds int(11) DEFAULT NULL,
+      logout_at timestamp NULL DEFAULT NULL,
+      performed_at timestamp NOT NULL DEFAULT current_timestamp(),
+      PRIMARY KEY (audit_id),
+      KEY action_type (action_type),
+      KEY user_id (user_id),
+      KEY performed_at (performed_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci";
+
+    if (!mysqli_query($this->conn, $createSql)) {
+      return false;
+    }
+
+    $columns = array(
+      'username' => "ALTER TABLE st_audit_log ADD COLUMN username varchar(200) DEFAULT NULL AFTER description",
+      'ip_address' => "ALTER TABLE st_audit_log ADD COLUMN ip_address varchar(45) DEFAULT NULL AFTER username",
+      'browser_user_agent' => "ALTER TABLE st_audit_log ADD COLUMN browser_user_agent text DEFAULT NULL AFTER ip_address",
+      'session_duration_seconds' => "ALTER TABLE st_audit_log ADD COLUMN session_duration_seconds int(11) DEFAULT NULL AFTER browser_user_agent",
+      'logout_at' => "ALTER TABLE st_audit_log ADD COLUMN logout_at timestamp NULL DEFAULT NULL AFTER session_duration_seconds"
+    );
+
+    foreach ($columns as $column => $alterSql) {
+      if (!$this->auditLogColumnExists($column)) {
+        mysqli_query($this->conn, $alterSql);
+      }
+    }
+
+    return true;
+  }
+
+ public function writeAuditLog($userId, $actionType, $affectedTable = null, $affectedRecord = null, $description = null, $username = null, $ipAddress = null, $userAgent = null, $sessionDurationSeconds = null)
+  {
+    if (!($this->conn instanceof mysqli)) {
+      return false;
+    }
+
+    if (!$this->ensureAuditLogTable()) {
+      return false;
+    }
+
+    $sql = "INSERT INTO st_audit_log (user_id, action_type, affected_table, affected_record, description, username, ip_address, browser_user_agent, session_duration_seconds) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
     $stmt = mysqli_prepare($this->conn, $sql);
 
     if (!$stmt) {
@@ -103,8 +166,76 @@ class DBController
     $safeAffectedTable = $affectedTable !== null ? (string) $affectedTable : null;
     $safeAffectedRecord = $affectedRecord !== null ? intval($affectedRecord) : null;
     $safeDescription = $description !== null ? (string) $description : null;
+    $safeUsername = $username !== null ? (string) $username : null;
+    $safeIpAddress = $ipAddress !== null ? (string) $ipAddress : null;
+    $safeUserAgent = $userAgent !== null ? (string) $userAgent : null;
+    $safeSessionDuration = $sessionDurationSeconds !== null ? intval($sessionDurationSeconds) : null;
 
-    mysqli_stmt_bind_param($stmt, "issis", $safeUserId, $safeActionType, $safeAffectedTable, $safeAffectedRecord, $safeDescription);
+    mysqli_stmt_bind_param($stmt, "ississssi", $safeUserId, $safeActionType, $safeAffectedTable, $safeAffectedRecord, $safeDescription, $safeUsername, $safeIpAddress, $safeUserAgent, $safeSessionDuration);
+    $result = mysqli_stmt_execute($stmt);
+    $insertId = $result ? mysqli_insert_id($this->conn) : false;
+    mysqli_stmt_close($stmt);
+
+    return $insertId;
+  }
+
+  public function completeAuditSession($auditId, $userId, $description = null, $sessionDurationSeconds = null)
+  {
+    if (!($this->conn instanceof mysqli)) {
+      return false;
+    }
+
+    if (!$this->ensureAuditLogTable()) {
+      return false;
+    }
+
+    $sql = "UPDATE st_audit_log
+            SET logout_at = NOW(),
+                session_duration_seconds = ?,
+                description = CONCAT(COALESCE(description, ''), ?)
+            WHERE audit_id = ?
+              AND user_id = ?
+              AND action_type = 'LOGIN_SUCCESS'
+            LIMIT 1";
+    $stmt = mysqli_prepare($this->conn, $sql);
+
+    if (!$stmt) {
+      return false;
+    }
+
+    $safeDuration = $sessionDurationSeconds !== null ? intval($sessionDurationSeconds) : null;
+    $safeDescription = $description !== null ? "\n" . (string) $description : '';
+    $safeAuditId = intval($auditId);
+    $safeUserId = intval($userId);
+
+    mysqli_stmt_bind_param($stmt, "isii", $safeDuration, $safeDescription, $safeAuditId, $safeUserId);
+    $result = mysqli_stmt_execute($stmt);
+    mysqli_stmt_close($stmt);
+
+    return $result;
+  }
+
+  public function writeLogoutLog($userId, $loginId = null, $username = null, $ipAddress = null, $userAgent = null, $sessionDurationSeconds = null)
+  {
+    if (!($this->conn instanceof mysqli)) {
+      return false;
+    }
+
+    $sql = "INSERT INTO st_user_logout_log (user_id, login_id, username, ip_address, browser_user_agent, session_duration_seconds) VALUES (?, ?, ?, ?, ?, ?)";
+    $stmt = mysqli_prepare($this->conn, $sql);
+
+    if (!$stmt) {
+      return false;
+    }
+
+    $safeUserId = intval($userId);
+    $safeLoginId = $loginId !== null ? intval($loginId) : null;
+    $safeUsername = $username !== null ? (string) $username : null;
+    $safeIpAddress = $ipAddress !== null ? (string) $ipAddress : null;
+    $safeUserAgent = $userAgent !== null ? (string) $userAgent : null;
+    $safeSessionDuration = $sessionDurationSeconds !== null ? intval($sessionDurationSeconds) : null;
+
+    mysqli_stmt_bind_param($stmt, "iisssi", $safeUserId, $safeLoginId, $safeUsername, $safeIpAddress, $safeUserAgent, $safeSessionDuration);
     $result = mysqli_stmt_execute($stmt);
     mysqli_stmt_close($stmt);
 

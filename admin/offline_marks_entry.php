@@ -34,7 +34,11 @@ $studentSql = "SELECT student_id, registration_no, fname FROM st_student_master 
 $studentResult = mysqli_query($db_handle->conn, $studentSql);
 if ($studentResult) {
     while ($row = mysqli_fetch_assoc($studentResult)) {
-        $students[] = $row;
+        $students[] = array(
+            'student_id' => (int)($row['student_id'] ?? 0),
+            'registration_no' => (string)($row['registration_no'] ?? ''),
+            'fname' => (string)($row['fname'] ?? '')
+        );
     }
 }
 
@@ -276,6 +280,53 @@ if ($recentResult) {
 ?>
 
 <div class="content-wrapper">
+    <style>
+        .student-autocomplete-wrap {
+            position: relative;
+        }
+
+        .student-suggestions {
+            display: none;
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 100%;
+            z-index: 1050;
+            max-height: 240px;
+            overflow-y: auto;
+            background: #fff;
+            border: 1px solid #d2d6de;
+            border-top: 0;
+            border-radius: 0 0 4px 4px;
+            box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
+        }
+
+        .student-suggestion-item {
+            padding: 10px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #f0f2f5;
+        }
+
+        .student-suggestion-item:hover,
+        .student-suggestion-item.active {
+            background: #f4f8fb;
+        }
+
+        .student-suggestion-name {
+            font-weight: 600;
+            color: #1f2d3d;
+        }
+
+        .student-suggestion-meta {
+            font-size: 12px;
+            color: #6b778c;
+        }
+
+        .student-suggestion-empty {
+            padding: 10px 12px;
+            color: #777;
+        }
+    </style>
     <section class="content-header">
         <h1><i class="fa fa-pencil-square-o"></i> Offline Marks Entry</h1>
         <ol class="breadcrumb">
@@ -304,20 +355,27 @@ if ($recentResult) {
                                 <div class="col-md-6">
                                     <div class="form-group">
                                         <label>Student</label>
-                                        <select class="form-control" name="student_id" required>
-                                            <option value="">Select Student</option>
-                                            <?php foreach ($students as $student): ?>
-                                                <option value="<?php echo (int)$student['student_id']; ?>">
-                                                    <?php echo htmlspecialchars($student['registration_no'] . ' - ' . $student['fname']); ?>
-                                                </option>
-                                            <?php endforeach; ?>
-                                        </select>
+                                        <div class="student-autocomplete-wrap">
+                                            <input type="hidden" name="student_id" id="student_id" required>
+                                            <input type="text" class="form-control" id="student_search" autocomplete="off" placeholder="Type student name or registration no" required>
+                                            <div class="student-suggestions" id="student_suggestions"></div>
+                                        </div>
+                                        <small class="text-muted">Start typing to select a student.</small>
                                     </div>
                                 </div>
                                 <div class="col-md-6">
                                     <div class="form-group">
+                                        <label>Department</label>
+                                        <input type="text" class="form-control" id="department_name" placeholder="Auto-filled after student selection" readonly>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
                                         <label>Semester</label>
-                                        <select class="form-control" name="semester_id" required>
+                                        <select class="form-control" name="semester_id" id="semester_id" required>
                                             <option value="">Select Semester</option>
                                             <?php foreach ($semesters as $semester): ?>
                                                 <option value="<?php echo (int)$semester['semester_id']; ?>">
@@ -327,15 +385,15 @@ if ($recentResult) {
                                         </select>
                                     </div>
                                 </div>
-                            </div>
-
-                            <div class="row">
                                 <div class="col-md-6">
                                     <div class="form-group">
                                         <label>NPTEL Course Name</label>
-                                        <input type="text" class="form-control" name="course_name" placeholder="e.g. Introduction to AI" required>
+                                        <input type="text" class="form-control" name="course_name" id="course_name" placeholder="e.g. Introduction to AI" required>
                                     </div>
                                 </div>
+                            </div>
+
+                            <div class="row">
                                 <div class="col-md-6">
                                     <div class="form-group">
                                         <label>NPTEL Result</label>
@@ -503,6 +561,186 @@ if ($recentResult) {
 
 <script>
 (function() {
+    var students = <?php echo json_encode($students, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT); ?>;
+    var studentSearch = document.getElementById('student_search');
+    var studentIdInput = document.getElementById('student_id');
+    var suggestionBox = document.getElementById('student_suggestions');
+    var activeSuggestionIndex = -1;
+    var currentMatches = [];
+
+    function normalizeText(value) {
+        return String(value || '').toLowerCase().trim();
+    }
+
+    function studentLabel(student) {
+        return (student.registration_no || '-') + ' - ' + (student.fname || '-');
+    }
+
+    function hideStudentSuggestions() {
+        suggestionBox.style.display = 'none';
+        suggestionBox.innerHTML = '';
+        activeSuggestionIndex = -1;
+    }
+
+    function setStudent(student) {
+        studentIdInput.value = student.student_id;
+        studentSearch.value = studentLabel(student);
+        hideStudentSuggestions();
+        loadStudentDetails(student.student_id);
+    }
+
+    function setValue(id, value) {
+        var element = document.getElementById(id);
+        if (element) {
+            element.value = value || '';
+        }
+    }
+
+    function clearStudentAutofill() {
+        setValue('department_name', '');
+        setValue('semester_id', '');
+        setValue('course_name', '');
+        setValue('nptel_exam_score', '');
+        setValue('nptel_assignment_raw', '');
+        setValue('ise1_marks', '');
+        setValue('ise2_marks', '');
+        setValue('ese_written_marks', '');
+        var remarks = document.querySelector('textarea[name="remarks"]');
+        if (remarks) {
+            remarks.value = '';
+        }
+        updateFailCalculations();
+    }
+
+    function loadStudentDetails(studentId) {
+        var url = 'offline_marks_student_ajax.php?student_id=' + encodeURIComponent(studentId);
+        fetch(url, { credentials: 'same-origin' })
+            .then(function(response) {
+                return response.json();
+            })
+            .then(function(payload) {
+                if (!payload || !payload.success || !payload.data) {
+                    return;
+                }
+
+                var data = payload.data;
+                setValue('department_name', data.department_name);
+                setValue('semester_id', data.semester_id);
+                setValue('course_name', data.course_name);
+                setValue('nptel_status', data.nptel_status || 'Pass');
+                setValue('nptel_exam_score', data.nptel_exam_score);
+                setValue('nptel_assignment_raw', data.nptel_assignment_raw);
+                setValue('ise1_marks', data.ise1_marks);
+                setValue('ise2_marks', data.ise2_marks);
+                setValue('ese_written_marks', data.ese_written_marks);
+
+                var remarks = document.querySelector('textarea[name="remarks"]');
+                if (remarks) {
+                    remarks.value = data.remarks || '';
+                }
+
+                toggleFieldsByStatus();
+                updateFailCalculations();
+            })
+            .catch(function() {
+                setValue('department_name', '');
+            });
+    }
+
+    function renderStudentSuggestions(matches) {
+        suggestionBox.innerHTML = '';
+        currentMatches = matches;
+        activeSuggestionIndex = -1;
+
+        if (matches.length === 0) {
+            suggestionBox.innerHTML = '<div class="student-suggestion-empty">No matching student found.</div>';
+            suggestionBox.style.display = 'block';
+            return;
+        }
+
+        matches.forEach(function(student, index) {
+            var item = document.createElement('div');
+            item.className = 'student-suggestion-item';
+            item.setAttribute('data-index', index);
+            item.innerHTML =
+                '<div class="student-suggestion-name"></div>' +
+                '<div class="student-suggestion-meta"></div>';
+            item.querySelector('.student-suggestion-name').textContent = student.fname || '-';
+            item.querySelector('.student-suggestion-meta').textContent = 'Registration: ' + (student.registration_no || '-');
+            item.addEventListener('mousedown', function(event) {
+                event.preventDefault();
+                setStudent(student);
+            });
+            suggestionBox.appendChild(item);
+        });
+
+        suggestionBox.style.display = 'block';
+    }
+
+    function updateActiveSuggestion() {
+        var items = suggestionBox.querySelectorAll('.student-suggestion-item');
+        for (var i = 0; i < items.length; i++) {
+            items[i].classList.toggle('active', i === activeSuggestionIndex);
+        }
+    }
+
+    function searchStudents(term) {
+        var query = normalizeText(term);
+
+        if (query.length < 1) {
+            hideStudentSuggestions();
+            return;
+        }
+
+        var matches = students.filter(function(student) {
+            var haystack = normalizeText((student.registration_no || '') + ' ' + (student.fname || ''));
+            return haystack.indexOf(query) !== -1;
+        }).slice(0, 8);
+
+        renderStudentSuggestions(matches);
+    }
+
+    if (studentSearch && studentIdInput && suggestionBox) {
+        studentSearch.addEventListener('input', function() {
+            studentIdInput.value = '';
+            clearStudentAutofill();
+            searchStudents(this.value);
+        });
+
+        studentSearch.addEventListener('focus', function() {
+            if (this.value.trim() !== '' && studentIdInput.value === '') {
+                searchStudents(this.value);
+            }
+        });
+
+        studentSearch.addEventListener('keydown', function(event) {
+            if (suggestionBox.style.display !== 'block') {
+                return;
+            }
+
+            if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                activeSuggestionIndex = Math.min(activeSuggestionIndex + 1, currentMatches.length - 1);
+                updateActiveSuggestion();
+            } else if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                activeSuggestionIndex = Math.max(activeSuggestionIndex - 1, 0);
+                updateActiveSuggestion();
+            } else if (event.key === 'Enter' && activeSuggestionIndex >= 0 && currentMatches[activeSuggestionIndex]) {
+                event.preventDefault();
+                setStudent(currentMatches[activeSuggestionIndex]);
+            } else if (event.key === 'Escape') {
+                hideStudentSuggestions();
+            }
+        });
+
+        document.addEventListener('click', function(event) {
+            if (!event.target.closest('.student-autocomplete-wrap')) {
+                hideStudentSuggestions();
+            }
+        });
+    }
+
     function toFloat(value) {
         var parsed = parseFloat(value);
         return isNaN(parsed) ? 0 : parsed;

@@ -4,6 +4,8 @@ require "header/header.php";
 // Database connection
 $db_handle = new DBController();
 
+$selectedDepartmentId = intval($_GET['department_id'] ?? 0);
+
 // Fetch all branches from database
 $branches_query = "SELECT 
     d.department_id as id,
@@ -18,6 +20,7 @@ $branches_query = "SELECT
     (SELECT COUNT(*) FROM st_login WHERE user_id = d.department_id AND role_id = 2) as total_hods,
     (SELECT COUNT(*) FROM st_login WHERE user_id = d.department_id AND role_id IN (3,4)) as total_staff
 FROM st_department_master d
+" . ($selectedDepartmentId > 0 ? "WHERE d.department_id = $selectedDepartmentId " : "") . "
 ORDER BY d.department_id";
 
 $branches_result = mysqli_query($db_handle->conn, $branches_query);
@@ -259,7 +262,7 @@ $total_branches = count($branches);
         <div class="page-header">
             <div>
                 <h1><i class="fa fa-building"></i> Branch Information</h1>
-                <p>View all departments and their details</p>
+                <p><?php echo $selectedDepartmentId > 0 ? 'Viewing your branch only' : 'View all departments and their details'; ?></p>
             </div>
             <a href="index.php" class="back-btn">
                 <i class="fa fa-arrow-left"></i> Back to Dashboard
@@ -336,5 +339,6 @@ $total_branches = count($branches);
             </div>
         <?php endif; ?>
     </div>
+    <?php include "header/footer.php"; ?>
 </body>
 </html>
