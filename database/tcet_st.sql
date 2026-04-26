@@ -34,51 +34,17 @@ CREATE TABLE `st_audit_log` (
   `affected_table` varchar(100) DEFAULT NULL,
   `affected_record` int(11) DEFAULT NULL,
   `description` text DEFAULT NULL,
-  `performed_at` timestamp NOT NULL DEFAULT current_timestamp()
+  `username` varchar(200) DEFAULT NULL,
+  `ip_address` varchar(45) DEFAULT NULL,
+  `browser_user_agent` text DEFAULT NULL,
+  `session_duration_seconds` int(11) DEFAULT NULL,
+  `logout_at` timestamp NULL DEFAULT NULL,
+  `performed_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  KEY `action_type` (`action_type`),
+  KEY `user_id` (`user_id`),
+  KEY `performed_at` (`performed_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data for table `st_audit_log`
---
-
-INSERT INTO `st_audit_log` (`audit_id`, `user_id`, `action_type`, `affected_table`, `affected_record`, `description`, `performed_at`) VALUES
-(1, 1, 'LOGIN_SUCCESS', 'st_login', 1, 'User \'amit@tcetmumbai.in\' logged in successfully with role 1 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-24 13:40:46'),
-(2, 1, 'LOGIN_SUCCESS', 'st_login', 1, 'User \'amit@tcetmumbai.in\' logged in successfully with role 1 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-24 13:41:49'),
-(3, 0, 'LOGIN_FAILED', 'st_login', NULL, 'Login failed for username \'superadmin@tcetmumbai.in\' from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-25 08:56:44'),
-(4, 1, 'LOGIN_SUCCESS', 'st_login', 1, 'User \'superadmin@tcetmumbai.in\' logged in successfully with role 1 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-25 08:58:11'),
-(5, 1, 'LOGIN_SUCCESS', 'st_login', 1, 'User \'superadmin@tcetmumbai.in\' logged in successfully with role 1 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-25 09:03:30'),
-(6, 5, 'LOGIN_SUCCESS', 'st_login', 5, 'User \'student@tcetmumbai.in\' logged in successfully with role 5 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-25 09:21:50'),
-(7, 1, 'LOGIN_SUCCESS', 'st_login', 1, 'User \'superadmin@tcetmumbai.in\' logged in successfully with role 1 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-25 09:22:26'),
-(8, 2, 'LOGIN_SUCCESS', 'st_login', 2, 'User \'admin@tcetmumbai.in\' logged in successfully with role 2 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-25 09:30:51'),
-(9, 1, 'LOGIN_SUCCESS', 'st_login', 1, 'User \'superadmin@tcetmumbai.in\' logged in successfully with role 1 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-25 09:31:04'),
-(10, 2, 'LOGIN_SUCCESS', 'st_login', 2, 'User \'admin@tcetmumbai.in\' logged in successfully with role 2 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-25 11:45:53'),
-(11, 1, 'LOGIN_SUCCESS', 'st_login', 1, 'User \'superadmin@tcetmumbai.in\' logged in successfully with role 1 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-25 11:46:43'),
-(12, 5, 'LOGIN_SUCCESS', 'st_login', 5, 'User \'student@tcetmumbai.in\' logged in successfully with role 5 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-25 11:56:49'),
-(13, 1, 'LOGIN_SUCCESS', 'st_login', 1, 'User \'superadmin@tcetmumbai.in\' logged in successfully with role 1 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-25 14:15:19'),
-(14, 1, 'LOGIN_SUCCESS', 'st_login', 1, 'User \'superadmin@tcetmumbai.in\' logged in successfully with role 1 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-25 14:15:39'),
-(15, 2, 'LOGIN_SUCCESS', 'st_login', 2, 'User \'admin@tcetmumbai.in\' logged in successfully with role 2 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-25 14:15:52'),
-(16, 4, 'LOGIN_SUCCESS', 'st_login', 4, 'User \'mentor@tcetmumbai.in\' logged in successfully with role 4 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-25 14:16:10'),
-(17, 5, 'LOGIN_SUCCESS', 'st_login', 5, 'User \'student@tcetmumbai.in\' logged in successfully with role 5 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-25 14:26:39'),
-(18, 1, 'LOGIN_SUCCESS', 'st_login', 1, 'User \'superadmin@tcetmumbai.in\' logged in successfully with role 1 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-25 14:31:06'),
-(19, 4, 'LOGIN_SUCCESS', 'st_login', 4, 'User \'mentor@tcetmumbai.in\' logged in successfully with role 4 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-25 14:31:34'),
-(20, 3, 'LOGIN_SUCCESS', 'st_login', 3, 'User \'coordinator@tcetmumbai.in\' logged in successfully with role 3 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-25 15:01:54'),
-(21, 4, 'LOGIN_SUCCESS', 'st_login', 4, 'User \'mentor@tcetmumbai.in\' logged in successfully with role 4 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-25 15:02:20'),
-(22, 5, 'LOGIN_SUCCESS', 'st_login', 6, 'User \'preet@tcetmumbai.in\' logged in successfully with role 3 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-25 15:04:50'),
-(23, 0, 'LOGIN_FAILED', 'st_login', NULL, 'Login failed for username \'akash@tcetmumbai.in\' from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-25 15:08:52'),
-(24, 0, 'LOGIN_FAILED', 'st_login', NULL, 'Login failed for username \'aaakash@tcetmumbai.in\' from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-25 15:09:23'),
-(25, 0, 'LOGIN_FAILED', 'st_login', NULL, 'Login failed for username \'aaakash@tcetmumbai.in\' from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-25 15:09:26'),
-(26, 6, 'LOGIN_SUCCESS', 'st_login', 6, 'User \'aakash@tcetmumbai.in\' logged in successfully with role 3 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-25 15:09:33'),
-(27, 6, 'LOGIN_SUCCESS', 'st_login', 6, 'User \'aakash@tcetmumbai.in\' logged in successfully with role 3 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-25 15:17:25'),
-(28, 1, 'LOGIN_SUCCESS', 'st_login', 1, 'User \'superadmin@tcetmumbai.in\' logged in successfully with role 1 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-25 15:26:44'),
-(29, 5, 'LOGIN_SUCCESS', 'st_login', 5, 'User \'student@tcetmumbai.in\' logged in successfully with role 5 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-25 15:27:05'),
-(30, 1, 'LOGIN_SUCCESS', 'st_login', 1, 'User \'superadmin@tcetmumbai.in\' logged in successfully with role 1 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-25 15:27:42'),
-(31, 5, 'LOGIN_SUCCESS', 'st_login', 5, 'User \'student@tcetmumbai.in\' logged in successfully with role 5 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-25 15:28:56'),
-(32, 1, 'LOGIN_SUCCESS', 'st_login', 1, 'User \'superadmin@tcetmumbai.in\' logged in successfully with role 1 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-25 15:33:04'),
-(33, 1, 'LOGIN_SUCCESS', 'st_login', 1, 'User \'superadmin@tcetmumbai.in\' logged in successfully with role 1 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-25 15:35:26');
-
--- --------------------------------------------------------
-
---
 -- Table structure for table `st_batch_master`
 --
 
@@ -379,7 +345,8 @@ INSERT INTO `st_menu_allocation_master` (`menu_allocation_id`, `user_id`, `role_
 (285, 0, 3, 5, 20),
 (286, 0, 3, 5, 21),
 (287, 0, 3, 5, 47),
-(288, 0, 4, 1, 1);
+(288, 0, 4, 1, 1),
+(289, 0, 1, 5, 49);
 
 -- --------------------------------------------------------
 
@@ -1513,7 +1480,8 @@ INSERT INTO `st_sub_menu_master` (`sub_menu_id`, `menu_id`, `sort_order`, `sub_m
 (25, 5, 7, 'Side Menu Allocation', 'fa fa-check-square-o', 'allocation_master.php'),
 (46, 5, 4, 'Manage Section', 'fa fa-list-alt', 'class_crud_new.php?tab=section-list'),
 (47, 5, 8, 'Offline Marks Entry', 'fa fa-pencil-square-o', 'offline_marks_entry.php'),
-(48, 4, 3, 'Mentor Allocation', 'fa fa-exchange', 'mentor_allocation.php');
+(48, 4, 3, 'Mentor Allocation', 'fa fa-exchange', 'mentor_allocation.php'),
+(49, 5, 9, 'Audit Log', 'fa fa-history', 'audit_log.php');
 
 -- --------------------------------------------------------
 
@@ -1851,7 +1819,7 @@ ALTER TABLE `st_mentor_student_mapping`
 -- AUTO_INCREMENT for table `st_menu_allocation_master`
 --
 ALTER TABLE `st_menu_allocation_master`
-  MODIFY `menu_allocation_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=289;
+  MODIFY `menu_allocation_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=290;
 
 --
 -- AUTO_INCREMENT for table `st_menu_master`
@@ -1941,7 +1909,7 @@ ALTER TABLE `st_student_master_old`
 -- AUTO_INCREMENT for table `st_sub_menu_master`
 --
 ALTER TABLE `st_sub_menu_master`
-  MODIFY `sub_menu_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=49;
+  MODIFY `sub_menu_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=50;
 
 --
 -- AUTO_INCREMENT for table `st_user_log_master`

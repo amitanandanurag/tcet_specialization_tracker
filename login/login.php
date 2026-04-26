@@ -46,7 +46,10 @@ if (!$db_handle || !($db_handle->conn instanceof mysqli)) {
 			'LOGIN_FAILED',
 			'st_login',
 			null,
-			"Login failed for username '{$username}' from IP {$ipAddress}. Browser: {$userAgent}"
+			"Login failed for username '{$username}' from IP {$ipAddress}. Browser: {$userAgent}",
+			$username,
+			$ipAddress,
+			$userAgent
 		);
 		echo "email or password does not exist.";
 		exit();
@@ -58,13 +61,20 @@ if (!$db_handle || !($db_handle->conn instanceof mysqli)) {
 	    $_SESSION['user_login_id'] = $row['login_id'];
 	    $_SESSION['user_id'] = $row['user_id'];
 		$_SESSION['user_type'] = $row['role_id'];
-		$db_handle->writeAuditLog(
+		$_SESSION['login_time'] = time();
+		$auditId = $db_handle->writeAuditLog(
 			intval($row['user_id']),
 			'LOGIN_SUCCESS',
 			'st_login',
 			intval($row['login_id'] ?? 0),
-			"User '{$username}' logged in successfully with role {$row['role_id']} from IP {$ipAddress}. Browser: {$userAgent}"
+			"User '{$username}' logged in successfully with role {$row['role_id']} from IP {$ipAddress}. Browser: {$userAgent}",
+			$username,
+			$ipAddress,
+			$userAgent
 		);
+		if ($auditId) {
+			$_SESSION['audit_login_id'] = $auditId;
+		}
 
 		if($_SESSION['user_type']=="1"){
 			echo "ok";
@@ -96,7 +106,10 @@ if (!$db_handle || !($db_handle->conn instanceof mysqli)) {
 			'LOGIN_FAILED',
 			'st_login',
 			intval($row['login_id'] ?? 0),
-			"Invalid password for username '{$username}' from IP {$ipAddress}. Browser: {$userAgent}"
+			"Invalid password for username '{$username}' from IP {$ipAddress}. Browser: {$userAgent}",
+			$username,
+			$ipAddress,
+			$userAgent
 		);
 		echo "email or password does not exist."; // wrong details
 	}
