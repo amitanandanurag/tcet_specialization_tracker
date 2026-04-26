@@ -104,6 +104,33 @@ $sql = "SELECT
     IFNULL(dep.department_name, '') AS department_name,
     IFNULL(sp.specialization_name, '') AS specialization_name,
     IFNULL(ssb.subject_name, '') AS specialization_subject_name
+FROM st_student_master sm
+LEFT JOIN st_class_master cl ON cl.class_id = sm.class_id
+LEFT JOIN st_section_master sec ON sec.id = sm.division_id
+LEFT JOIN st_department_master dep ON dep.department_id = sm.department_id
+LEFT JOIN st_specialization_master sp ON sp.specialization_id = sm.specialization_id
+LEFT JOIN st_specialization_subject_master ssb ON ssb.subject_id = sm.specialization_subject_id
+WHERE sm.status = '0'";
+
+// Collect filters
+$filters = [];
+
+if (!empty($select_class)) {
+    $filters[] = "sm.class_id = '" . mysqli_real_escape_string($db_handle->conn, $select_class) . "'";
+}
+
+if (!empty($select_section)) {
+    $filters[] = "sm.division_id = '" . mysqli_real_escape_string($db_handle->conn, $select_section) . "'";
+}
+
+if (!empty($select_session)) {
+    $filters[] = "sm.academic_year = '" . mysqli_real_escape_string($db_handle->conn, $select_session) . "'";
+}
+
+// Apply filters to query
+if (!empty($filters)) {
+    $sql .= " AND " . implode(" AND ", $filters);
+}
 {$baseSql}";
 
 // Total counts
@@ -157,6 +184,8 @@ while ($row = mysqli_fetch_assoc($result)) {
     
     // Registration No
     $nestedData[] = "<strong>{$row['registration_no']}</strong>";
+
+    $nestedData[] = !empty($row['academic_year']) ? $row['academic_year'] : '-';
     
     // Name
     $nestedData[] = "<div align='left'><strong>" . htmlspecialchars($row['fname']) . "</strong></div>";
