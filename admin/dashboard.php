@@ -38,24 +38,36 @@ $mentor_role_id_list = implode(',', array_map('intval', $mentor_role_ids));
 // ========================
 // 0. GET LOGGED-IN USER INFO & RESOLVE ROLES DYNAMICALLY
 // ========================
-$logged_user_id = $_SESSION['user_id'] ?? $_SESSION['user_session'] ?? null;
-$logged_user_type = $_SESSION['user_type'] ?? null;
+// Extract user ID (from session, trying user_id first, then fallback)
+$logged_user_id = null;
+if (isset($_SESSION['user_id'])) {
+    $logged_user_id = $_SESSION['user_id'];
+} elseif (isset($_SESSION['user_session'])) {
+    $logged_user_id = $_SESSION['user_session'];
+}
+
+// Extract user's role_id (numeric) from session
+$logged_user_role_id = (int) ($_SESSION['user_type'] ?? 0);
 $logged_dept_id = null;
 $current_branch_name = '';
 
 // Resolve coordinator and mentor role IDs from st_role_master
-$role_query = "SELECT role_id, role_name FROM st_role_master WHERE role_name IN ('COORDINATOR', 'HOD', 'MENTOR')";
+$role_query = "SELECT role_id, role_name FROM st_role_master WHERE role_name IN ('COORDINATOR', 'HOD', 'MENTOR', 'STUDENT')";
 $role_result = mysqli_query($db_handle->conn, $role_query);
 $coordinator_role_ids = [];
 $mentor_role_ids = [];
+$student_role_id = null;
 
 if ($role_result) {
     while ($row = mysqli_fetch_assoc($role_result)) {
         if (in_array($row['role_name'], ['COORDINATOR', 'HOD'])) {
-            $coordinator_role_ids[] = $row['role_id'];
+            $coordinator_role_ids[] = (int)$row['role_id'];
         }
         if ($row['role_name'] === 'MENTOR') {
-            $mentor_role_ids[] = $row['role_id'];
+            $mentor_role_ids[] = (int)$row['role_id'];
+        }
+        if ($row['role_name'] === 'STUDENT') {
+            $student_role_id = (int)$row['role_id'];
         }
     }
 }
@@ -140,8 +152,11 @@ if ($hod_result) {
 // ========================
 
 // STUDENT COUNT - department-filtered for role-scoped users
+// Check if user is coordinator, HOD, mentor, or student based on numeric role_id
+$is_scoped_user = ($logged_user_role_id && ($logged_user_role_id === $student_role_id || in_array($logged_user_role_id, $coordinator_role_ids) || in_array($logged_user_role_id, $mentor_role_ids)));
+
 $student_count_sql = "SELECT COUNT(*) as total FROM st_student_master WHERE status = '0'";
-if ($logged_user_type && in_array($logged_user_type, ['COORDINATOR', 'HOD', 'MENTOR', 'STUDENT']) && $logged_dept_id) {
+if ($is_scoped_user && $logged_dept_id) {
     $student_count_sql .= " AND department_id = " . intval($logged_dept_id);
 }
 $students_query = $student_count_sql;
@@ -149,7 +164,7 @@ $students_result = mysqli_query($db_handle->conn, $students_query);
 $total_students = $students_result ? mysqli_fetch_assoc($students_result)['total'] : 0;
 
 // USERS CARD - count users only from st_user_master
-if ($logged_user_type && in_array($logged_user_type, ['COORDINATOR', 'HOD', 'MENTOR', 'STUDENT']) && $logged_dept_id) {
+if ($is_scoped_user && $logged_dept_id) {
     $users_card_label = 'Department Users';
     $users_query = "SELECT COUNT(*) as total FROM st_user_master WHERE department_id = " . intval($logged_dept_id);
 } else {
@@ -165,7 +180,7 @@ $branches_result = mysqli_query($db_handle->conn, $branches_query);
 $total_branches = $branches_result ? mysqli_fetch_assoc($branches_result)['total'] : 0;
 
 // MENTORS - department-filtered for role-scoped users
-if ($logged_user_type && in_array($logged_user_type, ['COORDINATOR', 'HOD', 'MENTOR', 'STUDENT']) && $logged_dept_id) {
+if ($is_scoped_user && $logged_dept_id) {
     $mentor_query = "SELECT COUNT(*) as total FROM st_login 
         WHERE role_id IN (" . implode(',', $mentor_role_ids) . ")
         AND user_id IN (SELECT user_id FROM st_user_master WHERE department_id = " . intval($logged_dept_id) . ")";
@@ -334,10 +349,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_hod'])) {
     }
 }
 
-$result = $db_handle->conn->query("SELECT * FROM st_student_master where status='0'" . ($logged_user_type && in_array($logged_user_type, ['COORDINATOR', 'HOD', 'MENTOR', 'STUDENT']) && $logged_dept_id ? " AND department_id = " . intval($logged_dept_id) : ""));
+$result = $db_handle->conn->query("SELECT * FROM st_student_master where status='0'" . ($is_scoped_user && $logged_dept_id ? " AND department_id = " . intval($logged_dept_id) : ""));
 $rowcount = mysqli_num_rows($result);
 
-$result1 = $db_handle->conn->query("SELECT * FROM st_user_master where 1=1" . ($logged_user_type && in_array($logged_user_type, ['COORDINATOR', 'HOD', 'MENTOR', 'STUDENT']) && $logged_dept_id ? " AND department_id = " . intval($logged_dept_id) : ""));
+$result1 = $db_handle->conn->query("SELECT * FROM st_user_master where 1=1" . ($is_scoped_user && $logged_dept_id ? " AND department_id = " . intval($logged_dept_id) : ""));
 $rowcount_user = mysqli_num_rows($result1);
 ?>
 
