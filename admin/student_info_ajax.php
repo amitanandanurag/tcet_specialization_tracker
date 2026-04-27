@@ -131,7 +131,27 @@ if (!empty($select_session)) {
 if (!empty($filters)) {
     $sql .= " AND " . implode(" AND ", $filters);
 }
-{$baseSql}";
+
+if (!empty($searchValue)) {
+    $sql .= " AND (
+        sm.registration_no LIKE '%$searchValue%'
+        OR sm.fname LIKE '%$searchValue%'
+        OR sm.lname LIKE '%$searchValue%'
+        OR sm.roll_no LIKE '%$searchValue%'
+        OR sm.email LIKE '%$searchValue%'
+        OR sm.mobile LIKE '%$searchValue%'
+        OR cl.class_name LIKE '%$searchValue%'
+        OR sec.sections LIKE '%$searchValue%'
+        OR dep.department_name LIKE '%$searchValue%'
+        OR sp.specialization_name LIKE '%$searchValue%'
+        OR ssb.subject_name LIKE '%$searchValue%'
+        OR sm.academic_year LIKE '%$searchValue%'
+    )";
+}
+
+if (!empty($departmentFilterSql)) {
+    $sql .= $departmentFilterSql;
+}
 
 // Total counts
 $totalDataQuery = "SELECT COUNT(*) AS total FROM st_student_master sm WHERE sm.status = '0'" . $departmentFilterSql;

@@ -27,8 +27,8 @@ if (isset($_POST['register'])) {
         } else {
 
             $sql1 = "INSERT INTO st_user_master 
-            (user_name, email_id, phone_number, department_id, role_id, student_id)
-            VALUES ('$username','$email','$phone','$department','$role_id','$student_id')";
+            (user_name, email_id, phone_number, department_id, role_id, student_id, is_first_login)
+            VALUES ('$username','$email','$phone','$department','$role_id','$student_id', TRUE)";
 
             if ($db_handle->query($sql1)) {
 
@@ -39,14 +39,11 @@ if (isset($_POST['register'])) {
 
                 if ($db_handle->query($sql2)) {
 
-                    $_SESSION['user_id'] = $user_id;
-                    $_SESSION['role_id'] = $role_id;
+                    $_SESSION['show_credentials'] = true;
+                    $_SESSION['registered_username'] = $email;
+                    $_SESSION['registered_password'] = $password;
 
-                    echo "<script>
-                        alert('Registration Successful!');
-                        window.parent.closePopup();
-                        window.parent.location.href = 'index.php';
-                    </script>";
+                    header("Location: " . $_SERVER['PHP_SELF']);
                     exit();
 
                 } else {
@@ -60,14 +57,17 @@ if (isset($_POST['register'])) {
     }
 }
 ?>
-
 <!DOCTYPE html>
 <html>
 
 <head>
+
+
     <title>STUDENT REGISTRATION</title>
+
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
     <style>
         * {
@@ -85,7 +85,7 @@ if (isset($_POST['register'])) {
         }
 
         .card {
-            background: #0b1f2e;
+            background: #182630;
             padding: 30px;
             border-radius: 12px;
             width: 100%;
@@ -93,20 +93,30 @@ if (isset($_POST['register'])) {
             box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.6);
         }
 
-        .card h2 {
+        h2 {
+            color: #fff;
             text-align: center;
-            margin-bottom: 25px;
-            font-size: 22px;
-            font-weight: 600;
-            letter-spacing: 1px;
-            color: #ffffff;
-            text-transform: uppercase;
+            margin-bottom: 20px;
         }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
 
         .input-group {
             position: relative;
             width: 100%;
             margin-bottom: 15px;
+        }
+
+        .input-group i {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #888;
+            font-size: 14px;
         }
 
         .input-group input,
@@ -116,68 +126,54 @@ if (isset($_POST['register'])) {
             padding: 10px 10px 10px 40px;
             border-radius: 6px;
             border: none;
-            background: #1c2f3f;
-            color: #fff;
-            display: block;
+            background: #e5e5e5;
         }
 
-        .input-group input::placeholder {
-            color: #aaa;
-        }
-
-        .input-group input:focus,
-        .input-group select:focus {
-            outline: none;
-            box-shadow: 0 0 6px rgba(30, 144, 255, 0.5);
-        }
-
-        .input-group i {
-            position: absolute;
-            left: 12px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: #aaa;
-        }
-
-        .btn-register {
+        button {
             width: 100%;
-            height: 48px;
+            height: 45px;
             background: #0ea5e9;
             color: #fff;
-            border-radius: 6px;
             border: none;
-            font-weight: 600;
-            transition: 0.3s;
+            border-radius: 6px;
+            cursor: pointer;
         }
 
-        .btn-register:hover {
-            background: #0284c7;
+        #credentialsBox {
+            background: #1c2f3f;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            color: #fff;
         }
 
-        .msg {
+        #msgBox {
+            color: red;
             text-align: center;
-            margin-bottom: 10px;
-            color: #ff6b6b;
-            font-size: 14px;
         }
     </style>
 
     <script>
         window.onload = function () {
             const msg = document.getElementById("msgBox");
-
             if (msg && msg.innerText.trim() !== "") {
                 setTimeout(() => {
-                    msg.style.transition = "opacity 0.5s ease";
                     msg.style.opacity = "0";
-
-                    setTimeout(() => {
-                        msg.style.display = "none";
-                    }, 500);
-
+                    setTimeout(() => msg.style.display = "none", 500);
                 }, 3000);
             }
         };
+
+        function copyCredentials(event) {
+            if (event) event.preventDefault();
+
+            const text = document.getElementById("credText").innerText;
+            navigator.clipboard.writeText(text);
+
+            alert("Credentials copied!");
+
+            document.getElementById("credentialsBox").style.display = "none";
+        }
     </script>
 </head>
 
@@ -187,34 +183,59 @@ if (isset($_POST['register'])) {
 
         <h2>STUDENT REGISTRATION</h2>
 
-        <?php if (!empty($message)) { ?>
-            <div id="msgBox" class="msg">
-                <?php echo $message; ?>
+        <?php if (isset($_SESSION['show_credentials']) && $_SESSION['show_credentials']) { ?>
+
+            <div id="credentialsBox">
+
+                <p style="color:#4ade80;font-weight:600;">
+                    Registration successful. Please save your login details.
+                </p>
+
+                <div id="credText">
+                    Username: <?php echo $_SESSION['registered_username']; ?><br>
+                    Password: <?php echo $_SESSION['registered_password']; ?>
+                </div>
+
+                <button type="button" onclick="copyCredentials(event)">
+                    Copy Credentials
+                </button>
+
             </div>
+
+            <?php
+            unset($_SESSION['show_credentials']);
+            unset($_SESSION['registered_username']);
+            unset($_SESSION['registered_password']);
+            ?>
+
+        <?php } ?>
+
+        <?php if (!empty($message)) { ?>
+            <div id="msgBox"><?php echo $message; ?></div>
         <?php } ?>
 
         <form method="POST">
 
             <div class="input-group">
-                <i class="fa fa-user"></i>
+                <i class="fa-solid fa-user"></i>
                 <input type="text" name="username" placeholder="ENTER USERNAME" required>
             </div>
 
             <div class="input-group">
-                <i class="fa fa-envelope"></i>
+                <i class="fa-solid fa-envelope"></i>
                 <input type="email" name="email" placeholder="INSTITUTE EMAIL" required>
             </div>
 
             <div class="input-group">
-                <i class="fa fa-phone"></i>
+                <i class="fa-solid fa-phone"></i>
                 <input type="text" name="phone" placeholder="PHONE NUMBER" required>
             </div>
 
             <div class="input-group">
-                <i class="fa fa-building"></i>
+                <i class="fa-solid fa-building"></i>
+
                 <select name="department" required>
                     <option value="">SELECT DEPARTMENT</option>
-
                     <?php
                     $dept = $db_handle->query("SELECT department_id, department_name FROM st_department_master");
                     while ($row = $dept->fetch_assoc()) {
@@ -224,10 +245,7 @@ if (isset($_POST['register'])) {
                 </select>
             </div>
 
-            <button type="submit" name="register" class="btn-register">
-                REGISTER
-            </button>
-            
+            <button type="submit" name="register">REGISTER</button>
 
         </form>
 

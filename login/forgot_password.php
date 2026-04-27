@@ -43,6 +43,7 @@ if (isset($_POST['reset_btn'])) {
     <title>Forgot Password</title>
 
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
     <style>
         * {
@@ -80,8 +81,8 @@ if (isset($_POST['reset_btn'])) {
             height: 45px;
             border-radius: 6px;
             border: none;
-            background: #1c2f3f;
-            color: #fff;
+            background: fff;
+            color: #333;
             margin-bottom: 15px;
         }
 

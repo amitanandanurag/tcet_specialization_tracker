@@ -147,7 +147,6 @@ include_once("../database/db_connect.php");
             display: block;
         }
 
-        /* Close button */
         .popup span {
             position: absolute;
             top: 10px;
@@ -242,6 +241,7 @@ include_once("../database/db_connect.php");
         function closePopup() {
             document.getElementById("registerPopup").style.display = "none";
         }
+        
 
     </script>
 </head>
@@ -254,20 +254,17 @@ include_once("../database/db_connect.php");
                 <div class="main-icon">
                     <img src="images/school_logo.jpg" alt="logo" width='150px' height='150px'>
                 </div>
-                <div class="school-name">
-                    SPECIALIZATION TRACKER
-                </div>
+                <div class="school-name"> SPECIALIZATION TRACKER </div>
                 <div class="header-left-bottom">
-                    <form id="login-form" method="post">
+                    <form method="post" action="login.php">
                         <div class="icon1">
                             <i class="fa fa-user"></i>
                             <input type="text" placeholder="Enter username" name="username" id="username" required="" />
                         </div>
                         <div class="icon1">
                             <i class="fa fa-lock"></i>
-                            <input type="password" placeholder="Enter password" name="password" id="password"
-                                required="" />
-                        </div>
+                            <input type="password" placeholder="Enter password" name="password" id="password" required="" />
+                        </div> 
                         <div class="login-check">
                             <label class="checkbox">
                                 <input type="checkbox" name="checkbox" checked="">
@@ -308,3 +305,5 @@ include_once("../database/db_connect.php");
 </body>
 
 </html>
+
+

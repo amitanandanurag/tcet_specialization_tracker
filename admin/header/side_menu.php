@@ -46,7 +46,8 @@ function sidebar_seed_super_admin_settings($db_handle)
 		array('Manage Section', 'fa fa-list-alt', 'class_crud_new.php?tab=section-list'),
 		array('Menu Master', 'fa fa-folder-open', 'class_crud_new.php?tab=menu-list'),
 		array('Sub Menu Master', 'fa fa-sitemap', 'class_crud_new.php?tab=sub-menu-list'),
-		array('Side Menu Allocation', 'fa fa-check-square-o', 'allocation_master.php')
+		array('Side Menu Allocation', 'fa fa-check-square-o', 'allocation_master.php'),
+		array('Audit Log', 'fa fa-history', 'audit_log.php')
 	);
 
 	foreach ($defaultSettings as $item) {
