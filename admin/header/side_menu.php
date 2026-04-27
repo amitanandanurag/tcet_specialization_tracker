@@ -1,8 +1,4 @@
 <?php
-if (!isset($dashboardRoute)) {
-	$dashboardRoute = ((int) ($usertype ?? 0) === 5) ? 'student_dashboard.php' : 'index.php';
-}
-
 function sidebar_has_column($conn, $table, $column)
 {
 	$escapedColumn = mysqli_real_escape_string($conn, $column);
@@ -46,8 +42,7 @@ function sidebar_seed_super_admin_settings($db_handle)
 		array('Manage Section', 'fa fa-list-alt', 'class_crud_new.php?tab=section-list'),
 		array('Menu Master', 'fa fa-folder-open', 'class_crud_new.php?tab=menu-list'),
 		array('Sub Menu Master', 'fa fa-sitemap', 'class_crud_new.php?tab=sub-menu-list'),
-		array('Side Menu Allocation', 'fa fa-check-square-o', 'allocation_master.php'),
-		array('Audit Log', 'fa fa-history', 'audit_log.php')
+		array('Side Menu Allocation', 'fa fa-check-square-o', 'allocation_master.php')
 	);
 
 	foreach ($defaultSettings as $item) {
@@ -298,7 +293,7 @@ if ($menuStmt) {
 ?>
 
 <ul class="sidebar-menu" id="sidebar-dynamic-menu">
-<li class="active"><a href="index.php"><i class="fa fa-home"></i>HOME</a></li>
+<li class="active"><a href="index.php"><i class="fa fa-user"></i><span><?php echo htmlspecialchars($role_name); ?></span></a></li>
 
 <?php foreach ($menuTree as $menuId => $menuData) {
 	$menuName = trim((string) $menuData['menu_name']);
