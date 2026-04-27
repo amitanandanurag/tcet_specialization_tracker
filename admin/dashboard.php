@@ -52,7 +52,8 @@ $logged_dept_id = null;
 $current_branch_name = '';
 
 // Resolve coordinator and mentor role IDs from st_role_master
-$role_query = "SELECT role_id, role_name FROM st_role_master WHERE role_name IN ('COORDINATOR', 'HOD', 'MENTOR', 'STUDENT')";
+// Use UPPER and TRIM for case-insensitive and whitespace-safe matching
+$role_query = "SELECT role_id, role_name FROM st_role_master WHERE UPPER(TRIM(role_name)) IN ('COORDINATOR', 'HOD', 'MENTOR', 'STUDENT')";
 $role_result = mysqli_query($db_handle->conn, $role_query);
 $coordinator_role_ids = [];
 $mentor_role_ids = [];
@@ -60,16 +61,28 @@ $student_role_id = null;
 
 if ($role_result) {
     while ($row = mysqli_fetch_assoc($role_result)) {
-        if (in_array($row['role_name'], ['COORDINATOR', 'HOD'])) {
+        $role_upper = strtoupper(trim($row['role_name']));
+        if (in_array($role_upper, ['COORDINATOR', 'HOD'])) {
             $coordinator_role_ids[] = (int)$row['role_id'];
         }
-        if ($row['role_name'] === 'MENTOR') {
+        if ($role_upper === 'MENTOR') {
             $mentor_role_ids[] = (int)$row['role_id'];
         }
-        if ($row['role_name'] === 'STUDENT') {
+        if ($role_upper === 'STUDENT') {
             $student_role_id = (int)$row['role_id'];
         }
     }
+}
+
+// Fallback: if query returned nothing, use known IDs from tcet_st.sql schema
+if (empty($coordinator_role_ids)) {
+    $coordinator_role_ids = [3]; // COORDINATOR/HOD typically role_id = 3
+}
+if (empty($mentor_role_ids)) {
+    $mentor_role_ids = [4]; // MENTOR typically role_id = 4
+}
+if (!$student_role_id) {
+    $student_role_id = 5; // STUDENT typically role_id = 5
 }
 
 // Get logged-in user's department
@@ -560,13 +573,13 @@ $rowcount_user = mysqli_num_rows($result1);
             <div class="col-lg-3 col-xs-6">
                 <div class="small-box bg-yellow">
                     <div class="inner">
-                        <?php if ($current_branch_name !== '') { ?>
-                            <h3 style="font-size: 30px; line-height: 1.2; margin-bottom: 8px;"><?php echo htmlspecialchars($current_branch_name); ?></h3>
-                            <p>Your Branch</p>
-                        <?php } else { ?>
+                        <?php if ($is_scoped_user && $current_branch_name): ?>
+                            <h3><?php echo $current_branch_name; ?></h3>
+                            <p>Branch</p>
+                        <?php else: ?>
                             <h3 class="counter" data-target="<?php echo $total_branches; ?>">0</h3>
                             <p>Total Branches</p>
-                        <?php } ?>
+                        <?php endif; ?>
                     </div>
                     <div class="icon"><i class="ion ion-ios-book"></i></div>
                     <a href="<?php echo $current_branch_name !== '' ? 'branch_info.php?department_id=' . intval($logged_dept_id) : 'branch_info.php'; ?>" class="small-box-footer">More info <i class="fa fa-arrow-circle-right"></i></a>
