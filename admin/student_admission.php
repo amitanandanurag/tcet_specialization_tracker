@@ -9,6 +9,7 @@
     var specializationSelect = document.getElementById("specialization_select");
     var specializationText = "";
     var cgpaValue = document.getElementById("cgpa") ? document.getElementById("cgpa").value : "";
+    var minorCgpaValue = document.getElementById("minor_cgpa") ? document.getElementById("minor_cgpa").value : "";
 
     if (specializationSelect && specializationSelect.selectedIndex >= 0) {
       specializationText = specializationSelect.options[specializationSelect.selectedIndex].text.toLowerCase();
@@ -59,25 +60,48 @@
         return false;
       }
     } else if (isMinorMultidisciplinary) {
-      // No CGPA validation for Minor Multidisciplinary
-      // Only validate Minor Course and Minor Subject selection
+      // Validate Minor Course selection
       var minorCourse = $('#minor_course_select').val();
       if (!minorCourse || minorCourse == "") {
         alert("Please select Minor Course.");
         return false;
       }
 
+      // Validate Minor Subject selection
       var minorSubject = $('#minor_subject_select').val();
       if (!minorSubject || minorSubject == "") {
         alert("Please select Minor Subject.");
         return false;
       }
 
-      // CGPA is NOT required for Minor Multidisciplinary
+      // Validate Minor CGPA - FIXED: Check if empty
+      if (minorCgpaValue == null || minorCgpaValue === "") {
+        alert("Please enter Minor CGPA.");
+        return false;
+      }
+      if (isNaN(minorCgpaValue)) {
+        alert("Please enter valid numeric CGPA for Minor.");
+        return false;
+      }
+
+      var minorCgpa = parseFloat(minorCgpaValue);
+      if (minorCgpa < 0 || minorCgpa > 10) {
+        alert("CGPA must be between 0 and 10.");
+        return false;
+      }
     } else if (isMinor) {
-      // No CGPA validation for Minor Degree - removed constraint
-      // Just validate that fields are filled if needed
-      // Minor degree doesn't require any additional validation
+      // For Minor Degree - optional CGPA but must be numeric if provided
+      if (minorCgpaValue && minorCgpaValue !== "") {
+        if (isNaN(minorCgpaValue)) {
+          alert("Please enter valid numeric CGPA for Minor.");
+          return false;
+        }
+        var minorCgpa = parseFloat(minorCgpaValue);
+        if (minorCgpa < 0 || minorCgpa > 10) {
+          alert("CGPA must be between 0 and 10.");
+          return false;
+        }
+      }
     }
 
     var mobile = document.myform.mobile.value;
@@ -236,20 +260,21 @@
 
     resetSpecializationConditionalUI();
 
-    if (isMinorDegree || isMinorMultidisciplinary || isHonours) {
+    if (isMinorDegree) {
       $('#cgpa_section').show();
-    }
-
-    if (isMinorMultidisciplinary) {
-      $('#minor_multidisciplinary_section').show();
-      // Show below fields immediately for Minor Multidisciplinary
       setAdmissionDetailSectionsVisible(true);
       return;
     }
 
-    if (isMinorDegree) {
-      // Show below fields immediately for Minor Degree
+    if (isMinorMultidisciplinary) {
+      $('#minor_multidisciplinary_section').show();
+      // Don't show regular CGPA section, we have minor_cgpa inside the minor section
       setAdmissionDetailSectionsVisible(true);
+      return;
+    }
+
+    if (isHonours) {
+      $('#cgpa_section').show();
       return;
     }
   }
@@ -365,9 +390,20 @@
                   <label>Academic Year</label>
                   <select class="form-control select" name="academic" id="academic" style="width: 100%;" required>
                     <option value="">Select Academic Year</option>
-                    <option value="2024 - 2025">2024 - 2025</option>
-                    <option value="2025 - 2026">2025 - 2026</option>
-                    <option value="2026 - 2027" selected>2026 - 2027</option>
+                    <?php
+                    // Fetch all batches from the database
+                    $batch_result = $db_handle->query("SELECT session_id, session_name FROM `st_session_master` ORDER BY session_id DESC");
+
+                    while ($row = $batch_result->fetch_assoc()) {
+                      $id = $row['session_id'];
+                      $name = $row['session_name'];
+
+                      // This makes the latest batch selected by default
+                      $selected = ($id == 1) ? 'selected' : '';
+
+                      echo "<option value='{$id}' {$selected}>{$name}</option>";
+                    }
+                    ?>
                   </select>
                 </div>
               </div>
@@ -405,22 +441,21 @@
               <div class="col-md-2">
                 <div class="form-group">
                   <label>Semester <span style="color: red;">*</span></label>
-                  <select class="form-control select" name="semester_id" id="semester_select" style="width: 100%;" required>
+                  <select class="form-control" name="current_semester_id" id="semester_select" required>
                     <option value="">Select Semester</option>
                     <?php
-                    $result = $db_handle->conn->query("SELECT * FROM st_semester ORDER BY semester_name");
+                    // Make sure to use the correct table name: st_semester_master (not st_semester)
+                    $result = $db_handle->conn->query("SELECT semester_id, semester_name FROM st_semester_master ORDER BY semester_id ASC");
                     if ($result && $result->num_rows > 0) {
                       while ($row = $result->fetch_assoc()) {
-                        $semester_id = $row['semester_id'];
-                        $semester_name = $row['semester_name'];
-                    ?>
-                        <option value="<?php echo $semester_id; ?>">
-                          <?php echo $semester_name; ?>
-                        </option>
-                    <?php
+                        echo "<option value='{$row['semester_id']}'>{$row['semester_name']}</option>";
                       }
                     } else {
-                      echo '<option value="">No Semester Found</option>';
+                      // Fallback if table name is different
+                      $result = $db_handle->conn->query("SELECT semester_id, semester_name FROM st_semester ORDER BY semester_id ASC");
+                      while ($row = $result->fetch_assoc()) {
+                        echo "<option value='{$row['semester_id']}'>{$row['semester_name']}</option>";
+                      }
                     }
                     ?>
                   </select>
@@ -445,15 +480,15 @@
               <div class="col-md-4">
                 <div class="form-group">
                   <label>Graduating Year</label>
-                  <select class="form-control select" name="batch_id" id="batch_id" class="batch_id" style="width: 100%;">
+                  <select class="form-control select" name="academic_year_id" id="academic_year_id" class="academic_year_id" style="width: 100%;">
                     <option>Select Year</option>
                     <?php
                     $result = $db_handle->conn->query("SELECT * from st_batch_master");
                     while ($row = $result->fetch_assoc()) {
                       $batch_name = $row['batch_name'];
-                      $batch_id = $row['batch_id'];
+                      $academic_year_id = $row['academic_year_id'];
                     ?>
-                      <option value="<?php echo $batch_id;  ?>"><?php echo $batch_name;  ?></option>
+                      <option value="<?php echo $academic_year_id;  ?>"><?php echo $batch_name;  ?></option>
                     <?php } ?>
                   </select>
                 </div>
@@ -506,7 +541,7 @@
 
             <!-- Minor Multidisciplinary Section -->
             <div class="col-md-12" id="minor_multidisciplinary_section" style="display: none;">
-              <div class="col-md-6">
+              <div class="col-md-4">
                 <div class="form-group">
                   <label>Minor Course <span style="color: red;">*</span></label>
                   <select class="form-control select" name="minor_course_id" id="minor_course_select" style="width: 100%;">
@@ -527,12 +562,20 @@
                 </div>
               </div>
 
-              <div class="col-md-6" id="minor_subject_section" style="display: none;">
+              <div class="col-md-4" id="minor_subject_section" style="display: none;">
                 <div class="form-group">
                   <label>Minor Subject <span style="color: red;">*</span></label>
                   <select class="form-control select" name="minor_subject_id" id="minor_subject_select" style="width: 100%;">
                     <option value="">Select Minor Subject</option>
                   </select>
+                </div>
+              </div>
+
+              <!-- ADD THIS MISSING CGPA FIELD -->
+              <div class="col-md-4">
+                <div class="form-group">
+                  <label>Minor CGPA <span style="color: red;">*</span></label>
+                  <input type="text" name="minor_cgpa" id="minor_cgpa" class="form-control" placeholder="Enter Minor CGPA (0-10)" style="width: 100%;">
                 </div>
               </div>
             </div>

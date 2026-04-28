@@ -1,9 +1,19 @@
-<?php include "header/header.php"; ?>
+<?php
+session_start();
+error_reporting(E_ALL);
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
+
+require "../database/db_connect.php";
+$db_handle = new DBController();
+
+include "header/header.php";
+?>
 
 <div class="content-wrapper">
   <section class="content-header">
     <h1>
-      <i class="fa fa-list"></i> AIDED STUDENT DETAILS
+      <i class="fa fa-user-plus"></i> ENROLLED STUDENT DETAILS
     </h1>
   </section>
 
@@ -12,6 +22,7 @@
       <div class="col-md-12">
         <div class="wrapper2 box box-primary">
           <div class="div2 box-header with-border">
+            <!-- Filter Section -->
             <div class="row" style="margin-bottom: 20px;">
               <div class="col-md-1">
                 <label for="select_all" class="btn btn-default" style="width: 100%;">
@@ -19,15 +30,9 @@
                 </label>
               </div>
 
-              <div class="col-md-2">
+              <div class="col-md-4">
                 <button type="button" onclick="window.location.href='student_admission.php';" class="btn btn-primary btn-block">
-                  <i class="fa fa-plus"></i> NEW ADMISSION
-                </button>
-              </div>
-
-              <div class="col-md-2">
-                <button type="button" onclick="fnExcelReport();" class="btn btn-success btn-block">
-                  <i class="fa fa-print"></i> EXCEL
+                  <i class="fa fa-plus"></i> ENROLL NEW STUDENT
                 </button>
               </div>
 
@@ -49,11 +54,9 @@
                   <?php
                   $result = $db_handle->query("SELECT * FROM `st_section_master`");
                   while ($row = $result->fetch_assoc()) {
-                    $section_id = $row['id'];
-                    $sections = $row['sections'];
+                    echo '<option value="' . $row['id'] . '">' . $row['sections'] . '</option>';
+                  }
                   ?>
-                    <option value="<?php echo $section_id; ?>"><?php echo $sections; ?></option>
-                  <?php } ?>
                 </select>
               </div>
 
@@ -63,11 +66,10 @@
                   <?php
                   $result = $db_handle->query("SELECT * FROM `st_session_master`");
                   while ($row = $result->fetch_assoc()) {
-                    $session_id  = $row['session_id'];
-                    $session = $row['session_name'];
+                    $selected = ($row['session_id'] == 6) ? "selected" : "";
+                    echo '<option value="' . $row['session_id'] . '" ' . $selected . '>' . $row['session_name'] . '</option>';
+                  }
                   ?>
-                    <option value="<?php echo $session_id; ?>" <?php if ($session_id == 6) echo "selected"; ?>><?php echo $session; ?></option>
-                  <?php } ?>
                 </select>
               </div>
 
@@ -78,17 +80,72 @@
               </div>
             </div>
 
+            <!-- Additional Filters -->
+            <div class="row" style="margin-bottom: 20px;">
+              <div class="col-md-3">
+                <select class="form-control" id="select_academic_year" name="select_academic_year">
+                  <option value="">Select Academic Year</option>
+                  <?php
+                  $batch_result = $db_handle->query("SELECT session_id, session_name FROM `st_session_master` ORDER BY session_id DESC");
+                  while ($row = $batch_result->fetch_assoc()) {
+                    $selected = ($row['session_id'] == 1) ? 'selected' : '';
+                    echo "<option value='{$row['session_id']}' {$selected}>{$row['session_name']}</option>";
+                  }
+                  ?>
+                </select>
+              </div>
+
+              <div class="col-md-3">
+                <select class="form-control" id="select_semester" name="select_semester">
+                  <option value="">Select Semester</option>
+                  <?php
+                  $semester_result = $db_handle->query("SELECT semester_id, semester_name FROM `st_semester_master` ORDER BY semester_id");
+                  while ($row = $semester_result->fetch_assoc()) {
+                    echo "<option value='{$row['semester_id']}'>{$row['semester_name']}</option>";
+                  }
+                  ?>
+                </select>
+              </div>
+
+              <div class="col-md-3">
+                <select class="form-control" id="select_department" name="select_department">
+                  <option value="">Select Department</option>
+                  <?php
+                  $dept_result = $db_handle->query("SELECT department_id, department_name FROM `st_department_master` ORDER BY department_name");
+                  while ($row = $dept_result->fetch_assoc()) {
+                    echo "<option value='{$row['department_id']}'>{$row['department_name']}</option>";
+                  }
+                  ?>
+                </select>
+              </div>
+
+              <div class="col-md-2">
+                <button type="button" onclick="fnExcelReport();" class="btn btn-success btn-block">
+                  <i class="fa fa-print"></i> EXCEL
+                </button>
+              </div>
+
+              <div class="col-md-1">
+                <button type="button" onclick="bulkDelete()" class="btn btn-danger btn-block">
+                  <i class="fa fa-trash"></i> Bulk
+                </button>
+              </div>
+            </div>
+
+            <!-- Data Table -->
             <div class="text-center table table-striped table-bordered" style="overflow-x:auto;">
               <table id="myTable" class="text-center table table-striped table-bordered" width="100%">
                 <thead>
                   <tr>
-                    <th style="background-color: #423cbc; color: white; padding: 16px" data-orderable="false"><input type="checkbox" id="select_all"></th>
+                    <th style="background-color: #423cbc; color: white; padding: 16px" data-orderable="false"><input type="checkbox" id="select_all_header"></th>
                     <th style="background-color: #423cbc; color: white; padding: 16px">SR. NO</th>
                     <th style="background-color: #423cbc; color: white; padding: 16px">MESSAGE</th>
                     <th style="background-color: #423cbc; color: white; padding: 16px">Reg. No</th>
                     <th style="background-color: #423cbc; color: white; padding: 16px">Name</th>
                     <th style="background-color: #423cbc; color: white; padding: 16px">Class</th>
                     <th style="background-color: #423cbc; color: white; padding: 16px">Division</th>
+                    <th style="background-color: #423cbc; color: white; padding: 16px">Academic Year</th>
+                    <th style="background-color: #423cbc; color: white; padding: 16px">Semester</th>
                     <th style="background-color: #423cbc; color: white; padding: 16px">Department</th>
                     <th style="background-color: #423cbc; color: white; padding: 16px">Specialization</th>
                     <th style="background-color: #423cbc; color: white; padding: 16px">Specialization Subject</th>
@@ -173,14 +230,13 @@
     white-space: normal;
     min-width: 150px;
   }
-
-  .select-all-active {
-    background-color: #5cb85c !important;
-    color: white !important;
-  }
 </style>
 
-<script type="text/javascript" language="javascript">
+<script>
+  // Global variable for DataTable
+  var dataTable;
+
+  // Delete single user
   function delete_user(id, table) {
     Swal.fire({
       title: "Are you sure?",
@@ -201,10 +257,14 @@
           },
           dataType: "json",
           success: function(data) {
-            Swal.fire('Deleted!', 'Student details have been moved successfully!', 'success')
-              .then(() => {
-                $('#myTable').DataTable().ajax.reload();
-              });
+            if (data.status === 'success') {
+              Swal.fire('Deleted!', 'Student details have been moved successfully!', 'success')
+                .then(() => {
+                  dataTable.ajax.reload();
+                });
+            } else {
+              Swal.fire('Error!', data.message || 'There was a problem deleting the student.', 'error');
+            }
           },
           error: function(error) {
             Swal.fire('Error!', 'There was a problem deleting the student.', 'error');
@@ -214,9 +274,61 @@
     });
   }
 
+  // Bulk delete
+  function bulkDelete() {
+    var selectedIds = [];
+    $('.selectRow:checked').each(function() {
+      selectedIds.push($(this).val());
+    });
+
+    if (selectedIds.length === 0) {
+      Swal.fire('Warning!', 'Please select at least one student to delete.', 'warning');
+      return;
+    }
+
+    Swal.fire({
+      title: "Are you sure?",
+      text: "You are about to delete " + selectedIds.length + " student(s). This action cannot be undone!",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Yes, delete them!",
+      cancelButtonText: "No, cancel!",
+      reverseButtons: true
+    }).then((result) => {
+      if (result.isConfirmed) {
+        $.ajax({
+          url: 'student_bulk_delete.php',
+          type: "POST",
+          data: {
+            ids: selectedIds,
+            table: 'st_student_master'
+          },
+          dataType: "json",
+          success: function(data) {
+            if (data.status === 'success') {
+              Swal.fire('Deleted!', data.message, 'success')
+                .then(() => {
+                  dataTable.ajax.reload();
+                });
+            } else {
+              Swal.fire('Error!', data.message || 'There was a problem deleting the students.', 'error');
+            }
+          },
+          error: function(error) {
+            Swal.fire('Error!', 'There was a problem deleting the students.', 'error');
+          }
+        });
+      }
+    });
+  }
+
   $(document).ready(function() {
     // Initialize DataTable
-    var dataTable = $('#myTable').DataTable({
+    if ($.fn.dataTable.isDataTable('#myTable')) {
+      $('#myTable').DataTable().destroy();
+    }
+
+    dataTable = $('#myTable').DataTable({
       "processing": true,
       "serverSide": true,
       "ajax": {
@@ -226,18 +338,21 @@
           d.select_class = $('#select_class').val();
           d.select_section = $('#select_section').val();
           d.select_session = $('#select_session').val();
+          d.select_academic_year = $('#select_academic_year').val();
+          d.select_semester = $('#select_semester').val();
+          d.select_department = $('#select_department').val();
         }
       },
       "lengthMenu": [
         [15, 25, 50, 100, 500],
-        ['15', '25', '50', '100', '500']
+        [15, 25, 50, 100, 500]
       ],
       "pageLength": 15,
       "autoWidth": false,
       "scrollX": true,
       "columnDefs": [{
           "orderable": false,
-          "targets": [0, 2, 14, 15, 16]
+          "targets": [0, 2, 16, 17, 18]
         },
         {
           "className": "text-left",
@@ -259,7 +374,6 @@
       }
     });
 
-    // Style search box
     $('div.dataTables_filter input').addClass('form-control');
     $('div.dataTables_filter input').attr('placeholder', 'Search...');
 
@@ -269,40 +383,20 @@
     });
 
     // Filter changes
-    $('#select_class, #select_section, #select_session').change(function() {
+    $('#select_class, #select_section, #select_session, #select_academic_year, #select_semester, #select_department').change(function() {
       dataTable.ajax.reload();
     });
 
     // Select All functionality
-    $('#select_all_btn').click(function() {
-      var isChecked = $(this).hasClass('active');
-      $('.selectRow').each(function() {
-        $(this).prop('checked', !isChecked);
-      });
-      $(this).toggleClass('active');
-      if ($(this).hasClass('active')) {
-        $(this).addClass('select-all-active');
-      } else {
-        $(this).removeClass('select-all-active');
-      }
-    });
-
-    $('#select_all_header').click(function() {
-      var status = this.checked;
-      $('.selectRow').each(function() {
-        $(this).prop('checked', status);
-      });
-      if (status) {
-        $('#select_all_btn').addClass('active select-all-active');
-      } else {
-        $('#select_all_btn').removeClass('active select-all-active');
-      }
+    $(document).on('click', '#select_all, #select_all_header', function() {
+      var isChecked = $(this).is(':checked');
+      $('.selectRow').prop('checked', isChecked);
     });
   });
 
   // View and Edit modals
   $(document).ready(function() {
-    $(document).on('click', '#student_view', function(e) {
+    $(document).on('click', '.student_view', function(e) {
       e.preventDefault();
       var uid = $(this).data('id');
       $('#dynamic-content').html('<div class="text-center"><i class="fa fa-spinner fa-spin fa-3x"></i></div>');
@@ -319,7 +413,7 @@
       });
     });
 
-    $(document).on('click', '#student_edit', function(e) {
+    $(document).on('click', '.student_edit', function(e) {
       e.preventDefault();
       var uid = $(this).data('id');
       $('#edit-dynamic-content').html('<div class="text-center"><i class="fa fa-spinner fa-spin fa-3x"></i></div>');
@@ -340,7 +434,7 @@
   // Excel Export
   function fnExcelReport() {
     var table = document.getElementById("myTable");
-    var excludeCols = [0, 2, 14, 15, 16];
+    var excludeCols = [0, 2, 16, 17, 18];
     var tableHTML = "<table border='1' style='border-collapse:collapse;'>";
 
     for (var i = 0; i < table.rows.length; i++) {
@@ -373,29 +467,5 @@
     document.body.removeChild(link);
   }
 </script>
-
-<div class="modal fade" id="send_sms" tabindex="-1" role="dialog" aria-labelledby="edit" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
-        <h4 class="modal-title custom_align" id="Heading"> <i class="fa fa-send"></i> Send SMS </h4>
-      </div>
-      <form method="post" onsubmit="send_sms(); return false;">
-        <div class="modal-body">
-          <div class="form-horizontal">
-            <textarea class="form-control" required="required" maxlength="160" placeholder="Enter your Message (maximum words length is: 160)" id="sms_content"></textarea>
-          </div>
-        </div>
-        <div class="modal-footer ">
-          <button type="reset" class="btn btn-default"><span class="fa fa-times-circle"></span> Reset </button>
-          <button type="submit" class="btn btn-primary"><span class="fa fa-check-circle"></span> Send </button>
-        </div>
-        <div id="sms_response" class="modal-footer text-center"></div>
-      </form>
-    </div>
-  </div>
-</div>
-</div>
 
 <?php include "header/footer.php"; ?>

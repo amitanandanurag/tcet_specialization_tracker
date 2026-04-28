@@ -3,7 +3,7 @@ RewriteEngine On
 
 # 2. Tell Apache exactly where this project lives
 # This ensures /404.php points to /sp-tracker/404.php
-RewriteBase /sp-tracker/
+RewriteBase /tcet/
 
 # 3. Set the error document relative to the base
-ErrorDocument 404 /sp-tracker/404.php
+ErrorDocument 404 /tcet/404.php
