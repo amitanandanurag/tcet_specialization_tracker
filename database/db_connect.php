@@ -34,22 +34,23 @@ class DBController
         return false;
       }
 
-      if (!$conn) {
-        $this->last_error = 'Unable to connect with database';
-        return false;
-      }
 
       return $conn;
     }
 
-    function runQuery($query) {
-        $result = mysqli_query($this->conn,$query);
-        while($row=mysqli_fetch_assoc($result)) {
-            $resultset[] = $row;
-        }
-        if(!empty($resultset))
-            return $resultset;
+    public function runQuery($query) {
+    $result = mysqli_query($this->conn, $query);
+
+    if (!$result) {
+        die("Query Failed: " . mysqli_error($this->conn));
     }
+
+    $resultset = [];
+    while ($row = mysqli_fetch_assoc($result)) {
+        $resultset[] = $row;
+    }
+    return $resultset;
+}
 
 
     function numRows($query)

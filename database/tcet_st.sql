@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Apr 25, 2026 at 06:15 PM
+-- Generation Time: Apr 28, 2026 at 02:54 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -39,12 +39,23 @@ CREATE TABLE `st_audit_log` (
   `browser_user_agent` text DEFAULT NULL,
   `session_duration_seconds` int(11) DEFAULT NULL,
   `logout_at` timestamp NULL DEFAULT NULL,
-  `performed_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  KEY `action_type` (`action_type`),
-  KEY `user_id` (`user_id`),
-  KEY `performed_at` (`performed_at`)
+  `performed_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `st_audit_log`
+--
+
+INSERT INTO `st_audit_log` (`audit_id`, `user_id`, `action_type`, `affected_table`, `affected_record`, `description`, `username`, `ip_address`, `browser_user_agent`, `session_duration_seconds`, `logout_at`, `performed_at`) VALUES
+(34, 1, 'LOGIN_SUCCESS', 'st_login', 1, 'User \'superadmin@tcetmumbai.in\' logged in successfully with role 1 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36\nLogout: User \'superadmin@tcetmumbai.in\' logged out from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', 'superadmin@tcetmumbai.in', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', 4402, '2026-04-27 11:44:50', '2026-04-27 10:31:29'),
+(35, 3, 'LOGIN_SUCCESS', 'st_login', 3, 'User \'coordinator@tcetmumbai.in\' logged in successfully with role 3 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36\nLogout: User \'coordinator@tcetmumbai.in\' logged out from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', 'coordinator@tcetmumbai.in', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', 35, '2026-04-27 11:45:43', '2026-04-27 11:45:09'),
+(36, 3, 'LOGIN_SUCCESS', 'st_login', 3, 'User \'coordinator@tcetmumbai.in\' logged in successfully with role 3 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', 'coordinator@tcetmumbai.in', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', NULL, NULL, '2026-04-27 11:48:33'),
+(37, 3, 'LOGIN_SUCCESS', 'st_login', 3, 'User \'coordinator@tcetmumbai.in\' logged in successfully with role 3 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36\nLogout: User \'coordinator@tcetmumbai.in\' logged out from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', 'coordinator@tcetmumbai.in', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', 896, '2026-04-28 12:37:39', '2026-04-28 12:22:44'),
+(38, 1, 'LOGIN_SUCCESS', 'st_login', 1, 'User \'superadmin@tcetmumbai.in\' logged in successfully with role 1 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', 'superadmin@tcetmumbai.in', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', NULL, NULL, '2026-04-28 12:37:52');
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `st_batch_master`
 --
 
@@ -98,6 +109,31 @@ INSERT INTO `st_class_master` (`class_id`, `class_name`, `date`) VALUES
 (5, 'SE', '2026-04-16 08:46:58'),
 (6, 'TE', '2026-04-16 08:46:58'),
 (7, 'BE', '2026-04-16 08:46:58');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `st_coordinator`
+--
+
+CREATE TABLE `st_coordinator` (
+  `coordinator_id` int(11) NOT NULL,
+  `login_id` int(11) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `st_coordinator_mentor`
+--
+
+CREATE TABLE `st_coordinator_mentor` (
+  `id` int(11) NOT NULL,
+  `coordinator_id` int(11) NOT NULL,
+  `mentor_id` int(11) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -346,7 +382,8 @@ INSERT INTO `st_menu_allocation_master` (`menu_allocation_id`, `user_id`, `role_
 (286, 0, 3, 5, 21),
 (287, 0, 3, 5, 47),
 (288, 0, 4, 1, 1),
-(289, 0, 1, 5, 49);
+(289, 0, 1, 5, 49),
+(290, 0, 1, 3, 50);
 
 -- --------------------------------------------------------
 
@@ -1481,7 +1518,8 @@ INSERT INTO `st_sub_menu_master` (`sub_menu_id`, `menu_id`, `sort_order`, `sub_m
 (46, 5, 4, 'Manage Section', 'fa fa-list-alt', 'class_crud_new.php?tab=section-list'),
 (47, 5, 8, 'Offline Marks Entry', 'fa fa-pencil-square-o', 'offline_marks_entry.php'),
 (48, 4, 3, 'Mentor Allocation', 'fa fa-exchange', 'mentor_allocation.php'),
-(49, 5, 9, 'Audit Log', 'fa fa-history', 'audit_log.php');
+(49, 5, 9, 'Audit Log', 'fa fa-history', 'audit_log.php'),
+(50, 3, 3, 'Coordinator Allocation', 'fa fa-exchange', 'coordinator_allocation.php');
 
 -- --------------------------------------------------------
 
@@ -1551,7 +1589,10 @@ INSERT INTO `unaided_sub` (`id`, `sub`) VALUES
 -- Indexes for table `st_audit_log`
 --
 ALTER TABLE `st_audit_log`
-  ADD PRIMARY KEY (`audit_id`);
+  ADD PRIMARY KEY (`audit_id`),
+  ADD KEY `action_type` (`action_type`),
+  ADD KEY `user_id` (`user_id`),
+  ADD KEY `performed_at` (`performed_at`);
 
 --
 -- Indexes for table `st_batch_master`
@@ -1753,7 +1794,7 @@ ALTER TABLE `unaided_sub`
 -- AUTO_INCREMENT for table `st_audit_log`
 --
 ALTER TABLE `st_audit_log`
-  MODIFY `audit_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=34;
+  MODIFY `audit_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=39;
 
 --
 -- AUTO_INCREMENT for table `st_batch_master`
@@ -1819,7 +1860,7 @@ ALTER TABLE `st_mentor_student_mapping`
 -- AUTO_INCREMENT for table `st_menu_allocation_master`
 --
 ALTER TABLE `st_menu_allocation_master`
-  MODIFY `menu_allocation_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=290;
+  MODIFY `menu_allocation_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=291;
 
 --
 -- AUTO_INCREMENT for table `st_menu_master`
@@ -1909,7 +1950,7 @@ ALTER TABLE `st_student_master_old`
 -- AUTO_INCREMENT for table `st_sub_menu_master`
 --
 ALTER TABLE `st_sub_menu_master`
-  MODIFY `sub_menu_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=50;
+  MODIFY `sub_menu_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=51;
 
 --
 -- AUTO_INCREMENT for table `st_user_log_master`
