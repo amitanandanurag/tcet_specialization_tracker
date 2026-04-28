@@ -1,7 +1,17 @@
 <?php
+// Enable error reporting to see what's breaking
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
 session_start();
 require "../database/db_connect.php";
 $db_handle = new DBController();
+
+// Test database connection
+if (!$db_handle->conn) {
+    echo json_encode(["error" => "Database connection failed"]);
+    exit;
+}
 
 $sessionUserId = intval($_SESSION['user_id'] ?? $_SESSION['user_session'] ?? 0);
 $sessionRoleId = intval($_SESSION['user_type'] ?? 0);
@@ -46,26 +56,20 @@ if (!empty($requestData['search']['value'])) {
     $searchValue = mysqli_real_escape_string($db_handle->conn, $_POST['search_value']);
 }
 
-// Build shared FROM/WHERE so all filters apply consistently.
-$baseSql = "FROM st_student_master sm
-LEFT JOIN st_class_master cl ON cl.class_id = sm.class_id
-LEFT JOIN st_section_master sec ON sec.id = sm.division_id
-LEFT JOIN st_department_master dep ON dep.department_id = sm.department_id
-LEFT JOIN st_specialization_master sp ON sp.specialization_id = sm.specialization_id
-LEFT JOIN st_specialization_subject_master ssb ON ssb.subject_id = sm.specialization_subject_id
-WHERE sm.status = '0'" . $departmentFilterSql;
+// Build the WHERE clause
+$whereClause = "sm.status = '0'" . $departmentFilterSql;
 
 if (!empty($select_class)) {
-    $baseSql .= " AND sm.class_id = '" . mysqli_real_escape_string($db_handle->conn, $select_class) . "'";
+    $whereClause .= " AND sm.class_id = '" . mysqli_real_escape_string($db_handle->conn, $select_class) . "'";
 }
 if (!empty($select_section)) {
-    $baseSql .= " AND sm.division_id = '" . mysqli_real_escape_string($db_handle->conn, $select_section) . "'";
+    $whereClause .= " AND sm.division_id = '" . mysqli_real_escape_string($db_handle->conn, $select_section) . "'";
 }
 if (!empty($select_session)) {
-    $baseSql .= " AND sm.academic_year = '" . mysqli_real_escape_string($db_handle->conn, $select_session) . "'";
+    $whereClause .= " AND sm.academic_year = '" . mysqli_real_escape_string($db_handle->conn, $select_session) . "'";
 }
 if (!empty($searchValue)) {
-    $baseSql .= " AND (
+    $whereClause .= " AND (
         sm.registration_no LIKE '%$searchValue%'
         OR sm.fname LIKE '%$searchValue%'
         OR sm.lname LIKE '%$searchValue%'
@@ -81,6 +85,7 @@ if (!empty($searchValue)) {
     )";
 }
 
+// Main query
 $sql = "SELECT
     sm.student_id,
     sm.registration_no,
@@ -110,28 +115,7 @@ LEFT JOIN st_section_master sec ON sec.id = sm.division_id
 LEFT JOIN st_department_master dep ON dep.department_id = sm.department_id
 LEFT JOIN st_specialization_master sp ON sp.specialization_id = sm.specialization_id
 LEFT JOIN st_specialization_subject_master ssb ON ssb.subject_id = sm.specialization_subject_id
-WHERE sm.status = '0'";
-
-// Collect filters
-$filters = [];
-
-if (!empty($select_class)) {
-    $filters[] = "sm.class_id = '" . mysqli_real_escape_string($db_handle->conn, $select_class) . "'";
-}
-
-if (!empty($select_section)) {
-    $filters[] = "sm.division_id = '" . mysqli_real_escape_string($db_handle->conn, $select_section) . "'";
-}
-
-if (!empty($select_session)) {
-    $filters[] = "sm.academic_year = '" . mysqli_real_escape_string($db_handle->conn, $select_session) . "'";
-}
-
-// Apply filters to query
-if (!empty($filters)) {
-    $sql .= " AND " . implode(" AND ", $filters);
-}
-{$baseSql}";
+WHERE $whereClause";
 
 // Total counts
 $totalDataQuery = "SELECT COUNT(*) AS total FROM st_student_master sm WHERE sm.status = '0'" . $departmentFilterSql;
@@ -139,7 +123,13 @@ $totalDataResult = $db_handle->query($totalDataQuery);
 $totalDataRow = $totalDataResult ? mysqli_fetch_assoc($totalDataResult) : ['total' => 0];
 $totalData = (int) ($totalDataRow['total'] ?? 0);
 
-$totalFilteredQuery = "SELECT COUNT(*) AS total {$baseSql}";
+$totalFilteredQuery = "SELECT COUNT(*) AS total FROM st_student_master sm
+LEFT JOIN st_class_master cl ON cl.class_id = sm.class_id
+LEFT JOIN st_section_master sec ON sec.id = sm.division_id
+LEFT JOIN st_department_master dep ON dep.department_id = sm.department_id
+LEFT JOIN st_specialization_master sp ON sp.specialization_id = sm.specialization_id
+LEFT JOIN st_specialization_subject_master ssb ON ssb.subject_id = sm.specialization_subject_id
+WHERE $whereClause";
 $totalFilteredResult = $db_handle->query($totalFilteredQuery);
 $totalFilteredRow = $totalFilteredResult ? mysqli_fetch_assoc($totalFilteredResult) : ['total' => 0];
 $totalFiltered = (int) ($totalFilteredRow['total'] ?? 0);
@@ -167,76 +157,85 @@ $result = $db_handle->query($sql);
 $data = [];
 $counter = $start + 1;
 
-while ($row = mysqli_fetch_assoc($result)) {
-    $nestedData = [];
-    
-    // Checkbox
-    $nestedData[] = "<input type='checkbox' class='selectRow' value='{$row['student_id']}' />";
-    
-    // SR NO
-    $nestedData[] = $counter++;
-    
-    // WhatsApp
-    $mobile = $row['mobile'];
-    $nestedData[] = "<a href='https://wa.me/91$mobile?text=WELCOME%20TO%20THAKUR%20COLLEGE' target='_blank'>
-                            <button class='btn btn-success btn-sm'><i class='fa fa-whatsapp'></i></button>
-                         </a>";
-    
-    // Registration No
-    $nestedData[] = "<strong>{$row['registration_no']}</strong>";
+if ($result && mysqli_num_rows($result) > 0) {
+    while ($row = mysqli_fetch_assoc($result)) {
+        $nestedData = [];
+        
+        // Checkbox
+        $nestedData[] = "<input type='checkbox' class='selectRow' value='{$row['student_id']}' />";
+        
+        // SR NO
+        $nestedData[] = $counter++;
+        
+        // WhatsApp
+        $mobile = $row['mobile'];
+        $nestedData[] = "<a href='https://wa.me/91$mobile?text=WELCOME%20TO%20THAKUR%20COLLEGE' target='_blank'>
+                                <button class='btn btn-success btn-sm'><i class='fa fa-whatsapp'></i></button>
+                             </a>";
+        
+        // Registration No
+        $nestedData[] = "<strong>{$row['registration_no']}</strong>";
 
-    $nestedData[] = !empty($row['academic_year']) ? $row['academic_year'] : '-';
-    
-    // Name
-    $nestedData[] = "<div align='left'><strong>" . htmlspecialchars($row['fname']) . "</strong></div>";
-    
-    // Class
-    $nestedData[] = !empty($row['class_display']) ? $row['class_display'] : '-';
-    
-    // Division
-    $nestedData[] = !empty($row['section_display']) ? $row['section_display'] : '-';
-    
-    // Department
-    $nestedData[] = !empty($row['department_name']) ? $row['department_name'] : '-';
-    
-    // Specialization
-    $nestedData[] = !empty($row['specialization_name']) ? $row['specialization_name'] : '-';
-    
-    // Specialization Subject
-    $nestedData[] = !empty($row['specialization_subject_name']) ? $row['specialization_subject_name'] : '-';
-    
-    // CGPA
-    $nestedData[] = !empty($row['cgpa']) ? number_format($row['cgpa'], 2) : '-';
-    
-    
-    // Mobile
-    $nestedData[] = !empty($row['mobile']) ? $row['mobile'] : '-';
+        $nestedData[] = !empty($row['academic_year']) ? $row['academic_year'] : '-';
+        
+        // Name
+        $nestedData[] = "<div align='left'><strong>" . htmlspecialchars($row['fname']) . "</strong></div>";
+        
+        // Class
+        $nestedData[] = !empty($row['class_display']) ? $row['class_display'] : '-';
+        
+        // Division
+        $nestedData[] = !empty($row['section_display']) ? $row['section_display'] : '-';
+        
+        // Department
+        $nestedData[] = !empty($row['department_name']) ? $row['department_name'] : '-';
+        
+        // Specialization
+        $nestedData[] = !empty($row['specialization_name']) ? $row['specialization_name'] : '-';
+        
+        // Specialization Subject
+        $nestedData[] = !empty($row['specialization_subject_name']) ? $row['specialization_subject_name'] : '-';
+        
+        // CGPA
+        $nestedData[] = !empty($row['cgpa']) ? number_format($row['cgpa'], 2) : '-';
+        
+        // Mobile
+        $nestedData[] = !empty($row['mobile']) ? $row['mobile'] : '-';
 
-    // Session
-    $nestedData[] = !empty($row['academic_year']) ? $row['academic_year'] : '-';
-    
-    // Roll No
-    $nestedData[] = !empty($row['roll_no']) ? $row['roll_no'] : '-';
-    
-    // Email
-    $nestedData[] = !empty($row['email']) ? "<a href='mailto:{$row['email']}'>" . htmlspecialchars($row['email']) . "</a>" : '-';
-    
-    // View Button
-    $nestedData[] = "<button class='btn btn-primary btn-sm' id='student_view' data-id='{$row['student_id']}'><i class='fa fa-eye'></i></button>";
-    
-    // Edit Button
-    $nestedData[] = "<button class='btn bg-olive btn-sm' id='student_edit' data-id='{$row['student_id']}'><i class='fa fa-pencil'></i></button>";
-    
-    // Delete Button
-    $nestedData[] = "<button class='btn btn-danger btn-sm' onclick='delete_user({$row['student_id']}, \"st_student_master\")'><i class='fa fa-trash'></i></button>";
-    
-    $data[] = $nestedData;
+        // Session
+        $nestedData[] = !empty($row['academic_year']) ? $row['academic_year'] : '-';
+        
+        // Roll No
+        $nestedData[] = !empty($row['roll_no']) ? $row['roll_no'] : '-';
+        
+        // Email
+        $nestedData[] = !empty($row['email']) ? "<a href='mailto:{$row['email']}'>" . htmlspecialchars($row['email']) . "</a>" : '-';
+        
+        // View Button
+        $nestedData[] = "<button class='btn btn-primary btn-sm student_view' data-id='{$row['student_id']}'><i class='fa fa-eye'></i></button>";
+        
+        // Edit Button
+        $nestedData[] = "<button class='btn bg-olive btn-sm student_edit' data-id='{$row['student_id']}'><i class='fa fa-pencil'></i></button>";
+        
+        // Delete Button
+        $nestedData[] = "<button class='btn btn-danger btn-sm' onclick='delete_user({$row['student_id']}, \"st_student_master\")'><i class='fa fa-trash'></i></button>";
+        
+        $data[] = $nestedData;
+    }
 }
 
-echo json_encode([
-    "draw" => intval($requestData['draw']),
-    "recordsTotal" => intval($totalData),
-    "recordsFiltered" => intval($totalFiltered),
+// Return JSON response
+$response = [
+    "draw" => intval($requestData['draw'] ?? 1),
+    "recordsTotal" => $totalData,
+    "recordsFiltered" => $totalFiltered,
     "data" => $data
-]);
+];
+
+// Clear any accidental output before JSON
+while (ob_get_level()) ob_end_clean();
+
+header('Content-Type: application/json');
+echo json_encode($response);
+exit;
 ?>

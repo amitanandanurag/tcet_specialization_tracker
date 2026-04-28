@@ -60,22 +60,23 @@
 
               <div class="col-md-2">
                 <select class="form-control" id="select_session" name="select_session">
-                  <option value="">Select Session</option>
+                  <option value="">Select Session/Academic Year</option>
                   <?php
-                  $result = $db_handle->query("SELECT * FROM `st_session_master`");
-                  while ($row = $result->fetch_assoc()) {
-                    $session_id  = $row['session_id'];
-                    $session = $row['session_name'];
+                  // Get unique academic years from student master
+                  $sessionQuery = "SELECT DISTINCT academic_year FROM `st_student_master` WHERE academic_year IS NOT NULL AND academic_year != '' ORDER BY academic_year DESC";
+                  $sessionResult = $db_handle->query($sessionQuery);
+                  if ($sessionResult) {
+                      while ($sessionRow = $sessionResult->fetch_assoc()) {
+                          $academic_year = $sessionRow['academic_year'];
+                          ?>
+                          <option value="<?php echo htmlspecialchars($academic_year); ?>"><?php echo htmlspecialchars($academic_year); ?></option>
+                          <?php 
+                      }
+                  }
                   ?>
-                    <option value="<?php echo $session_id; ?>" <?php if ($session_id == 6) echo "selected"; ?>><?php echo $session; ?></option>
-                  $result = $db_handle->query("SELECT DISTINCT academic_year FROM `st_student_master` WHERE academic_year IS NOT NULL AND academic_year != '' ORDER BY academic_year DESC");
-                  while ($row = $result->fetch_assoc()) {
-                    $academic_year = $row['academic_year'];
-                  ?>
-                    <option value="<?php echo htmlspecialchars($academic_year); ?>"><?php echo htmlspecialchars($academic_year); ?></option>
-                  <?php } ?>
                 </select>
               </div>
+
 
               <div class="col-md-1">
                 <button type="button" id="search" class="btn btn-primary btn-block">
@@ -224,71 +225,38 @@
 
   $(document).ready(function() {
     // Initialize DataTable
-  var dataTable = $('#myTable').DataTable({
-    processing: true,
-    serverSide: true,
-
-    ajax: {
-        url: "student_info_ajax.php",
-        type: "POST",
-        data: function (d) {
-            d.select_class = $('#select_class').val();
-            d.select_section = $('#select_section').val();
-            d.select_session = $('#select_session').val();
     var dataTable = $('#myTable').DataTable({
-        "processing": true,
-        "serverSide": true,
-        "ajax": {
-            "url": "student_info_ajax.php",
-            "type": "POST",
-            "data": function(d) {
-                d.select_class = $('#select_class').val();
-                d.select_section = $('#select_section').val();
-                d.select_session = $('#select_session').val();
-                d.search_value = d.search.value;
-            }
-        },
-        "lengthMenu": [[15, 25, 50, 100, 500], ['15', '25', '50', '100', '500']],
-        "pageLength": 15,
-        "autoWidth": false,
-        "scrollX": true,
-        "columnDefs": [
-            { "orderable": false, "targets": [0, 2, 15, 16, 17] },
-            { "className": "text-left", "targets": [4] },
-            { "className": "text-center", "targets": "_all" }
-        ],
-        "language": {
-            "processing": "<span style='color:#8b0000;font-size:20px;'> Processing data.. <i class='fa fa-spinner fa-spin'></i> </span>",
-            "search": "Search:",
-            "searchPlaceholder": "Search by Reg No, Name, Roll No, Email, Mobile...",
-            "paginate": {
-                "previous": '<i class="fa fa-angle-double-left"></i> Previous',
-                "next": 'Next <i class="fa fa-angle-double-right"></i>'
-            }
+      "processing": true,
+      "serverSide": true,
+      "ajax": {
+        "url": "student_info_ajax.php",
+        "type": "POST",
+        "data": function(d) {
+          d.select_class = $('#select_class').val();
+          d.select_section = $('#select_section').val();
+          d.select_session = $('#select_session').val();
+          d.search_value = d.search.value;
         }
-    },
-
-    pageLength: 15,
-    lengthMenu: [[15, 25, 50, 100], [15, 25, 50, 100]],
-    autoWidth: false,
-    scrollX: true,
-
-    columnDefs: [
-        { orderable: false, targets: [0, 2, 15, 16, 17] }, // disable sorting
-        { className: "text-left", targets: [4] },          // name column
-        { className: "text-center", targets: "_all" }      // center all
-    ],
-
-    language: {
-        processing: "<span style='color:#8b0000;font-size:20px;'>Processing... <i class='fa fa-spinner fa-spin'></i></span>",
-        search: "",
-        searchPlaceholder: "Search...",
-        paginate: {
-            previous: '<i class="fa fa-angle-double-left"></i> Previous',
-            next: 'Next <i class="fa fa-angle-double-right"></i>'
+      },
+      "lengthMenu": [[15, 25, 50, 100, 500], ['15', '25', '50', '100', '500']],
+      "pageLength": 15,
+      "autoWidth": false,
+      "scrollX": true,
+      "columnDefs": [
+        { "orderable": false, "targets": [0, 2, 15, 16, 17] },
+        { "className": "text-left", "targets": [4] },
+        { "className": "text-center", "targets": "_all" }
+      ],
+      "language": {
+        "processing": "<span style='color:#8b0000;font-size:20px;'> Processing data.. <i class='fa fa-spinner fa-spin'></i> </span>",
+        "search": "Search:",
+        "searchPlaceholder": "Search by Reg No, Name, Roll No, Email, Mobile...",
+        "paginate": {
+          "previous": '<i class="fa fa-angle-double-left"></i> Previous',
+          "next": 'Next <i class="fa fa-angle-double-right"></i>'
         }
-    }
-});
+      }
+    });
 
     // Style search box
     $('div.dataTables_filter input').addClass('form-control');
@@ -329,69 +297,61 @@
         $('#select_all_btn').removeClass('active select-all-active');
       }
     });
-  });
-    $('#select_all_btn, #select_all_main, #select_all_header').click(function() {
-        var isChecked = $('#select_all_main').prop('checked');
-        var nextState = !isChecked;
 
-        if ($(this).is('#select_all_main') || $(this).is('#select_all_header')) {
-            nextState = $(this).prop('checked');
-        }
-
-        $('#select_all_main, #select_all_header').prop('checked', nextState);
-        $('.selectRow').each(function() {
-            $(this).prop('checked', nextState);
-        });
-
-        if (nextState) {
-            $('#select_all_btn').addClass('active select-all-active');
-        } else {
-            $('#select_all_btn').removeClass('active select-all-active');
-        }
+    $('#select_all_main, #select_all_header').click(function() {
+      var isChecked = $(this).prop('checked');
+      $('#select_all_main, #select_all_header').prop('checked', isChecked);
+      $('.selectRow').each(function() {
+        $(this).prop('checked', isChecked);
+      });
+      if (isChecked) {
+        $('#select_all_btn').addClass('active select-all-active');
+      } else {
+        $('#select_all_btn').removeClass('active select-all-active');
+      }
     });
 
+    // Custom search with debounce
     $('div.dataTables_filter input').unbind().bind('keyup', function() {
-        clearTimeout($.data(this, 'timer'));
-        $(this).data('timer', setTimeout(() => {
-            dataTable.search(this.value).draw();
-        }, 300));
+      clearTimeout($.data(this, 'timer'));
+      $(this).data('timer', setTimeout(() => {
+        dataTable.search(this.value).draw();
+      }, 300));
     });
-});
+  });
 
   // View and Edit modals
-  $(document).ready(function() {
-    $(document).on('click', '#student_view', function(e) {
-      e.preventDefault();
-      var uid = $(this).data('id');
-      $('#dynamic-content').html('<div class="text-center"><i class="fa fa-spinner fa-spin fa-3x"></i></div>');
-      $('#view').modal('show');
-      $.ajax({
-        url: 'student_view.php',
-        type: 'POST',
-        data: 'id=' + uid,
-        dataType: 'html'
-      }).done(function(data) {
-        $('#dynamic-content').html(data);
-      }).fail(function() {
-        $('#dynamic-content').html('<div class="alert alert-danger">Something went wrong, Please try again...</div>');
-      });
+  $(document).on('click', '#student_view', function(e) {
+    e.preventDefault();
+    var uid = $(this).data('id');
+    $('#dynamic-content').html('<div class="text-center"><i class="fa fa-spinner fa-spin fa-3x"></i></div>');
+    $('#view').modal('show');
+    $.ajax({
+      url: 'student_view.php',
+      type: 'POST',
+      data: 'id=' + uid,
+      dataType: 'html'
+    }).done(function(data) {
+      $('#dynamic-content').html(data);
+    }).fail(function() {
+      $('#dynamic-content').html('<div class="alert alert-danger">Something went wrong, Please try again...</div>');
     });
+  });
 
-    $(document).on('click', '#student_edit', function(e) {
-      e.preventDefault();
-      var uid = $(this).data('id');
-      $('#edit-dynamic-content').html('<div class="text-center"><i class="fa fa-spinner fa-spin fa-3x"></i></div>');
-      $('#edit').modal('show');
-      $.ajax({
-        url: 'student-edit.php',
-        type: 'POST',
-        data: 'id=' + uid,
-        dataType: 'html'
-      }).done(function(data) {
-        $('#edit-dynamic-content').html(data);
-      }).fail(function() {
-        $('#edit-dynamic-content').html('<div class="alert alert-danger">Something went wrong, Please try again...</div>');
-      });
+  $(document).on('click', '#student_edit', function(e) {
+    e.preventDefault();
+    var uid = $(this).data('id');
+    $('#edit-dynamic-content').html('<div class="text-center"><i class="fa fa-spinner fa-spin fa-3x"></i></div>');
+    $('#edit').modal('show');
+    $.ajax({
+      url: 'student-edit.php',
+      type: 'POST',
+      data: 'id=' + uid,
+      dataType: 'html'
+    }).done(function(data) {
+      $('#edit-dynamic-content').html(data);
+    }).fail(function() {
+      $('#edit-dynamic-content').html('<div class="alert alert-danger">Something went wrong, Please try again...</div>');
     });
   });
 
