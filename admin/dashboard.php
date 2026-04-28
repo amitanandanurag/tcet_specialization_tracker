@@ -115,6 +115,9 @@ if ($logged_user_id) {
     }
 }
 
+// Define is_scoped_user early so it's available for all queries
+$is_scoped_user = ($logged_user_role_id && ($logged_user_role_id === $student_role_id || in_array($logged_user_role_id, $coordinator_role_ids) || in_array($logged_user_role_id, $mentor_role_ids)));
+
 // ========================
 // 1. FETCH HOD DATA FROM DATABASE
 // ========================
@@ -143,8 +146,14 @@ LEFT JOIN (
     WHERE role_id IN ($coordinator_role_id_list)
     GROUP BY department_id
 ) u ON u.department_id = d.department_id
-LEFT JOIN st_login l ON l.user_id = u.user_id AND l.role_id = u.role_id
-ORDER BY d.department_id";
+LEFT JOIN st_login l ON l.user_id = u.user_id AND l.role_id = u.role_id";
+
+// Add department filter for scoped users (coordinator/HOD)
+if ($is_scoped_user && $logged_dept_id) {
+    $hod_query .= " WHERE d.department_id = " . intval($logged_dept_id);
+}
+
+$hod_query .= " ORDER BY d.department_id";
 
 $hod_result = mysqli_query($db_handle->conn, $hod_query);
 $departments_hod = [];
@@ -166,8 +175,6 @@ if ($hod_result) {
 
 // STUDENT COUNT - department-filtered for role-scoped users
 // Check if user is coordinator, HOD, mentor, or student based on numeric role_id
-$is_scoped_user = ($logged_user_role_id && ($logged_user_role_id === $student_role_id || in_array($logged_user_role_id, $coordinator_role_ids) || in_array($logged_user_role_id, $mentor_role_ids)));
-
 $student_count_sql = "SELECT COUNT(*) as total FROM st_student_master WHERE status = '0'";
 if ($is_scoped_user && $logged_dept_id) {
     $student_count_sql .= " AND department_id = " . intval($logged_dept_id);
@@ -211,8 +218,14 @@ $spec_query = "SELECT
     SUM(CASE WHEN s.status = 0 THEN 1 ELSE 0 END) as pending,
     0 as rejected
 FROM st_specialization_master sm
-LEFT JOIN st_student_master s ON sm.specialization_id = s.specialization_id
-GROUP BY sm.specialization_id, sm.specialization_name
+LEFT JOIN st_student_master s ON sm.specialization_id = s.specialization_id";
+
+// Add department filter for scoped users (coordinator/HOD)
+if ($is_scoped_user && $logged_dept_id) {
+    $spec_query .= " WHERE s.department_id = " . intval($logged_dept_id) . " OR s.student_id IS NULL";
+}
+
+$spec_query .= " GROUP BY sm.specialization_id, sm.specialization_name
 ORDER BY sm.specialization_id";
 
 $spec_result = mysqli_query($db_handle->conn, $spec_query);
@@ -242,8 +255,14 @@ $branch_query = "SELECT
     d.department_name as code,
     COUNT(s.student_id) as count
 FROM st_department_master d
-LEFT JOIN st_student_master s ON d.department_id = s.department_id AND s.status = 1
-GROUP BY d.department_id, d.department_name
+LEFT JOIN st_student_master s ON d.department_id = s.department_id AND s.status = 1";
+
+// Add department filter for scoped users (coordinator/HOD)
+if ($is_scoped_user && $logged_dept_id) {
+    $branch_query .= " WHERE d.department_id = " . intval($logged_dept_id);
+}
+
+$branch_query .= " GROUP BY d.department_id, d.department_name
 ORDER BY d.department_id";
 
 $branch_result = mysqli_query($db_handle->conn, $branch_query);

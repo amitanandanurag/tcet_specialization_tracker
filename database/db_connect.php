@@ -10,7 +10,7 @@ class DBController
     public $user = "root";
     public $password = "";
     public $database = "tcet_st"; 
-
+       public $port = 3307;
    public $conn;
   public $last_error = '';
 
@@ -28,7 +28,11 @@ class DBController
     function connectDB()
     {
       mysqli_report(MYSQLI_REPORT_OFF);
-      $conn = @mysqli_connect($this->host,$this->user,$this->password,$this->database);
+      $conn = @mysqli_connect($this->host,$this->user,$this->password,$this->database,$this->port);
+       if (!$conn) {
+        $this->last_error = 'Unable to connect with database';
+        return false;
+      }
 
       if (!$conn) {
         $this->last_error = 'Unable to connect with database';
