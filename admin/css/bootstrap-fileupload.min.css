@@ -7,7 +7,11 @@
  *
  * Designed and built with all the love in the world by @mdo and @fat, extended by @ArnoldDaniels.
  */
+<<<<<<< HEAD
 .clearfix{*zoom:10;}.clearfix:before,.clearfix:after{display:table;content:"";line-height:0;}
+=======
+.clearfix{*zoom:1;}.clearfix:before,.clearfix:after{display:table;content:"";line-height:0;}
+>>>>>>> cbb3fa9dfcd306b0e761ac8b4970dbe011bfc02b
 .clearfix:after{clear:both;}
 .hide-text{font:0/0 a;color:transparent;text-shadow:none;background-color:transparent;border:0;}
 .input-block-level{display:block;width:100%;min-height:30px;-webkit-box-sizing:border-box;-moz-box-sizing:border-box;box-sizing:border-box;}
@@ -23,7 +27,11 @@
 .control-group.warning .fileupload .uneditable-input{color:#a47e3c;border-color:#a47e3c;}
 .control-group.warning .fileupload .fileupload-preview{color:#a47e3c;}
 .control-group.warning .fileupload .thumbnail{border-color:#a47e3c;}
+<<<<<<< HEAD
 .control-group.error .fileupload .uneditable-input{color:#b84b49;border-color:#b94a48;}
+=======
+.control-group.error .fileupload .uneditable-input{color:#b94a48;border-color:#b94a48;}
+>>>>>>> cbb3fa9dfcd306b0e761ac8b4970dbe011bfc02b
 .control-group.error .fileupload .fileupload-preview{color:#b94a48;}
 .control-group.error .fileupload .thumbnail{border-color:#b94a48;}
 .control-group.success .fileupload .uneditable-input{color:#468847;border-color:#468847;}

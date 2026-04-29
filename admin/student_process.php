@@ -8,7 +8,7 @@ $database = new DBController();
 if (isset($_POST['save'])) {
   $conn = $database->conn;
 
-  // Get form data - DON'T add quotes here, just escape
+  // Get form data
   $academic_year_id = mysqli_real_escape_string($conn, $_POST['academic'] ?? '');
   $registration_no = mysqli_real_escape_string($conn, $_POST['registration_no'] ?? '');
   $class_id = mysqli_real_escape_string($conn, $_POST['class'] ?? '');
@@ -16,13 +16,13 @@ if (isset($_POST['save'])) {
   $current_semester_id = mysqli_real_escape_string($conn, $_POST['current_semester_id'] ?? '');
   $fname = mysqli_real_escape_string($conn, $_POST['fname'] ?? '');
 
-  // Handle grad_year - properly quoted
+  // Handle grad_year
   $grad_year = 'NULL';
   if (!empty($_POST['academic_year_id']) && $_POST['academic_year_id'] != 'Select Year' && is_numeric($_POST['academic_year_id'])) {
     $grad_year = "'" . mysqli_real_escape_string($conn, $_POST['academic_year_id']) . "'";
   }
 
-  // Handle roll_no - properly quoted
+  // Handle roll_no
   $roll_no = 'NULL';
   if (!empty($_POST['roll_no'])) {
     $roll_no = "'" . mysqli_real_escape_string($conn, $_POST['roll_no']) . "'";
@@ -40,62 +40,57 @@ if (isset($_POST['save'])) {
     $specialization_id = "'" . mysqli_real_escape_string($conn, $_POST['specialization_id']) . "'";
   }
 
-  // Handle specialization_subject_id
+  // CRITICAL CHANGE: Store minor subject in specialization_subject_id for multidisciplinary
   $specialization_subject_id = 'NULL';
-  if (!empty($_POST['unaided_subject']) && $_POST['unaided_subject'] != 'Select Specialization Subject' && is_numeric($_POST['unaided_subject'])) {
-    $specialization_subject_id = "'" . mysqli_real_escape_string($conn, $_POST['unaided_subject']) . "'";
-  }
-
-  // Handle CGPA - FIXED LOGIC
-  $cgpa = 'NULL';
-
-  // Get specialization name
+  
+  // Get specialization name to check if it's minor multidisciplinary
   $spec_id = $_POST['specialization_id'] ?? '';
+  $is_minor_multidisciplinary = false;
+  
   if (!empty($spec_id) && is_numeric($spec_id)) {
     $spec_check = mysqli_query($conn, "SELECT specialization_name FROM st_specialization_master WHERE specialization_id = '" . mysqli_real_escape_string($conn, $spec_id) . "'");
     if ($spec_check) {
       $spec_row = mysqli_fetch_assoc($spec_check);
       $specialization_name = strtolower($spec_row['specialization_name'] ?? '');
-
-      // Check for Minor Multidisciplinary (most specific first)
-      if (strpos($specialization_name, 'minor multidisciplinary') !== false) {
-        // For Minor Multidisciplinary - use minor_cgpa
-        if (!empty($_POST['minor_cgpa']) && is_numeric($_POST['minor_cgpa'])) {
-          $cgpa_val = floatval($_POST['minor_cgpa']);
-          $cgpa_val = number_format($cgpa_val, 2);
-          $cgpa = "'" . $cgpa_val . "'";
-        }
-      }
-      // Check for Minor (non-multidisciplinary)
-      else if (strpos($specialization_name, 'minor') !== false) {
-        // For Minor - you can use regular cgpa or leave NULL
-        if (!empty($_POST['cgpa']) && is_numeric($_POST['cgpa'])) {
-          $cgpa_val = floatval($_POST['cgpa']);
-          $cgpa_val = number_format($cgpa_val, 2);
-          $cgpa = "'" . $cgpa_val . "'";
-        }
-      }
-      // Check for Honours
-      else if (strpos($specialization_name, 'honour') !== false || strpos($specialization_name, 'honor') !== false) {
-        if (!empty($_POST['cgpa']) && is_numeric($_POST['cgpa'])) {
-          $cgpa_val = floatval($_POST['cgpa']);
-          $cgpa_val = number_format($cgpa_val, 2);
-          $cgpa = "'" . $cgpa_val . "'";
-        }
-      }
+      $is_minor_multidisciplinary = (strpos($specialization_name, 'minor multidisciplinary') !== false);
+    }
+  }
+  
+  // If it's Minor Multidisciplinary, store minor_subject_id in specialization_subject_id
+  if ($is_minor_multidisciplinary) {
+    // For multidisciplinary: Store minor subject in specialization_subject_id
+    if (!empty($_POST['minor_subject_id']) && $_POST['minor_subject_id'] != '') {
+      $specialization_subject_id = "'" . mysqli_real_escape_string($conn, $_POST['minor_subject_id']) . "'";
+    }
+  } else {
+    // For other specializations: Store regular specialization subject
+    if (!empty($_POST['unaided_subject']) && $_POST['unaided_subject'] != 'Select Specialization Subject' && is_numeric($_POST['unaided_subject'])) {
+      $specialization_subject_id = "'" . mysqli_real_escape_string($conn, $_POST['unaided_subject']) . "'";
     }
   }
 
-  // Handle minor_course_id
-  $minor_course_id = 'NULL';
-  if (!empty($_POST['minor_course_id']) && $_POST['minor_course_id'] != '') {
-    $minor_course_id = "'" . mysqli_real_escape_string($conn, $_POST['minor_course_id']) . "'";
-  }
-
-  // Handle minor_subject_id
-  $minor_subject_id = 'NULL';
-  if (!empty($_POST['minor_subject_id']) && $_POST['minor_subject_id'] != '') {
-    $minor_subject_id = "'" . mysqli_real_escape_string($conn, $_POST['minor_subject_id']) . "'";
+  // Handle CGPA
+  $cgpa = 'NULL';
+  
+  if (!empty($spec_id) && is_numeric($spec_id)) {
+    $spec_check = mysqli_query($conn, "SELECT specialization_name FROM st_specialization_master WHERE specialization_id = '" . mysqli_real_escape_string($conn, $spec_id) . "'");
+    if ($spec_check) {
+      $spec_row = mysqli_fetch_assoc($spec_check);
+      $specialization_name = strtolower($spec_row['specialization_name'] ?? '');
+      
+      // For all specializations, save CGPA if provided
+      if (!empty($_POST['cgpa']) && is_numeric($_POST['cgpa'])) {
+        $cgpa_val = floatval($_POST['cgpa']);
+        $cgpa_val = number_format($cgpa_val, 2);
+        $cgpa = "'" . $cgpa_val . "'";
+      }
+      // Also check for minor_cgpa as fallback
+      else if (!empty($_POST['minor_cgpa']) && is_numeric($_POST['minor_cgpa'])) {
+        $cgpa_val = floatval($_POST['minor_cgpa']);
+        $cgpa_val = number_format($cgpa_val, 2);
+        $cgpa = "'" . $cgpa_val . "'";
+      }
+    }
   }
 
   // Handle mobile
@@ -150,7 +145,7 @@ if (isset($_POST['save'])) {
     exit;
   }
 
-  // Build the INSERT query - USING PROPERLY QUOTED VALUES
+  // Build the INSERT query - WITHOUT minor_course_id and minor_subject_id columns
   $sql = "INSERT INTO `st_student_master`(
     `academic_year_id`,
     `registration_no`,
@@ -172,7 +167,7 @@ if (isset($_POST['save'])) {
     `m_sem3`,
     `created_at`,
     `current_semester_id`
-) VALUES (
+  ) VALUES (
     '$academic_year_id',
     '$registration_no',
     '$class_id',
@@ -193,15 +188,20 @@ if (isset($_POST['save'])) {
     $m_sem3,
     NOW(),
     '$current_semester_id'
-)";
-  // Debug - print the query to see what's wrong
-  // echo "<pre>" . htmlspecialchars($sql) . "</pre>";
-  // exit;
+  )";
 
   $result = mysqli_query($conn, $sql);
 
   if ($result === TRUE) {
     $student_id = mysqli_insert_id($conn);
+    
+    // Optional: Store minor course info in a separate session or log
+    if ($is_minor_multidisciplinary && !empty($_POST['minor_course_id'])) {
+      // You can store minor course info in a separate table if needed
+      // Or just log it for now
+      error_log("Student $student_id registered for Minor Course: " . $_POST['minor_course_id']);
+    }
+    
     echo '<script type="text/javascript">alert("Student registered successfully! Student ID: ' . $student_id . '");</script>';
     echo "<script>window.open('student_list.php','_self')</script>";
   } else {
@@ -211,5 +211,3 @@ if (isset($_POST['save'])) {
   exit;
 }
 ?>
-<?php include "header/header.php"; ?>
-<!-- Rest of your HTML form remains the same -->
