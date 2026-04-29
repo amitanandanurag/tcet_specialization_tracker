@@ -49,25 +49,33 @@ if (isset($_POST['save'])) {
         $specialization_id = "'" . mysqli_real_escape_string($conn, $_POST['specialization_id']) . "'";
     }
     
-    // Handle specialization_subject_id - ALWAYS save if provided
+    // CRITICAL FIX: Handle specialization_subject_id based on specialization type
     $specialization_subject_id = 'NULL';
-    if (!empty($_POST['specialization_subject_id']) && is_numeric($_POST['specialization_subject_id'])) {
-        $specialization_subject_id = "'" . mysqli_real_escape_string($conn, $_POST['specialization_subject_id']) . "'";
+    
+    // Get specialization name to determine the type
+    $spec_check = mysqli_query($conn, "SELECT specialization_name FROM st_specialization_master WHERE specialization_id = " . $specialization_id);
+    if ($spec_check && mysqli_num_rows($spec_check) > 0) {
+        $spec_row = mysqli_fetch_assoc($spec_check);
+        $specialization_name = strtolower($spec_row['specialization_name'] ?? '');
+        $is_minor_multidisciplinary = strpos($specialization_name, 'minor multidisciplinary') !== false;
+        
+        if ($is_minor_multidisciplinary) {
+            // For Minor Multidisciplinary: Use minor_subject_id from the form
+            if (!empty($_POST['minor_subject_id']) && is_numeric($_POST['minor_subject_id'])) {
+                $specialization_subject_id = "'" . mysqli_real_escape_string($conn, $_POST['minor_subject_id']) . "'";
+            }
+        } else {
+            // For other specializations (Honours, etc.): Use specialization_subject_id
+            if (!empty($_POST['specialization_subject_id']) && is_numeric($_POST['specialization_subject_id'])) {
+                $specialization_subject_id = "'" . mysqli_real_escape_string($conn, $_POST['specialization_subject_id']) . "'";
+            }
+        }
     }
     
-    // FIXED: Handle CGPA - ALWAYS save CGPA regardless of specialization type
+    // Handle CGPA
     $cgpa = 'NULL';
-    
-    // First check if CGPA is provided in the form
     if (isset($_POST['cgpa']) && $_POST['cgpa'] !== '' && is_numeric($_POST['cgpa'])) {
         $cgpa_val = floatval($_POST['cgpa']);
-        $cgpa_val = number_format($cgpa_val, 2);
-        $cgpa = "'" . $cgpa_val . "'";
-    }
-    
-    // Handle minor_cgpa if provided (for backwards compatibility)
-    if (isset($_POST['minor_cgpa']) && $_POST['minor_cgpa'] !== '' && is_numeric($_POST['minor_cgpa'])) {
-        $cgpa_val = floatval($_POST['minor_cgpa']);
         $cgpa_val = number_format($cgpa_val, 2);
         $cgpa = "'" . $cgpa_val . "'";
     }
@@ -104,7 +112,7 @@ if (isset($_POST['save'])) {
         exit;
     }
     
-    // Build the UPDATE query - ALWAYS save CGPA and specialization_subject_id
+    // Build the UPDATE query
     $sql = "UPDATE `st_student_master` SET
         `academic_year_id` = '$academic_year_id',
         `class_id` = '$class_id',

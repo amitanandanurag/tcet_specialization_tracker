@@ -1,4 +1,5 @@
 <?php include "header/header.php"; ?>
+
 <script>
   function validateform() {
     var academic = document.myform.academic.value;
@@ -36,12 +37,10 @@
       return false;
     }
 
-    // Check specialization types
     var isMinorMultidisciplinary = specializationText.indexOf("minor multidisciplinary") !== -1;
     var isMinor = specializationText.indexOf("minor") !== -1 && !isMinorMultidisciplinary;
     var isHonours = specializationText.indexOf("honours") !== -1 || specializationText.indexOf("honors") !== -1;
 
-    // Validate based on specialization type
     if (isHonours) {
       if (cgpaValue == null || cgpaValue === "") {
         alert("Please enter CGPA for Honours.");
@@ -60,21 +59,16 @@
         return false;
       }
     } else if (isMinorMultidisciplinary) {
-      // Validate Minor Course selection
       var minorCourse = $('#minor_course_select').val();
       if (!minorCourse || minorCourse == "") {
         alert("Please select Minor Course.");
         return false;
       }
-
-      // Validate Minor Subject selection
       var minorSubject = $('#minor_subject_select').val();
       if (!minorSubject || minorSubject == "") {
         alert("Please select Minor Subject.");
         return false;
       }
-
-      // Validate Minor CGPA - FIXED: Check if empty
       if (minorCgpaValue == null || minorCgpaValue === "") {
         alert("Please enter Minor CGPA.");
         return false;
@@ -83,24 +77,10 @@
         alert("Please enter valid numeric CGPA for Minor.");
         return false;
       }
-
       var minorCgpa = parseFloat(minorCgpaValue);
       if (minorCgpa < 0 || minorCgpa > 10) {
         alert("CGPA must be between 0 and 10.");
         return false;
-      }
-    } else if (isMinor) {
-      // For Minor Degree - optional CGPA but must be numeric if provided
-      if (minorCgpaValue && minorCgpaValue !== "") {
-        if (isNaN(minorCgpaValue)) {
-          alert("Please enter valid numeric CGPA for Minor.");
-          return false;
-        }
-        var minorCgpa = parseFloat(minorCgpaValue);
-        if (minorCgpa < 0 || minorCgpa > 10) {
-          alert("CGPA must be between 0 and 10.");
-          return false;
-        }
       }
     }
 
@@ -268,7 +248,6 @@
 
     if (isMinorMultidisciplinary) {
       $('#minor_multidisciplinary_section').show();
-      // Don't show regular CGPA section, we have minor_cgpa inside the minor section
       setAdmissionDetailSectionsVisible(true);
       return;
     }
@@ -280,34 +259,24 @@
   }
 
   $(document).ready(function() {
-    // Store all specialization options (important)
     var originalOptions = $('#specialization_select').html();
 
     $('#class4').on('change', function() {
       var selectedClassText = $("#class4 option:selected").text().toLowerCase();
-
-      // RESET specialization dropdown
       $('#specialization_select').html('<option value="">Select Specialization</option>');
 
-      // If SY selected (class name contains 'sy')
       if (selectedClassText.indexOf('sy') !== -1) {
-        // Filter from original options
         $(originalOptions).filter('option').each(function() {
           var val = $(this).val();
-
           if (val == "1" || val == "3" || val == "4") {
             $('#specialization_select').append($(this).clone());
           }
         });
       } else {
-        // Restore all options
         $('#specialization_select').html(originalOptions);
       }
 
-      // Reset selection
       $('#specialization_select').val("");
-
-      // Reset UI (VERY IMPORTANT)
       if (typeof resetSpecializationConditionalUI === "function") {
         resetSpecializationConditionalUI();
       }
@@ -324,27 +293,22 @@
       var isMinorMultidisciplinary = specializationText.indexOf("minor multidisciplinary") !== -1;
       var isMinorDegree = specializationText.indexOf("minor") !== -1 && !isMinorMultidisciplinary;
       var isHonours = specializationText.indexOf('honours') !== -1 || specializationText.indexOf('honors') !== -1;
-      var cgpa = parseFloat($(this).val());
 
       if (isMinorMultidisciplinary) {
-        // Always show below fields regardless of CGPA
         setAdmissionDetailSectionsVisible(true);
       } else if (isMinorDegree) {
-        // Always show below fields regardless of CGPA
         setAdmissionDetailSectionsVisible(true);
       } else if (isHonours) {
         updateHonoursEligibility();
       }
     });
 
-    // Minor Course change event - load subjects directly
     $('#minor_course_select').on('change', function() {
       var courseId = $(this).val();
       loadMinorSubjectsByCourse(courseId);
     });
   });
 </script>
-
 <style>
   .form-group .required-field {
     border-color: #ef4444;
@@ -374,7 +338,7 @@
   </section>
 
   <section class="content">
-    <form action="student.php" name="myform" method="POST" onsubmit="return validateform()" enctype="multipart/form-data">
+    <form action="student_process.php" name="myform" method="POST" onsubmit="return validateform()" enctype="multipart/form-data">
       <div class="box box-default" style="padding: 10px;">
         <div class="box-header with-border" style="border-bottom: 2px solid #9C27B0;">
           <h3 class="box-title">OFFICIAL DETAILS:- </h3>
@@ -477,22 +441,26 @@
                   </select>
                 </div>
               </div>
-              <div class="col-md-4">
-                <div class="form-group">
-                  <label>Graduating Year</label>
-                  <select class="form-control select" name="academic_year_id" id="academic_year_id" class="academic_year_id" style="width: 100%;">
-                    <option>Select Year</option>
-                    <?php
-                    $result = $db_handle->conn->query("SELECT * from st_batch_master");
-                    while ($row = $result->fetch_assoc()) {
-                      $batch_name = $row['batch_name'];
-                      $academic_year_id = $row['academic_year_id'];
-                    ?>
-                      <option value="<?php echo $academic_year_id;  ?>"><?php echo $batch_name;  ?></option>
-                    <?php } ?>
-                  </select>
-                </div>
-              </div>
+             <div class="col-md-4">
+    <div class="form-group">
+        <label>Graduating Year</label>
+        <select class="form-control select" name="graduation_year" id="graduation_year" class="graduation_year" style="width: 100%;">
+            <option value="">Select Year</option>
+            <?php
+            // Assuming batch_name contains the year (like "2024", "2025")
+            $result = $db_handle->conn->query("SELECT * from st_batch_master ORDER BY batch_name");
+            while ($row = $result->fetch_assoc()) {
+                $batch_name = $row['batch_name'];
+                $batch_id = $row['batch_id']; // or academic_year_id
+                
+                // Extract year from batch_name if it contains the year
+                // Or use academic_year_id if it represents the year
+                echo "<option value='{$batch_name}'>{$batch_name}</option>";
+            }
+            ?>
+        </select>
+    </div>
+</div>
             </div>
 
             <div class="col-md-12">

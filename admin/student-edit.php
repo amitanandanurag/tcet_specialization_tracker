@@ -6,7 +6,7 @@ $db_handle = new DBController();
 if (isset($_REQUEST['id'])) {
   $student_id = intval($_REQUEST['id']);
   $table = 'st_student_master';
-
+  
   $sql = "SELECT 
     sm.*,
     IFNULL(cl.class_name, '') AS class_name,
@@ -15,16 +15,20 @@ if (isset($_REQUEST['id'])) {
     IFNULL(sp.specialization_name, '') AS specialization_name,
     IFNULL(ssb.subject_name, '') AS specialization_subject_name,
     IFNULL(sess.session_name, '') AS academic_year_name,
-    IFNULL(sem.semester_name, '') AS semester_name
+    IFNULL(sem.semester_name, '') AS semester_name,
+    IFNULL(mc.course_name, '') AS minor_course_name,
+    IFNULL(ms.subject_name, '') AS minor_subject_name
   FROM $table sm
   LEFT JOIN st_class_master cl ON cl.class_id = sm.class_id
   LEFT JOIN st_section_master sec ON sec.id = sm.division_id
   LEFT JOIN st_department_master dep ON dep.department_id = sm.department_id
   LEFT JOIN st_specialization_master sp ON sp.specialization_id = sm.specialization_id
   LEFT JOIN st_specialization_subject_master ssb ON ssb.subject_id = sm.specialization_subject_id
+  LEFT JOIN st_minorcourse mc ON mc.course_id = sm.minor_course_id
+  LEFT JOIN st_minorsubject ms ON ms.subject_id = sm.minor_subject_id
   LEFT JOIN st_session_master sess ON sess.session_id = sm.academic_year_id
   LEFT JOIN st_semester_master sem ON sem.semester_id = sm.current_semester_id
-  WHERE sm.student_id = $student_id AND sm.status = '1'";
+  WHERE sm.student_id = $student_id";
   
   $result = $db_handle->query($sql);
   $row = $result->fetch_assoc();
@@ -204,7 +208,8 @@ if (isset($_REQUEST['id'])) {
                                 while ($courseRow = $courseResult->fetch_assoc()) {
                                     $course_id = $courseRow['course_id'];
                                     $course_name = $courseRow['course_name'];
-                                    echo '<option value="' . $course_id . '">' . $course_name . '</option>';
+                                    $selected = ($row['minor_course_id'] == $course_id) ? 'selected' : '';
+                                    echo '<option value="' . $course_id . '" ' . $selected . '>' . $course_name . '</option>';
                                 }
                             } else {
                                 echo '<option value="">No courses available</option>';
@@ -219,6 +224,18 @@ if (isset($_REQUEST['id'])) {
                         <label>Minor Subject <span style="color: red;">*</span></label>
                         <select class="form-control select" name="minor_subject_id" id="minor_subject_select" style="width: 100%;">
                             <option value="">Select Minor Subject</option>
+                            <?php
+                            // Load subjects for the selected course in edit mode
+                            if ($is_minor_multidisciplinary && !empty($row['minor_course_id'])) {
+                                $subjectResult = $db_handle->conn->query("SELECT subject_id, subject_name FROM st_minorsubject WHERE course_id = '" . $row['minor_course_id'] . "'");
+                                if ($subjectResult && $subjectResult->num_rows > 0) {
+                                    while ($subjectRow = $subjectResult->fetch_assoc()) {
+                                        $selected = ($row['minor_subject_id'] == $subjectRow['subject_id']) ? 'selected' : '';
+                                        echo '<option value="' . $subjectRow['subject_id'] . '" ' . $selected . '>' . $subjectRow['subject_name'] . '</option>';
+                                    }
+                                }
+                            }
+                            ?>
                         </select>
                     </div>
                 </div>
@@ -243,11 +260,12 @@ if (isset($_REQUEST['id'])) {
                 </div>
             </div>
 
+            <!-- FIXED: Graduation Year Field -->
             <div class="row">
                 <div class="col-md-4">
                     <div class="form-group">
                         <label>Graduation Year</label>
-                        <input type="number" name="grad_year" class="form-control" value="<?php echo htmlspecialchars($row['grad_year'] ?? ''); ?>" style="width: 100%;">
+                        <input type="number" name="grad_year" class="form-control" value="<?php echo htmlspecialchars($row['grad_year'] ?? ''); ?>" placeholder="Enter Graduation Year" style="width: 100%;">
                     </div>
                 </div>
             </div>
@@ -454,14 +472,15 @@ function loadMinorSubjectsByCourse(courseId) {
                         $('#minor_subject_select').append('<option value="' + value.subject_id + '">' + value.subject_name + '</option>');
                     });
                     // Preselect current minor subject if editing
-                    <?php if ($is_minor_multidisciplinary && !empty($row['specialization_subject_id'])): ?>
-                    $('#minor_subject_select').val('<?php echo $row['specialization_subject_id']; ?>');
+                    <?php if ($is_minor_multidisciplinary && !empty($row['minor_subject_id'])): ?>
+                    $('#minor_subject_select').val('<?php echo $row['minor_subject_id']; ?>');
                     <?php endif; ?>
                 } else {
                     $('#minor_subject_select').append('<option value="">No subjects available</option>');
                 }
             },
             error: function(xhr, status, error) {
+                console.log('AJAX Error:', error);
                 $('#minor_subject_select').empty().append('<option value="">Error loading subjects</option>');
             }
         });
@@ -501,10 +520,12 @@ $(document).ready(function() {
         }
     });
     
-    // Load subjects if minor course is already selected (for edit mode)
-    <?php if ($is_minor_multidisciplinary && !empty($row['specialization_subject_id'])): ?>
-    // Need to load course first, then subject
-    // You might need to store minor_course_id in a separate field or fetch it
+    // For edit mode: Load minor subjects if this is a multidisciplinary student
+    <?php if ($is_minor_multidisciplinary && !empty($row['minor_course_id'])): ?>
+    var courseId = $('#minor_course_select').val();
+    if (courseId) {
+        loadMinorSubjectsByCourse(courseId);
+    }
     <?php endif; ?>
 });
 </script>
