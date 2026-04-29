@@ -252,15 +252,11 @@ foreach ($spec_data as $sd) {
 
 // 4. Branch-wise Distribution from Database
 $branch_query = "SELECT 
+    d.department_id,
     d.department_name as code,
     COUNT(s.student_id) as count
 FROM st_department_master d
-LEFT JOIN st_student_master s ON d.department_id = s.department_id AND s.status = 1";
-
-// Add department filter for scoped users (coordinator/HOD)
-if ($is_scoped_user && $logged_dept_id) {
-    $branch_query .= " WHERE d.department_id = " . intval($logged_dept_id);
-}
+LEFT JOIN st_student_master s ON d.department_id = s.department_id AND s.status = '0'";
 
 $branch_query .= " GROUP BY d.department_id, d.department_name
 ORDER BY d.department_id";
@@ -268,11 +264,21 @@ ORDER BY d.department_id";
 $branch_result = mysqli_query($db_handle->conn, $branch_query);
 $branch_labels = [];
 $branch_counts = [];
+$branch_colors = [];
+$branch_borders = [];
 
 if ($branch_result) {
     while ($row = mysqli_fetch_assoc($branch_result)) {
         $branch_labels[] = '"' . $row['code'] . '"';
         $branch_counts[] = (int)$row['count'];
+        
+        if ($is_scoped_user && $logged_dept_id && $row['department_id'] == $logged_dept_id) {
+            $branch_colors[] = '"#f39c12"'; 
+            $branch_borders[] = '"#e08e0b"';
+        } else {
+            $branch_colors[] = '"#00a65a"'; 
+            $branch_borders[] = '"#008d4c"';
+        }
     }
 } else {
     error_log("Branch distribution query failed: " . mysqli_error($db_handle->conn));
@@ -1123,8 +1129,8 @@ $rowcount_user = mysqli_num_rows($result1);
                 datasets: [{
                     label: 'Total Students',
                     data: [<?php echo implode(',', $branch_counts); ?>],
-                    backgroundColor: '#00a65a',
-                    borderColor: '#008d4c',
+                    backgroundColor: [<?php echo implode(',', $branch_colors); ?>],
+                    borderColor: [<?php echo implode(',', $branch_borders); ?>],
                     borderWidth: 1,
                     borderRadius: 8
                 }]
