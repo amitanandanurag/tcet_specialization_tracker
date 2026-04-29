@@ -194,6 +194,29 @@ if (isset($_GET['action']) && $_GET['action'] === 'load_mentors') {
   exit();
 }
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'get_coordinator_dept') {
+  header('Content-Type: application/json');
+  $coordId = intval($_POST['coordinator_id'] ?? 0);
+  $sql = "SELECT d.department_id, d.department_name 
+          FROM st_login l
+          INNER JOIN st_coordinator sc ON sc.login_id = l.login_id
+          LEFT JOIN st_user_master u ON u.user_id = l.user_id
+          LEFT JOIN st_department_master d ON d.department_id = u.department_id
+          WHERE l.user_id = {$coordId} AND l.role_id = 3";
+  $result = $db_handle->runQuery($sql) ?? array();
+  
+  if (!empty($result) && isset($result[0]['department_id'])) {
+    echo json_encode(array(
+      'success' => true,
+      'department_id' => $result[0]['department_id'],
+      'department_name' => $result[0]['department_name']
+    ));
+  } else {
+    echo json_encode(array('success' => false));
+  }
+  exit();
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'assign_selected') {
   header('Content-Type: application/json');
 
@@ -372,11 +395,39 @@ $(document).ready(function() {
     return true;
   }
 
+  $('#coordinator_id').on('change', function() {
+    var coordId = $(this).val();
+    if (coordId) {
+      $.ajax({
+        url: 'coordinator_allocation.php',
+        type: 'POST',
+        dataType: 'json',
+        data: { 
+            action: 'get_coordinator_dept',
+            coordinator_id: coordId 
+        },
+        success: function(resp) {
+          if (resp && resp.success) {
+            $('#department_id').val(resp.department_id).prop('disabled', true);
+          } else {
+            $('#department_id').val('').prop('disabled', false);
+          }
+        },
+        error: function() {
+          $('#department_id').val('').prop('disabled', false);
+        }
+      });
+    } else {
+      $('#department_id').val('').prop('disabled', false);
+    }
+  });
+
   $('#apply_filters').on('click', function() {
     allocationTable.ajax.reload();
   });
 
   $('#reset_filters').on('click', function() {
+    $('#department_id').prop('disabled', false);
     $('#department_id, #coordinator_filter, #assignment_status, #coordinator_id').val('');
     $('div.dataTables_filter input').val('');
     allocationTable.search('').draw();
