@@ -6,6 +6,16 @@ $db_handle = new DBController();
 
 $message = "";
 
+function getNextId(mysqli $conn, string $table, string $column): int
+{
+    $result = mysqli_query($conn, "SELECT COALESCE(MAX($column), 0) + 1 AS next_id FROM $table");
+    if ($result && ($row = mysqli_fetch_assoc($result))) {
+        return (int) ($row['next_id'] ?? 1);
+    }
+
+    return 1;
+}
+
 // ================= REGISTER LOGIC =================
 if (isset($_POST['register'])) {
 
@@ -40,18 +50,22 @@ if (isset($_POST['register'])) {
             $message = "Email already exists!";
         } else {
 
+            $user_id = getNextId($db_handle->conn, 'st_user_master', 'user_id');
+            $login_id = getNextId($db_handle->conn, 'st_login', 'login_id');
+
+            mysqli_begin_transaction($db_handle->conn);
+
             $sql1 = "INSERT INTO st_user_master 
-            (user_name, email_id, phone_number, department_id, role_id, student_id)
-            VALUES ('$username','$email','$phone','$department','$role_id','0')";
+            (user_id, user_name, email_id, phone_number, department_id, role_id, student_id)
+            VALUES ($user_id,'$username','$email','$phone',$department,$role_id,0)";
 
             if ($db_handle->query($sql1)) {
 
-                $user_id = mysqli_insert_id($db_handle->conn);
-
-                $sql2 = "INSERT INTO st_login(username,password,role_id,user_id)
-                         VALUES('$email','$password','$role_id','$user_id')";
+                $sql2 = "INSERT INTO st_login(login_id, username, password, user_id)
+                         VALUES($login_id,'$email','$password',$user_id)";
 
                 if ($db_handle->query($sql2)) {
+                    mysqli_commit($db_handle->conn);
 
                     // ✅ STORE IN SESSION (SHOW ONCE)
                     $_SESSION['show_credentials'] = true;
@@ -62,10 +76,12 @@ if (isset($_POST['register'])) {
                     exit();
 
                 } else {
+                    mysqli_rollback($db_handle->conn);
                     $message = "Login Insert Error";
                 }
 
             } else {
+                mysqli_rollback($db_handle->conn);
                 $message = "User Insert Error";
             }
         }
@@ -81,183 +97,224 @@ if (isset($_POST['register'])) {
 <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <style>
-/* RESET */
 * {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
 }
 
-/* BACKGROUND */
 body {
-    height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-
+    min-height: 100vh;
     font-family: 'Segoe UI', sans-serif;
-
-    background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+    background: linear-gradient(135deg, #101828 0%, #1f2937 45%, #0f172a 100%);
+    padding: 24px 16px;
 }
 
-/* CARD (main form container) */
-.card {
-    background: #162733;
-    padding: 35px 30px;
-
+.register-wrap {
     width: 100%;
-    max-width: 380px;
-
-    border-radius: 14px;
-    box-shadow: 0 12px 30px rgba(0,0,0,0.6);
+    max-width: 620px;
+    margin: 0 auto;
 }
 
-/* TITLE */
-h2 {
+.register-card {
+    background: rgba(255, 255, 255, 0.96);
+    width: 100%;
+    border-radius: 16px;
+    box-shadow: 0 20px 55px rgba(0, 0, 0, 0.35);
+    overflow: hidden;
+}
+
+.register-header {
+    background: linear-gradient(135deg, #0ea5e9, #2563eb);
     color: #fff;
     text-align: center;
-    margin-bottom: 25px;
+    padding: 22px 20px;
+}
+
+.register-header h2 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+}
+
+.register-header p {
+    margin: 8px 0 0;
+    opacity: 0.92;
+    font-size: 13px;
+}
+
+.register-body {
+    padding: 28px 26px 10px;
+}
+
+.form-group {
+    margin-bottom: 18px;
+}
+
+.form-group label {
+    color: #334155;
     font-weight: 600;
+    margin-bottom: 7px;
 }
 
-/* INPUT GROUP */
 .input-group {
-    position: relative;
     width: 100%;
-    margin-bottom: 16px;
 }
 
-.input-group i {
-    position: absolute;
-    left: 12px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: #888;
-    font-size: 14px;
+.input-group-addon {
+    background: #eff6ff;
+    color: #2563eb;
+    border-color: #cbd5e1;
+    min-width: 44px;
 }
 
-
-.input-group input,
-.input-group select {
-    width: 100%;
-    height: 48px;
-
-    padding: 10px 12px 10px 40px;
-
-    border-radius: 8px;
-    border: none;
-
-    background: #e9eef3;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-
-    outline: none;
+.form-control {
+    height: 46px;
+    border-radius: 10px;
+    border-color: #cbd5e1;
+    box-shadow: none;
 }
 
+.form-control:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+select.form-control {
+    padding-top: 8px;
+    padding-bottom: 8px;
+}
+
+select.form-control option {
+    color: #0f172a;
+}
+
+.register-footer {
+    padding: 0 26px 28px;
+}
 
 button {
     width: 100%;
     height: 48px;
-
-    margin-top: 10px;
-
-    background: #0ea5e9;
+    margin-top: 8px;
+    background: linear-gradient(135deg, #0ea5e9, #2563eb);
     color: #fff;
-
     border: none;
-    border-radius: 8px;
-
+    border-radius: 10px;
     font-weight: 600;
     font-size: 15px;
-
     cursor: pointer;
-    transition: 0.3s;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: 0 10px 20px rgba(37, 99, 235, 0.2);
 }
 
 button:hover {
-    background: #0284c7;
+    background: linear-gradient(135deg, #0284c7, #1d4ed8);
+    transform: translateY(-1px);
 }
 
 #msgBox {
-    color: #ff6b6b;
+    color: #b91c1c;
     text-align: center;
-    margin-bottom: 12px;
+    margin-bottom: 16px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    background: #fee2e2;
+    border: 1px solid #fecaca;
 }
 
 #credentialsBox {
-    background: #1c2f3f;
-    padding: 15px;
-    border-radius: 10px;
-    margin-bottom: 15px;
-
-    color: #fff;
-    text-align: center;
-}
-
-
-.overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-
-    width: 100%;
-    height: 100%;
-
-    display: flex;
-    justify-content: center;
-    align-items: center;
-
-    background: rgba(0, 0, 0, 0.75);
-    backdrop-filter: blur(6px);
-
-    z-index: 1000;
-}
-
-.popup {
-    width: 420px;
-    max-width: 90%;
-
-    padding: 30px;
-
+    background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+    padding: 32px 24px;
     border-radius: 14px;
-    background: #162733;
-
-    box-shadow: 0px 20px 50px rgba(0,0,0,0.6);
-
-    position: relative;
+    margin-bottom: 0;
+    color: #0f172a;
+    text-align: center;
+    border: 2px solid #86efac;
+    margin-top: 12px;
 }
 
-.popup span {
-    position: absolute;
-    top: 12px;
-    right: 15px;
+#credText {
+    background: #ffffff;
+    padding: 20px 16px;
+    border-radius: 10px;
+    margin: 18px 0;
+    border: 1px solid #d1fae5;
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    line-height: 1.8;
+    color: #065f46;
+    font-weight: 500;
+}
 
-    font-size: 20px;
-    color: #ff4d6d;
+#credText strong {
+    display: block;
+    font-size: 12px;
+    color: #047857;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+    font-weight: 600;
+}
 
+.credentials-title {
+    color: #059669;
+    margin-bottom: 16px;
+    font-size: 18px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.credentials-title::before {
+    content: "✓ ";
+    color: #10b981;
+}
+
+.helper-text {
+    text-align: center;
+    color: #64748b;
+    margin-bottom: 14px;
+    font-size: 13px;
+}
+
+.btn-copy {
+    margin-top: 18px;
+    width: 100%;
+    height: 48px;
+    padding: 0;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #059669, #10b981);
+    color: white;
+    font-weight: 600;
+    border: none;
     cursor: pointer;
+    transition: all 0.3s ease;
 }
 
-.popup h2 {
-    color: #fff;
-    margin-bottom: 20px;
+.btn-copy:hover {
+    background: linear-gradient(135deg, #047857, #059669);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(5, 150, 105, 0.3);
 }
 
-.popup button {
-    background: #0ea5e9;
+.form-hidden {
+    display: none;
 }
 
-.popup button:hover {
-    background: #0284c7;
+.form-hidden {
+    display: none;
 }
 
 @media (max-width: 480px) {
-
-    .card,
-    .popup {
-        padding: 25px 20px;
+    .register-body,
+    .register-footer {
+        padding-left: 18px;
+        padding-right: 18px;
     }
 
-    h2 {
+    .register-header h2 {
         font-size: 18px;
     }
 }
@@ -270,79 +327,134 @@ function copyCredentials() {
 
     alert("Copied!");
 
-    document.getElementById("credentialsBox").style.display = "none";
 }
 </script>
 
-</head>
+<?php if (isset($_SESSION['show_credentials']) && $_SESSION['show_credentials']) { ?>
+<script>
+window.addEventListener('load', function () {
+    if (window.parent && window.parent !== window) {
+        try {
+            var parentDocument = window.parent.document;
+            var usernameField = parentDocument.getElementById('username');
+            var passwordField = parentDocument.getElementById('password');
 
+            if (usernameField) {
+                usernameField.value = <?php echo json_encode($_SESSION['registered_username']); ?>;
+            }
+
+            if (passwordField) {
+                passwordField.value = <?php echo json_encode($_SESSION['registered_password']); ?>;
+            }
+
+            if (typeof window.parent.closePopup === 'function') {
+                window.parent.closePopup();
+            }
+
+            if (usernameField) {
+                usernameField.focus();
+            }
+        } catch (error) {
+            window.parent.postMessage({
+                type: 'student-registration-success',
+                username: <?php echo json_encode($_SESSION['registered_username']); ?>,
+                password: <?php echo json_encode($_SESSION['registered_password']); ?>
+            }, window.location.origin);
+        }
+    }
+});
+</script>
+<?php } ?>
+
+</head>
 <body>
 
-<div class="card">
+<div class="register-wrap">
+    <div class="register-card">
+        <div class="register-header">
+            <h2>Student Registration</h2>
+            <p>Use your institute email and active phone number to create the account.</p>
+        </div>
 
-<h2>STUDENT REGISTRATION</h2>
+        <div class="register-body">
+            <?php if (!empty($message)) { ?>
+            <div id="msgBox"><?php echo $message; ?></div>
+            <?php } ?>
 
-<!-- MESSAGE -->
-<?php if (!empty($message)) { ?>
-<div id="msgBox"><?php echo $message; ?></div>
-<?php } ?>
+            <?php if (isset($_SESSION['show_credentials']) && $_SESSION['show_credentials']) { ?>
+            <div id="credentialsBox">
+                <div class="credentials-title">Registration Successful!</div>
+                <p style="color: #059669; margin: 14px 0; font-size: 14px;">Your account has been created. Please save your login credentials below.</p>
+                <div id="credText">
+                    <strong>Username:</strong>
+                    <?php echo $_SESSION['registered_username']; ?>
+                    <br><br>
+                    <strong>Password:</strong>
+                    <?php echo $_SESSION['registered_password']; ?>
+                </div>
+                <button type="button" class="btn-copy" onclick="copyCredentials()">📋 Copy Credentials</button>
+                <p style="color: #6b7280; margin-top: 16px; font-size: 12px; line-height: 1.6;">
+                    Login with these credentials.<br>
+                    <strong>Keep this information secure</strong>
+                </p>
+            </div>
+            <script>
+                document.querySelector('form').style.display = 'none';
+            </script>
 
-<!-- CREDENTIAL BOX (SHOW ONCE) -->
-<?php if (isset($_SESSION['show_credentials']) && $_SESSION['show_credentials']) { ?>
-<div id="credentialsBox">
+            <?php
+            unset($_SESSION['show_credentials']);
+            unset($_SESSION['registered_username']);
+            unset($_SESSION['registered_password']);
+            ?>
+            <?php } ?>
 
-    <p style="color:#4ade80;"><b>Registration Successful</b></p>
+            <form method="POST" autocomplete="off">
+                <div class="form-group">
+                    <label>Username</label>
+                    <div class="input-group">
+                        <span class="input-group-addon"><i class="fa fa-user"></i></span>
+                        <input type="text" name="username" class="form-control" placeholder="Enter username" required>
+                    </div>
+                </div>
 
-    <div id="credText">
-        Username: <?php echo $_SESSION['registered_username']; ?><br>
-        Password: <?php echo $_SESSION['registered_password']; ?>
-    </div>
+                <div class="form-group">
+                    <label>Institute Email</label>
+                    <div class="input-group">
+                        <span class="input-group-addon"><i class="fa fa-envelope"></i></span>
+                        <input type="email" name="email" class="form-control" placeholder="name@tcetmumbai.in" required>
+                    </div>
+                </div>
 
-    <button onclick="copyCredentials()">Copy Credentials</button>
+                <div class="form-group">
+                    <label>Phone Number</label>
+                    <div class="input-group">
+                        <span class="input-group-addon"><i class="fa fa-phone"></i></span>
+                        <input type="text" name="phone" class="form-control" placeholder="10 digit phone number" required>
+                    </div>
+                </div>
 
-</div>
+                <div class="form-group">
+                    <label>Department</label>
+                    <div class="input-group">
+                        <span class="input-group-addon"><i class="fa fa-building"></i></span>
+                        <select name="department" class="form-control" required>
+                            <option value="">Select department</option>
+                            <?php
+                            $dept = $db_handle->query("SELECT department_id, department_name FROM st_department_master ORDER BY department_name ASC");
+                            while ($row = $dept->fetch_assoc()) {
+                                echo '<option value="'.$row['department_id'].'">'.$row['department_name'].'</option>';
+                            }
+                            ?>
+                        </select>
+                    </div>
+                </div>
 
-<?php
-unset($_SESSION['show_credentials']);
-unset($_SESSION['registered_username']);
-unset($_SESSION['registered_password']);
-?>
-<?php } ?>
-
-<form method="POST">
-
-<div class="input-group">
-    <i class="fa fa-user"></i>
-    <input type="text" name="username" placeholder="ENTER USERNAME" required>
-</div>
-
-<div class="input-group">
-    <i class="fa fa-envelope"></i>
-    <input type="email" name="email" placeholder="INSTITUTE EMAIL" required>
-</div>
-
-<div class="input-group">
-    <i class="fa fa-phone"></i>
-    <input type="text" name="phone" placeholder="PHONE NUMBER" required>
-</div>
-
-<div class="input-group">
-    <i class="fa fa-building"></i>
-    <select name="department" required>
-        <option value="">SELECT DEPARTMENT</option>
-        <?php
-        $dept = $db_handle->query("SELECT department_id, department_name FROM st_department_master");
-        while ($row = $dept->fetch_assoc()) {
-            echo '<option value="'.$row['department_id'].'">'.$row['department_name'].'</option>';
-        }
-        ?>
-    </select>
-</div>
-
-<button type="submit" name="register">REGISTER</button>
-
-</form>
-
+                <div class="register-footer">
+                    <button type="submit" name="register">REGISTER</button>
+                </div>
+            </form>
+        </div>
 </div>
 
 </body>

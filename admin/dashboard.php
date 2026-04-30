@@ -124,7 +124,7 @@ $is_scoped_user = ($logged_user_role_id && ($logged_user_role_id === $student_ro
 $hod_query = "SELECT 
     d.department_id,
     d.department_name as dept,
-    COALESCE(u.user_name, CONCAT('Dr. ', SUBSTRING_INDEX(l.username, ' ', 1)), 'N/A') as hod_name,
+    COALESCE(u.user_name, 'N/A') as hod_name,
     CASE 
         WHEN u.phone_number IS NOT NULL AND u.phone_number != '' THEN CONCAT('+91-', u.phone_number)
         ELSE 'N/A'
@@ -138,15 +138,13 @@ FROM st_department_master d
 LEFT JOIN (
     SELECT 
         department_id,
-        MIN(user_id) AS user_id,
         MIN(user_name) AS user_name,
-        MIN(phone_number) AS phone_number,
-        MIN(role_id) AS role_id
+        MIN(phone_number) AS phone_number
     FROM st_user_master
     WHERE role_id IN ($coordinator_role_id_list)
     GROUP BY department_id
 ) u ON u.department_id = d.department_id
-LEFT JOIN st_login l ON l.user_id = u.user_id AND l.role_id = u.role_id";
+";
 
 // Add department filter for scoped users (coordinator/HOD)
 if ($is_scoped_user && $logged_dept_id) {
@@ -201,11 +199,11 @@ $total_branches = $branches_result ? mysqli_fetch_assoc($branches_result)['total
 
 // MENTORS - department-filtered for role-scoped users
 if ($is_scoped_user && $logged_dept_id) {
-    $mentor_query = "SELECT COUNT(*) as total FROM st_login 
+    $mentor_query = "SELECT COUNT(*) as total FROM st_user_master 
         WHERE role_id IN (" . implode(',', $mentor_role_ids) . ")
-        AND user_id IN (SELECT user_id FROM st_user_master WHERE department_id = " . intval($logged_dept_id) . ")";
+        AND department_id = " . intval($logged_dept_id);
 } else {
-    $mentor_query = "SELECT COUNT(*) as total FROM st_login WHERE role_id IN (" . implode(',', $mentor_role_ids) . ")";
+    $mentor_query = "SELECT COUNT(*) as total FROM st_user_master WHERE role_id IN (" . implode(',', $mentor_role_ids) . ")";
 }
 $mentor_result = mysqli_query($db_handle->conn, $mentor_query);
 $total_mentor = $mentor_result ? mysqli_fetch_assoc($mentor_result)['total'] : 0;
@@ -287,9 +285,9 @@ if ($branch_result) {
 // 5. User Roles Overview
 $roles_query = "SELECT 
     r.role_name,
-    COUNT(l.login_id) as count
+    COUNT(u.user_id) as count
 FROM st_role_master r
-LEFT JOIN st_login l ON r.role_id = l.role_id
+LEFT JOIN st_user_master u ON r.role_id = u.role_id
 GROUP BY r.role_id, r.role_name
 ORDER BY r.role_id";
 

@@ -24,9 +24,11 @@ $user_password = trim($_POST['password']);
 $ipAddress = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
 $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'unknown';
 
-/* ---------------- FETCH USER ---------------- */
-$sql = "SELECT * FROM st_login WHERE username=?";
-$stmt = mysqli_prepare($db_handle->conn, $sql);
+	$sql = "SELECT l.login_id, l.username, l.password, l.user_id, u.role_id
+	        FROM st_login l
+	        INNER JOIN st_user_master u ON u.user_id = l.user_id
+	        WHERE l.username=?";
+	$stmt = mysqli_prepare($db_handle->conn, $sql);
 
 if (!$stmt) {
     echo "Unable to connect with database";
@@ -62,6 +64,7 @@ $_SESSION['user_session'] = $row['login_id'];
 $_SESSION['user_login_id'] = $row['login_id'];
 $_SESSION['user_id'] = $row['user_id'];
 $_SESSION['user_type'] = $row['role_id'];
+$_SESSION['role_id'] = $row['role_id'];
 $_SESSION['login_time'] = time();
 
 /* ---------------- FIRST LOGIN CHECK ---------------- */

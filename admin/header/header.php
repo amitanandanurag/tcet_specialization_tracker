@@ -20,7 +20,11 @@ $userid = 0;
 $usertype = 0;
 $name = '';
 
-$sql = "SELECT * FROM st_login WHERE login_id='" . $sessionLoginId . "' LIMIT 1";
+$sql = "SELECT l.login_id, l.username, l.user_id, u.role_id, u.user_name, r.role_name
+	    FROM st_login l
+	    LEFT JOIN st_user_master u ON u.user_id = l.user_id
+	    LEFT JOIN st_role_master r ON r.role_id = u.role_id
+	    WHERE l.login_id='" . $sessionLoginId . "' LIMIT 1";
 $result = mysqli_query($db_handle->conn, $sql);
 
 if ($result && $result->num_rows > 0) {
@@ -30,11 +34,11 @@ if ($result && $result->num_rows > 0) {
 	$usertype = intval($row['role_id']);
 	$name = $row['username'];
 } else {
-	if ($sessionUserId > 0 && $sessionRoleId > 0) {
-		$fallbackSql = "SELECT * FROM st_login WHERE user_id='" . $sessionUserId . "' AND role_id='" . $sessionRoleId . "' ORDER BY login_id DESC LIMIT 1";
-	} else {
-		$fallbackSql = "SELECT * FROM st_login WHERE user_id='" . $sessionUserId . "' ORDER BY login_id DESC LIMIT 1";
-	}
+	$fallbackSql = "SELECT l.login_id, l.username, l.user_id, u.role_id, u.user_name, r.role_name
+				FROM st_login l
+				LEFT JOIN st_user_master u ON u.user_id = l.user_id
+				LEFT JOIN st_role_master r ON r.role_id = u.role_id
+				WHERE l.user_id='" . $sessionUserId . "' ORDER BY l.login_id DESC LIMIT 1";
 
 	$fallbackResult = mysqli_query($db_handle->conn, $fallbackSql);
 	if ($fallbackResult && $fallbackResult->num_rows > 0) {
@@ -55,7 +59,10 @@ if ($result && $result->num_rows > 0) {
 }
 
 $name = $username;
-$profileSql = "SELECT user_name FROM st_user_master WHERE user_id = $userid AND role_id = $usertype LIMIT 1";
+$profileSql = "SELECT COALESCE(NULLIF(TRIM(u.user_name), ''), l.username) AS user_name
+			   FROM st_login l
+			   LEFT JOIN st_user_master u ON u.user_id = l.user_id
+			   WHERE l.user_id = $userid LIMIT 1";
 $profileResult = mysqli_query($db_handle->conn, $profileSql);
 if ($profileResult && ($profileRow = mysqli_fetch_assoc($profileResult))) {
 	$profileName = trim((string)($profileRow['user_name'] ?? ''));

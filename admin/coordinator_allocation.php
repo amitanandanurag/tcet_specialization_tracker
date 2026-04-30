@@ -14,17 +14,17 @@ if (!isset($_SESSION['user_session'])) {
 function coordinator_allocation_fetch_coordinators($db_handle)
 {
   $sql = "SELECT
-            l.user_id AS coordinator_id,
+            u.user_id AS coordinator_id,
             COALESCE(NULLIF(TRIM(u.user_name), ''), l.username) AS coordinator_name,
             l.username,
             COALESCE(d.department_name, '') AS department_name,
             COUNT(cm.id) AS assigned_mentors
-          FROM st_login l
-          LEFT JOIN st_user_master u ON u.user_id = l.user_id AND u.role_id = 3
+          FROM st_user_master u
+          LEFT JOIN st_login l ON l.user_id = u.user_id
           LEFT JOIN st_department_master d ON d.department_id = u.department_id
-          LEFT JOIN st_coordinator_mentor cm ON cm.coordinator_id = l.user_id
-          WHERE l.role_id = 3
-          GROUP BY l.user_id, coordinator_name, l.username, d.department_name
+          LEFT JOIN st_coordinator_mentor cm ON cm.coordinator_id = u.user_id
+          WHERE u.role_id = 3
+          GROUP BY u.user_id, coordinator_name, l.username, d.department_name
           ORDER BY coordinator_name ASC";
 
   return $db_handle->runQuery($sql) ?? array();
@@ -32,7 +32,7 @@ function coordinator_allocation_fetch_coordinators($db_handle)
 
 function coordinator_allocation_build_mentor_where($conn, $filters)
 {
-  $where = " WHERE l.role_id = 4 ";
+  $where = " WHERE u.role_id = 4 ";
 
   if (!empty($filters['department_id'])) {
     $deptId = mysqli_real_escape_string($conn, $filters['department_id']);
@@ -69,15 +69,15 @@ function coordinator_allocation_build_mentor_where($conn, $filters)
 function coordinator_allocation_fetch_mentor_ids($db_handle, $filters)
 {
   $where = coordinator_allocation_build_mentor_where($db_handle->conn, $filters);
-  $sql = "SELECT l.user_id AS mentor_id
-          FROM st_login l
-          LEFT JOIN st_user_master u ON u.user_id = l.user_id AND u.role_id = 4
+  $sql = "SELECT u.user_id AS mentor_id
+          FROM st_user_master u
+          LEFT JOIN st_login l ON l.user_id = u.user_id
           LEFT JOIN st_department_master d ON d.department_id = u.department_id
-          LEFT JOIN st_coordinator_mentor cm ON cm.mentor_id = l.user_id
-          LEFT JOIN st_login cl ON cl.user_id = cm.coordinator_id AND cl.role_id = 3
+          LEFT JOIN st_coordinator_mentor cm ON cm.mentor_id = u.user_id
+          LEFT JOIN st_login cl ON cl.user_id = cm.coordinator_id
           LEFT JOIN st_user_master cu ON cu.user_id = cm.coordinator_id AND cu.role_id = 3
           {$where}
-          ORDER BY u.user_name ASC, l.user_id ASC";
+          ORDER BY u.user_name ASC, u.user_id ASC";
 
   $rows = $db_handle->runQuery($sql) ?? array();
   $ids = array();
@@ -136,15 +136,15 @@ if (isset($_GET['action']) && $_GET['action'] === 'load_mentors') {
   );
 
   $where = coordinator_allocation_build_mentor_where($db_handle->conn, $filters);
-  $baseSql = "FROM st_login l
-              LEFT JOIN st_user_master u ON u.user_id = l.user_id AND u.role_id = 4
+  $baseSql = "FROM st_user_master u
+              LEFT JOIN st_login l ON l.user_id = u.user_id
               LEFT JOIN st_department_master d ON d.department_id = u.department_id
-              LEFT JOIN st_coordinator_mentor cm ON cm.mentor_id = l.user_id
-              LEFT JOIN st_login cl ON cl.user_id = cm.coordinator_id AND cl.role_id = 3
+              LEFT JOIN st_coordinator_mentor cm ON cm.mentor_id = u.user_id
+              LEFT JOIN st_login cl ON cl.user_id = cm.coordinator_id
               LEFT JOIN st_user_master cu ON cu.user_id = cm.coordinator_id AND cu.role_id = 3
               {$where}";
 
-  $totalRows = $db_handle->runQuery("SELECT COUNT(*) AS total FROM st_login l WHERE l.role_id = 4") ?? array();
+  $totalRows = $db_handle->runQuery("SELECT COUNT(*) AS total FROM st_user_master WHERE role_id = 4") ?? array();
   $filteredRows = $db_handle->runQuery("SELECT COUNT(*) AS total {$baseSql}") ?? array();
   $totalData = intval($totalRows[0]['total'] ?? 0);
   $totalFiltered = intval($filteredRows[0]['total'] ?? 0);
@@ -162,7 +162,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'load_mentors') {
   $length = isset($requestData['length']) ? intval($requestData['length']) : 15;
 
   $sql = "SELECT
-            l.user_id AS mentor_id,
+            u.user_id AS mentor_id,
             COALESCE(NULLIF(TRIM(u.user_name), ''), l.username, '') AS mentor_name,
             COALESCE(d.department_name, '') AS department_name,
             COALESCE(NULLIF(TRIM(cu.user_name), ''), cl.username, '') AS coordinator_name
@@ -198,16 +198,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     header('Content-Type: application/json');
     $coordId = intval($_POST['coordinator_id'] ?? 0);
     
-    // FIXED: Removed the AND u.role_id = 3 condition and added fallback to get department
     $sql = "SELECT 
                 COALESCE(u.department_id, sm.department_id) as department_id,
                 COALESCE(d.department_name, dm.department_name) as department_name
-            FROM st_login l
-            LEFT JOIN st_user_master u ON u.user_id = l.user_id
+            FROM st_user_master u
+            LEFT JOIN st_login l ON l.user_id = u.user_id
             LEFT JOIN st_department_master d ON d.department_id = u.department_id
-            LEFT JOIN st_student_master sm ON sm.student_id = l.user_id
+            LEFT JOIN st_student_master sm ON sm.student_id = u.user_id
             LEFT JOIN st_department_master dm ON dm.department_id = sm.department_id
-            WHERE l.user_id = {$coordId} AND l.role_id = 3
+            WHERE u.user_id = {$coordId} AND u.role_id = 3
             LIMIT 1";
     
     $result = $db_handle->runQuery($sql) ?? array();

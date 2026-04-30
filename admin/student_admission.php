@@ -153,7 +153,6 @@
     $('#cgpa').val('');
     $('#specialization_subject_select').prop('selectedIndex', 0);
     $('#specialization_subject_wrapper').hide();
-    $('#minor_cgpa').val('');
     $('#cgpa_section').hide();
     $('#honours_not_eligible').hide();
     $('#minor_multidisciplinary_section').hide();
@@ -164,60 +163,44 @@
   }
 
   function loadMinorSubjectsByCourse(courseId) {
-    console.log("loadMinorSubjectsByCourse called with courseId:", courseId, "Type:", typeof courseId);
+    console.log("Loading subjects for course ID:", courseId);
 
-    // Validate course ID - just check if it's not empty
-    if (!courseId || courseId === "") {
-      console.warn("Invalid course ID - empty value");
-      $('#minor_subject_section').hide();
-      $('#minor_subject_select').empty().append('<option value="">Please select a minor course</option>');
-      return;
-    }
+    if (courseId && courseId != "") {
+      $('#minor_subject_select').empty().append('<option value="">Loading subjects...</option>');
+      $('#minor_subject_section').show();
 
-    console.log("Proceeding to load subjects for course ID:", courseId);
-    $('#minor_subject_select').empty().append('<option value="">Loading subjects...</option>');
-    $('#minor_subject_section').show();
+      $.ajax({
+        url: 'get_minor_subject.php',
+        type: 'POST',
+        data: {
+          course_id: courseId
+        },
+        dataType: 'json',
+        success: function(data) {
+          console.log("Subjects received:", data);
+          $('#minor_subject_select').empty().append('<option value="">Select Minor Subject</option>');
 
-    $.ajax({
-      url: 'get_minor_subject.php',
-      type: 'POST',
-      data: {
-        course_id: courseId
-      },
-      dataType: 'json',
-      timeout: 5000,
-      success: function(response) {
-        console.log("AJAX Success Response:", response);
-        $('#minor_subject_select').empty().append('<option value="">Select Minor Subject</option>');
-
-        // Check if the response indicates success
-        if (response && response.success) {
-          var data = response.data;
           if (data && data.length > 0) {
             $.each(data, function(key, value) {
               $('#minor_subject_select').append('<option value="' + value.subject_id + '">' + value.subject_name + '</option>');
             });
-            console.log("Successfully loaded " + data.length + " subjects");
+            $('#minor_subject_section').show();
           } else {
-            $('#minor_subject_select').append('<option value="">No subjects available - contact admin to add subjects for this course</option>');
-            console.warn("No subjects found for course ID: " + courseId);
+            $('#minor_subject_select').append('<option value="">No subjects available for this course</option>');
+            $('#minor_subject_section').show();
           }
+        },
+        error: function(xhr, status, error) {
+          console.log("AJAX Error - Status:", status);
+          console.log("AJAX Error - Response:", xhr.responseText);
+          $('#minor_subject_select').empty().append('<option value="">Error loading subjects</option>');
           $('#minor_subject_section').show();
-        } else {
-          // Error response from server
-          var errorMsg = response.error || "Unknown error";
-          $('#minor_subject_select').append('<option value="">Error: ' + errorMsg + '</option>');
-          console.error("Server Error:", errorMsg);
         }
-      },
-      error: function(xhr, status, error) {
-        console.error("AJAX Error - Status:", status, "Error:", error);
-        console.error("AJAX Response Text:", xhr.responseText);
-        var errorDisplay = status === 'timeout' ? 'Request timeout' : (status || error);
-        $('#minor_subject_select').empty().append('<option value="">Error loading subjects (' + errorDisplay + ')</option>');
-        $('#minor_subject_section').show();
-      }
-    });
+      });
+    } else {
+      $('#minor_subject_section').hide();
+      $('#minor_subject_select').empty().append('<option value="">Select Minor Subject</option>');
+    }
   }
 
   function updateHonoursEligibility() {
@@ -249,76 +232,16 @@
     }
   }
 
-  function loadSpecializationSubjectsById(specializationId) {
-    console.log("loadSpecializationSubjectsById called with:", specializationId);
-
-    // Validate ID
-    if (!specializationId || specializationId === "") {
-      console.warn("Invalid specialization ID - empty value");
-      $('#specialization_subject_select').empty().append('<option>Please select a specialization</option>');
-      return;
-    }
-
-    console.log("Proceeding to load subjects for specialization ID:", specializationId);
-    $('#specialization_subject_select').empty().append('<option>Loading subjects...</option>');
-
-    $.ajax({
-      url: 'get_specialization_subject.php',
-      type: 'POST',
-      data: {
-        specialization_id: specializationId
-      },
-      dataType: 'json',
-      timeout: 5000,
-      success: function(response) {
-        console.log("AJAX Success Response:", response);
-        $('#specialization_subject_select').empty().append('<option>Select Specialization Subject</option>');
-
-        // Check if the response indicates success
-        if (response && response.success) {
-          var data = response.data;
-          if (data && data.length > 0) {
-            $.each(data, function(key, value) {
-              $('#specialization_subject_select').append('<option value="' + value.subject_id + '">' + value.subject_name + '</option>');
-            });
-            console.log("Successfully loaded " + data.length + " subjects");
-          } else {
-            $('#specialization_subject_select').append('<option>No subjects available for this specialization</option>');
-            console.warn("No subjects found for specialization ID: " + specializationId);
-          }
-        } else {
-          // Error response from server
-          var errorMsg = response.error || "Unknown error";
-          $('#specialization_subject_select').append('<option>Error: ' + errorMsg + '</option>');
-          console.error("Server Error:", errorMsg);
-        }
-      },
-      error: function(xhr, status, error) {
-        console.error("AJAX Error - Status:", status, "Error:", error);
-        console.error("AJAX Response Text:", xhr.responseText);
-        var errorDisplay = status === 'timeout' ? 'Request timeout' : (status || error);
-        $('#specialization_subject_select').empty().append('<option>Error loading subjects (' + errorDisplay + ')</option>');
-      }
-    });
-  }
-
   function handleSpecializationSelection() {
     var specializationText = $('#specialization_select option:selected').text().toLowerCase();
-    var selectedValue = $('#specialization_select').val();
-    
-    console.log("Specialization Selected:", specializationText, "ID:", selectedValue);
-    
     var isMinorMultidisciplinary = specializationText.indexOf("minor multidisciplinary") !== -1;
     var isMinorDegree = specializationText.indexOf("minor") !== -1 && !isMinorMultidisciplinary;
     var isHonours = specializationText.indexOf('honours') !== -1 || specializationText.indexOf('honors') !== -1;
-
-    console.log("Is Honours:", isHonours, "Is Minor Degree:", isMinorDegree, "Is Minor Multidisciplinary:", isMinorMultidisciplinary);
 
     resetSpecializationConditionalUI();
 
     if (isMinorDegree) {
       $('#cgpa_section').show();
-      $('#minor_multidisciplinary_section').show();
       setAdmissionDetailSectionsVisible(true);
       return;
     }
@@ -330,13 +253,9 @@
     }
 
     if (isHonours) {
-       loadSpecializationSubjectsById(selectedValue);
-       $('#cgpa_section').show();
-       $('#specialization_subject_wrapper').show();
+      $('#cgpa_section').show();
+      return;
     }
-    
-    // If no keywords matched, log warning
-    console.warn("Specialization '" + specializationText + "' does not match expected patterns (Honours/Minor/Minor Multidisciplinary)");
   }
 
   $(document).ready(function() {
@@ -346,8 +265,16 @@
       var selectedClassText = $("#class4 option:selected").text().toLowerCase();
       $('#specialization_select').html('<option value="">Select Specialization</option>');
 
-      // Show all specializations (removed hard-coded ID filter to support newly added specializations)
-      $('#specialization_select').html(originalOptions);
+      if (selectedClassText.indexOf('sy') !== -1) {
+        $(originalOptions).filter('option').each(function() {
+          var val = $(this).val();
+          if (val == "1" || val == "3" || val == "4") {
+            $('#specialization_select').append($(this).clone());
+          }
+        });
+      } else {
+        $('#specialization_select').html(originalOptions);
+      }
 
       $('#specialization_select').val("");
       if (typeof resetSpecializationConditionalUI === "function") {
@@ -357,15 +284,9 @@
 
     handleSpecializationSelection();
 
-    // Use event delegation to handle newly added specialization options
-    $(document).on('change', '#specialization_select', function() {
+    $('#specialization_select').on('change', function() {
       handleSpecializationSelection();
     });
-    
-    // Also trigger on initial page load if a specialization is already selected
-    if ($('#specialization_select').val()) {
-      handleSpecializationSelection();
-    }
 
     $('#cgpa').on('input keyup change blur', function() {
       var specializationText = $('#specialization_select option:selected').text().toLowerCase();
@@ -382,28 +303,10 @@
       }
     });
 
-    // Minor Course change event - use event delegation and add debug logging
-    $(document).on('change', '#minor_course_select', function() {
+    $('#minor_course_select').on('change', function() {
       var courseId = $(this).val();
-      console.log("Minor course changed - Raw ID:", courseId, "Type:", typeof courseId);
-      
-      // Convert to number and validate
-      var courseIdNum = parseInt(courseId);
-      
-      if (courseId && courseId !== "" && courseIdNum > 0) {
-        console.log("Valid course ID detected:", courseIdNum);
-        loadMinorSubjectsByCourse(courseIdNum);
-      } else {
-        console.log("Invalid/empty course ID, hiding minor subject section. Value:", courseId, "Parsed:", courseIdNum);
-        $('#minor_subject_section').hide();
-        $('#minor_subject_select').empty().append('<option value="">Select a minor course first</option>');
-      }
+      loadMinorSubjectsByCourse(courseId);
     });
-    
-    // Debug: Check if element exists
-    console.log("Minor course select element exists:", $('#minor_course_select').length > 0);
-    console.log("Minor course select current value:", $('#minor_course_select').val());
-    console.log("Minor course select options count:", $('#minor_course_select option').length);
   });
 </script>
 <style>
@@ -538,21 +441,26 @@
                   </select>
                 </div>
               </div>
-              <div class="col-md-4">
-                <div class="form-group">
-                  <label>Graduating Year</label>
-                  <select class="form-control select" name="graduation_year" id="graduation_year" class="graduation_year" style="width: 100%;">
-                    <option value="">Select Year</option>
-                    <?php
-                    // Assuming batch_name contains the year (like "2024", "2025")
-                    $result = $db_handle->conn->query("SELECT * from st_batch_master ORDER BY batch_name");
-                    while ($row = $result->fetch_assoc()) {
-                      $batch_name = $row['batch_name'];
-                      $academic_year_id = $row['batch_id'];
-                    ?>
-                  </select>
-                </div>
-              </div>
+             <div class="col-md-4">
+    <div class="form-group">
+        <label>Graduating Year</label>
+        <select class="form-control select" name="graduation_year" id="graduation_year" class="graduation_year" style="width: 100%;">
+            <option value="">Select Year</option>
+            <?php
+            // Assuming batch_name contains the year (like "2024", "2025")
+            $result = $db_handle->conn->query("SELECT * from st_batch_master ORDER BY batch_name");
+            while ($row = $result->fetch_assoc()) {
+                $batch_name = $row['batch_name'];
+                $batch_id = $row['batch_id']; // or academic_year_id
+                
+                // Extract year from batch_name if it contains the year
+                // Or use academic_year_id if it represents the year
+                echo "<option value='{$batch_name}'>{$batch_name}</option>";
+            }
+            ?>
+        </select>
+    </div>
+</div>
             </div>
 
             <div class="col-md-12">
@@ -646,6 +554,14 @@
                   <label>Specialization Subject<span style="color: red;">*</span></label>
                   <select class="form-control select" name="unaided_subject" id="specialization_subject_select" class="batch" style="width: 100%;">
                     <option>Select Specialization Subject</option>
+                    <?php
+                    $result = $db_handle->conn->query("SELECT * from st_specialization_subject_master");
+                    while ($row = $result->fetch_assoc()) {
+                      $subject_name = $row['subject_name'];
+                      $subject_id = $row['subject_id'];
+                    ?>
+                      <option value="<?php echo $subject_id;  ?>"><?php echo $subject_name;  ?></option>
+                    <?php } ?>
                   </select>
                 </div>
               </div>

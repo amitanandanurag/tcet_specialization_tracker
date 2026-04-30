@@ -9,7 +9,8 @@ $db_handle = new DBController();
 
 // Get current user's role and department
 $user_id = $_SESSION['user_id'] ?? 0;
-$user_role = $_SESSION['role_id'] ?? 0;
+$user_role = $_SESSION['user_type'] ?? ($_SESSION['role_id'] ?? 0);
+
 // Get mentor's department if user is a mentor
 $mentor_department_id = null;
 $is_mentor = false;
@@ -37,6 +38,7 @@ $select_department = $_POST['select_department'] ?? '';
 $sql = "SELECT
     sm.student_id,
     sm.registration_no,
+    sm.academic_year_id,
     sm.roll_no,
     sm.fname,
     sm.class_id,
@@ -53,6 +55,7 @@ $sql = "SELECT
     sm.mark_list,
     sm.status,
     sm.created_at,
+    sm.current_semester_id,
     IFNULL(cl.class_name, '') AS class_display,
     IFNULL(sec.sections, '') AS section_display,
     IFNULL(dep.department_name, '') AS department_name,
@@ -96,9 +99,10 @@ if (!empty($select_section)) {
     $sql .= " AND sm.division_id = '" . mysqli_real_escape_string($db_handle->conn, $select_section) . "'";
 }
 if (!empty($select_academic_year)) {
-    $sql .= " AND sm.academic_year = '" . mysqli_real_escape_string($db_handle->conn, $select_academic_year) . "'";
+    $sql .= " AND sm.academic_year_id = '" . mysqli_real_escape_string($db_handle->conn, $select_academic_year) . "'";
 }
 if (!empty($select_semester)) {
+    $sql .= " AND sm.current_semester_id = '" . mysqli_real_escape_string($db_handle->conn, $select_semester) . "'";
 }
 
 if (!empty($searchValue)) {

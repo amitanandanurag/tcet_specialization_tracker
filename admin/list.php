@@ -54,7 +54,7 @@ function fetchStudents($db) {
 function fetchUsers($db) {
     $query = "SELECT 
         l.login_id as id,
-        l.username as name,
+        COALESCE(NULLIF(TRIM(u.user_name), ''), l.username) as name,
         l.username as email,
         r.role_name as role,
         d.department_name as department,
@@ -63,8 +63,9 @@ function fetchUsers($db) {
             ELSE 'N/A'
         END as mobile
     FROM st_login l
-    LEFT JOIN st_role_master r ON l.role_id = r.role_id
-    LEFT JOIN st_department_master d ON l.user_id = d.department_id
+    LEFT JOIN st_user_master u ON u.user_id = l.user_id
+    LEFT JOIN st_role_master r ON u.role_id = r.role_id
+    LEFT JOIN st_department_master d ON u.department_id = d.department_id
     LEFT JOIN st_student_master s ON s.std_id = l.user_id
     ORDER BY l.login_id";
     
@@ -111,7 +112,7 @@ function fetchBranches($db) {
 function fetchMentors($db) {
     $query = "SELECT 
         l.login_id as id,
-        l.username as name,
+        COALESCE(NULLIF(TRIM(u.user_name), ''), l.username) as name,
         l.username as email,
         d.department_name as department,
         (SELECT COUNT(*) FROM st_mentor_student_mapping WHERE mentor_id = l.user_id) as students_assigned,
@@ -120,9 +121,10 @@ function fetchMentors($db) {
             ELSE 'N/A'
         END as mobile
     FROM st_login l
-    LEFT JOIN st_department_master d ON l.user_id = d.department_id
+    LEFT JOIN st_user_master u ON u.user_id = l.user_id
+    LEFT JOIN st_department_master d ON u.department_id = d.department_id
     LEFT JOIN st_student_master s ON s.std_id = l.user_id
-    WHERE l.role_id IN (3, 4)
+    WHERE u.role_id IN (3, 4)
     ORDER BY l.login_id";
     
     $result = mysqli_query($db->conn, $query);

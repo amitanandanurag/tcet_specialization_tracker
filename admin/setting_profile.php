@@ -28,10 +28,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile']) && 
     mysqli_begin_transaction($db_handle->conn);
     $ok = true;
 
-    $loginUpdateSql = "UPDATE st_login SET username = ? WHERE user_id = ? AND role_id = ?";
+      $loginUpdateSql = "UPDATE st_login SET username = ? WHERE user_id = ?";
     $loginStmt = mysqli_prepare($db_handle->conn, $loginUpdateSql);
     if ($loginStmt) {
-      mysqli_stmt_bind_param($loginStmt, 'sii', $profileName, $currentUserId, $currentRoleId);
+        mysqli_stmt_bind_param($loginStmt, 'si', $profileName, $currentUserId);
       $ok = $ok && mysqli_stmt_execute($loginStmt);
       mysqli_stmt_close($loginStmt);
     } else {
@@ -39,20 +39,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile']) && 
     }
 
     if ($ok) {
-      $profileCheckSql = "SELECT user_id FROM st_user_master WHERE user_id = ? AND role_id = ? LIMIT 1";
+        $profileCheckSql = "SELECT user_id FROM st_user_master WHERE user_id = ? LIMIT 1";
       $profileCheckStmt = mysqli_prepare($db_handle->conn, $profileCheckSql);
       if ($profileCheckStmt) {
-        mysqli_stmt_bind_param($profileCheckStmt, 'ii', $currentUserId, $currentRoleId);
+          mysqli_stmt_bind_param($profileCheckStmt, 'i', $currentUserId);
         mysqli_stmt_execute($profileCheckStmt);
         $profileCheckResult = mysqli_stmt_get_result($profileCheckStmt);
         $profileExists = ($profileCheckResult && mysqli_num_rows($profileCheckResult) > 0);
         mysqli_stmt_close($profileCheckStmt);
 
         if ($profileExists) {
-          $profileUpdateSql = "UPDATE st_user_master SET user_name = ?, email_id = ?, phone_number = ? WHERE user_id = ? AND role_id = ?";
+            $profileUpdateSql = "UPDATE st_user_master SET user_name = ?, email_id = ?, phone_number = ? WHERE user_id = ?";
           $profileUpdateStmt = mysqli_prepare($db_handle->conn, $profileUpdateSql);
           if ($profileUpdateStmt) {
-            mysqli_stmt_bind_param($profileUpdateStmt, 'sssii', $profileName, $profileEmail, $profilePhone, $currentUserId, $currentRoleId);
+              mysqli_stmt_bind_param($profileUpdateStmt, 'sssi', $profileName, $profileEmail, $profilePhone, $currentUserId);
             $ok = $ok && mysqli_stmt_execute($profileUpdateStmt);
             mysqli_stmt_close($profileUpdateStmt);
           } else {
@@ -100,10 +100,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_password']) &&
     $passwordAlertType = 'warning';
     $passwordAlertMessage = 'New password and confirm password must match.';
   } else {
-    $currentPasswordSql = "SELECT password FROM st_login WHERE user_id = ? AND role_id = ? LIMIT 1";
+      $currentPasswordSql = "SELECT password FROM st_login WHERE user_id = ? LIMIT 1";
     $currentPasswordStmt = mysqli_prepare($db_handle->conn, $currentPasswordSql);
     if ($currentPasswordStmt) {
-      mysqli_stmt_bind_param($currentPasswordStmt, 'ii', $currentUserId, $currentRoleId);
+        mysqli_stmt_bind_param($currentPasswordStmt, 'i', $currentUserId);
       mysqli_stmt_execute($currentPasswordStmt);
       $currentPasswordResult = mysqli_stmt_get_result($currentPasswordStmt);
       $currentPasswordRow = $currentPasswordResult ? mysqli_fetch_assoc($currentPasswordResult) : null;
@@ -113,10 +113,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_password']) &&
         $passwordAlertType = 'danger';
         $passwordAlertMessage = 'Current password is incorrect.';
       } else {
-        $updatePasswordSql = "UPDATE st_login SET password = ? WHERE user_id = ? AND role_id = ?";
+          $updatePasswordSql = "UPDATE st_login SET password = ? WHERE user_id = ?";
         $updatePasswordStmt = mysqli_prepare($db_handle->conn, $updatePasswordSql);
         if ($updatePasswordStmt) {
-          mysqli_stmt_bind_param($updatePasswordStmt, 'sii', $newPassword, $currentUserId, $currentRoleId);
+            mysqli_stmt_bind_param($updatePasswordStmt, 'si', $newPassword, $currentUserId);
           if (mysqli_stmt_execute($updatePasswordStmt)) {
             $passwordAlertType = 'success';
             $passwordAlertMessage = 'Password updated successfully.';
@@ -146,17 +146,17 @@ $profileData = array(
 );
 
 if ($currentUserId > 0 && $currentRoleId > 0) {
-  $profileSql = "SELECT l.username, r.role_name, u.user_name, u.email_id, u.phone_number, d.department_name
-                 FROM st_login l
-                 LEFT JOIN st_role_master r ON r.role_id = l.role_id
-                 LEFT JOIN st_user_master u ON u.user_id = l.user_id AND u.role_id = l.role_id
-                 LEFT JOIN st_department_master d ON d.department_id = u.department_id
-                 WHERE l.user_id = ? AND l.role_id = ?
-                 LIMIT 1";
+    $profileSql = "SELECT l.username, r.role_name, u.user_name, u.email_id, u.phone_number, d.department_name
+                   FROM st_login l
+                   LEFT JOIN st_user_master u ON u.user_id = l.user_id
+                   LEFT JOIN st_role_master r ON r.role_id = u.role_id
+                   LEFT JOIN st_department_master d ON d.department_id = u.department_id
+                   WHERE l.user_id = ?
+                   LIMIT 1";
   $profileStmt = mysqli_prepare($db_handle->conn, $profileSql);
 
   if ($profileStmt) {
-    mysqli_stmt_bind_param($profileStmt, 'ii', $currentUserId, $currentRoleId);
+      mysqli_stmt_bind_param($profileStmt, 'i', $currentUserId);
     mysqli_stmt_execute($profileStmt);
     $profileResult = mysqli_stmt_get_result($profileStmt);
     if ($profileResult && ($row = mysqli_fetch_assoc($profileResult))) {

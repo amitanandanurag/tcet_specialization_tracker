@@ -27,11 +27,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_password']) &&
     $passwordAlertType = 'warning';
     $passwordAlertMessage = 'New password and confirm password must match.';
   } else {
-    $loginSql = "SELECT password FROM st_login WHERE user_id = ? AND role_id = ? LIMIT 1";
+      $loginSql = "SELECT password FROM st_login WHERE user_id = ? LIMIT 1";
     $loginStmt = mysqli_prepare($db_handle->conn, $loginSql);
 
     if ($loginStmt) {
-      mysqli_stmt_bind_param($loginStmt, 'ii', $currentUserId, $currentRoleId);
+        mysqli_stmt_bind_param($loginStmt, 'i', $currentUserId);
       mysqli_stmt_execute($loginStmt);
       $loginResult = mysqli_stmt_get_result($loginStmt);
       $loginRow = $loginResult ? mysqli_fetch_assoc($loginResult) : null;
@@ -42,10 +42,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_password']) &&
         $passwordAlertType = 'danger';
         $passwordAlertMessage = 'Current password is incorrect.';
       } else {
-        $updateSql = "UPDATE st_login SET password = ? WHERE user_id = ? AND role_id = ?";
+          $updateSql = "UPDATE st_login SET password = ? WHERE user_id = ?";
         $updateStmt = mysqli_prepare($db_handle->conn, $updateSql);
         if ($updateStmt) {
-          mysqli_stmt_bind_param($updateStmt, 'sii', $newPassword, $currentUserId, $currentRoleId);
+            mysqli_stmt_bind_param($updateStmt, 'si', $newPassword, $currentUserId);
           if (mysqli_stmt_execute($updateStmt)) {
             $passwordAlertType = 'success';
             $passwordAlertMessage = 'Password updated successfully.';
@@ -72,15 +72,16 @@ $passwordData = array(
 );
 
 if ($currentUserId > 0 && $currentRoleId > 0) {
-  $profileSql = "SELECT l.username, r.role_name
-                 FROM st_login l
-                 LEFT JOIN st_role_master r ON r.role_id = l.role_id
-                 WHERE l.user_id = ? AND l.role_id = ?
-                 LIMIT 1";
+    $profileSql = "SELECT l.username, r.role_name
+                   FROM st_login l
+                   LEFT JOIN st_user_master u ON u.user_id = l.user_id
+                   LEFT JOIN st_role_master r ON r.role_id = u.role_id
+                   WHERE l.user_id = ?
+                   LIMIT 1";
   $profileStmt = mysqli_prepare($db_handle->conn, $profileSql);
 
   if ($profileStmt) {
-    mysqli_stmt_bind_param($profileStmt, 'ii', $currentUserId, $currentRoleId);
+      mysqli_stmt_bind_param($profileStmt, 'i', $currentUserId);
     mysqli_stmt_execute($profileStmt);
     $profileResult = mysqli_stmt_get_result($profileStmt);
     if ($profileResult && ($row = mysqli_fetch_assoc($profileResult))) {

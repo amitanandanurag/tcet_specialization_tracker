@@ -46,7 +46,7 @@ try {
         $db_handle->query($sql);
         
         // Also update the username in st_login if email changed
-        $updateLoginSql = "UPDATE st_login SET username='$emailEsc' WHERE user_id=$userId AND role_id=$roleId";
+        $updateLoginSql = "UPDATE st_login SET username='$emailEsc' WHERE user_id=$userId";
         $db_handle->query($updateLoginSql);
     } else {
         // Insert new coordinator into st_user_master
@@ -56,7 +56,7 @@ try {
         
         // Ensure data is inserted into st_login
         $passwordEsc = mysqli_real_escape_string($db_handle->conn, "123456"); 
-        $loginSql = "INSERT INTO st_login (username, password, role_id, user_id) VALUES ('$emailEsc', '$passwordEsc', $roleId, $newUserId)";
+        $loginSql = "INSERT INTO st_login (username, password, user_id) VALUES ('$emailEsc', '$passwordEsc', $newUserId)";
         $db_handle->query($loginSql);
         $loginId = $db_handle->conn->insert_id;
         
