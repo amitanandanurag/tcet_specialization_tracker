@@ -13,19 +13,19 @@ try {
     $data = array();
     $error = null;
 
-    // Handle AJAX request for loading minor subjects
-    if(isset($_POST['course_id']) && $_POST['course_id'] !== '') {
-        $course_id = intval($_POST['course_id']); // Use intval for safety
+    // Handle AJAX request for loading specialization subjects
+    if(isset($_POST['specialization_id']) && $_POST['specialization_id'] !== '') {
+        $specialization_id = intval($_POST['specialization_id']); // Use intval for safety
         
-        if($course_id <= 0) {
-            $error = "Invalid course ID: Course must be selected";
+        if($specialization_id <= 0) {
+            $error = "Invalid specialization ID: specialization must be selected";
         } else {
             // Use prepared statement for security
-            $query = "SELECT subject_id, subject_name FROM st_minorsubject WHERE course_id = ? ORDER BY subject_name";
+            $query = "SELECT subject_id, subject_name FROM st_specialization_subject_master WHERE specialization_id = ? ORDER BY subject_name";
             $stmt = $database->conn->prepare($query);
             
             if($stmt) {
-                $stmt->bind_param("i", $course_id);
+                $stmt->bind_param("i", $specialization_id);
                 $stmt->execute();
                 $result = $stmt->get_result();
                 
@@ -43,7 +43,7 @@ try {
             }
         }
     } else {
-        $error = "Please select a minor course first";
+        $error = "Please select a specialization first";
     }
     
     // Clear any output that may have been buffered
