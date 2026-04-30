@@ -148,6 +148,7 @@ include "header/header.php";
                     <th style="background-color: #423cbc; color: white; padding: 16px">Department</th>
                     <th style="background-color: #423cbc; color: white; padding: 16px">Specialization</th>
                     <th style="background-color: #423cbc; color: white; padding: 16px">Specialization Subject</th>
+                    <th style="background-color: #423cbc; color: white; padding: 16px">Graduation Year</th> <!-- NEW COLUMN -->
                     <th style="background-color: #423cbc; color: white; padding: 16px">CGPA</th>
                     <th style="background-color: #423cbc; color: white; padding: 16px">Mobile No</th>
                     <th style="background-color: #423cbc; color: white; padding: 16px">Roll No</th>
@@ -155,7 +156,6 @@ include "header/header.php";
                     <th style="background-color: #F97161; padding: 16px">View</th>
                     <th style="background-color: #F97161; padding: 16px">Edit</th>
                     <th style="background-color: #F97161; padding: 16px">Remove</th>
-                  </tr>
                 </thead>
               </table>
             </div>
@@ -466,5 +466,4 @@ include "header/header.php";
     document.body.removeChild(link);
   }
 </script>
-
 <?php include "header/footer.php"; ?>
