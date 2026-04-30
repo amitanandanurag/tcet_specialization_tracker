@@ -17,8 +17,8 @@ $branches_query = "SELECT
     END as code,
     (SELECT COUNT(*) FROM st_student_master WHERE department_id = d.department_id AND status = 0
     ) as total_students,
-    (SELECT COUNT(*) FROM st_login WHERE user_id = d.department_id AND role_id = 2) as total_hods,
-    (SELECT COUNT(*) FROM st_login WHERE user_id = d.department_id AND role_id IN (3,4)) as total_staff
+    (SELECT COUNT(*) FROM st_user_master WHERE department_id = d.department_id AND role_id = 2) as total_hods,
+    (SELECT COUNT(*) FROM st_user_master WHERE department_id = d.department_id AND role_id IN (3,4)) as total_staff
 FROM st_department_master d
 " . ($selectedDepartmentId > 0 ? "WHERE d.department_id = $selectedDepartmentId " : "") . "
 ORDER BY d.department_id";

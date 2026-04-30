@@ -441,26 +441,26 @@
                   </select>
                 </div>
               </div>
-              <div class="col-md-4">
-                <div class="form-group">
-                  <label>Graduating Year</label>
-                  <select class="form-control select" name="graduation_year" id="graduation_year" class="graduation_year" style="width: 100%;">
-                    <option value="">Select Year</option>
-                    <?php
-                    // Assuming batch_name contains the year (like "2024", "2025")
-                    $result = $db_handle->conn->query("SELECT * from st_batch_master ORDER BY batch_name");
-                    while ($row = $result->fetch_assoc()) {
-                      $batch_name = $row['batch_name'];
-                      $batch_id = $row['batch_id']; // or academic_year_id
-
-                      // Extract year from batch_name if it contains the year
-                      // Or use academic_year_id if it represents the year
-                      echo "<option value='{$batch_name}'>{$batch_name}</option>";
-                    }
-                    ?>
-                  </select>
-                </div>
-              </div>
+             <div class="col-md-4">
+    <div class="form-group">
+        <label>Graduating Year</label>
+        <select class="form-control select" name="graduation_year" id="graduation_year" class="graduation_year" style="width: 100%;">
+            <option value="">Select Year</option>
+            <?php
+            // Assuming batch_name contains the year (like "2024", "2025")
+            $result = $db_handle->conn->query("SELECT * from st_batch_master ORDER BY batch_name");
+            while ($row = $result->fetch_assoc()) {
+                $batch_name = $row['batch_name'];
+                $batch_id = $row['batch_id']; // or academic_year_id
+                
+                // Extract year from batch_name if it contains the year
+                // Or use academic_year_id if it represents the year
+                echo "<option value='{$batch_name}'>{$batch_name}</option>";
+            }
+            ?>
+        </select>
+    </div>
+</div>
             </div>
 
             <div class="col-md-12">

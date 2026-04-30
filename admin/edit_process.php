@@ -93,7 +93,7 @@ if (isset($_POST['save'])) {
     }
     
     // Handle status
-    $status = isset($_POST['status']) ? intval($_POST['status']) : 0;
+    $status = isset($_POST['status']) ? intval($_POST['status']) : 1;
     
     // Handle semester marks (text areas)
     $m_sem1 = isset($_POST['m_sem1']) && $_POST['m_sem1'] !== '' ? "'" . mysqli_real_escape_string($conn, $_POST['m_sem1']) . "'" : "'[]'";
@@ -114,7 +114,7 @@ if (isset($_POST['save'])) {
     
     // Build the UPDATE query
     $sql = "UPDATE `st_student_master` SET
-        `academic_year` = '$academic_year_id',
+        `academic_year_id` = '$academic_year_id',
         `class_id` = '$class_id',
         `division_id` = '$division_id',
         `grad_year` = $grad_year,
@@ -129,7 +129,8 @@ if (isset($_POST['save'])) {
         `status` = $status,
         `m_sem1` = $m_sem1,
         `m_sem2` = $m_sem2,
-        `m_sem3` = $m_sem3
+        `m_sem3` = $m_sem3,
+        `current_semester_id` = '$current_semester_id'
     WHERE `student_id` = $student_id";
     
     // For debugging - uncomment to see the query

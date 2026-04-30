@@ -20,7 +20,10 @@ if (!$db_handle || !($db_handle->conn instanceof mysqli)) {
 	$ipAddress = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
 	$userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'unknown';
 
-	$sql = "SELECT * FROM st_login WHERE username=?";
+	$sql = "SELECT l.login_id, l.username, l.password, l.user_id, u.role_id
+	        FROM st_login l
+	        INNER JOIN st_user_master u ON u.user_id = l.user_id
+	        WHERE l.username=?";
 	$stmt = mysqli_prepare($db_handle->conn, $sql);
 
 	if (!$stmt) {

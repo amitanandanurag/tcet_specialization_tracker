@@ -34,8 +34,8 @@ if (isset($_POST['register'])) {
 
                 $user_id = mysqli_insert_id($db_handle->conn);
 
-                $sql2 = "INSERT INTO st_login(username,password,role_id,user_id)
-                         VALUES('$email','$password','$role_id','$user_id')";
+                $sql2 = "INSERT INTO st_login(username,password,user_id)
+                         VALUES('$email','$password','$user_id')";
 
                 if ($db_handle->query($sql2)) {
 

@@ -8,14 +8,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $student_id = intval($_POST['id']);
     $table = mysqli_real_escape_string($db_handle->conn, $_POST['table'] ?? 'st_student_master');
     $delete_type = $_POST['delete_type'] ?? 'hard'; // 'hard' or 'soft'
-
+    
     // Validate table name to prevent SQL injection
     $allowed_tables = ['st_student_master'];
     if (!in_array($table, $allowed_tables)) {
         echo json_encode(['status' => 'error', 'message' => 'Invalid table name']);
         exit;
     }
-
+    
     if ($delete_type == 'soft') {
         // Soft delete - just mark as inactive (status = 1)
         $sql = "UPDATE $table SET status = '1' WHERE student_id = $student_id";
@@ -25,7 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $sql = "DELETE FROM $table WHERE student_id = $student_id";
         $message = 'Student deleted permanently';
     }
-
+    
     if ($db_handle->conn->query($sql)) {
         echo json_encode(['status' => 'success', 'message' => $message]);
     } else {
@@ -34,3 +34,4 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 } else {
     echo json_encode(['status' => 'error', 'message' => 'Invalid request method']);
 }
+?>

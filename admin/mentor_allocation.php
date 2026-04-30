@@ -14,17 +14,17 @@ if (!isset($_SESSION['user_session'])) {
 function mentor_allocation_fetch_mentors($db_handle)
 {
   $sql = "SELECT
-            l.user_id AS mentor_id,
+            u.user_id AS mentor_id,
             COALESCE(NULLIF(TRIM(u.user_name), ''), l.username) AS mentor_name,
             l.username,
             COALESCE(d.department_name, '') AS department_name,
             COUNT(msm.mapping_id) AS assigned_students
-          FROM st_login l
-          LEFT JOIN st_user_master u ON u.user_id = l.user_id AND u.role_id = 4
+          FROM st_user_master u
+          LEFT JOIN st_login l ON l.user_id = u.user_id
           LEFT JOIN st_department_master d ON d.department_id = u.department_id
-          LEFT JOIN st_mentor_student_mapping msm ON msm.mentor_id = l.user_id
-          WHERE l.role_id = 4
-          GROUP BY l.user_id, mentor_name, l.username, d.department_name
+          LEFT JOIN st_mentor_student_mapping msm ON msm.mentor_id = u.user_id
+          WHERE u.role_id = 4
+          GROUP BY u.user_id, mentor_name, l.username, d.department_name
           ORDER BY mentor_name ASC";
 
   return $db_handle->runQuery($sql) ?? array();
@@ -46,9 +46,10 @@ function mentor_allocation_build_student_where($conn, $filters)
 
   if (!empty($filters['session'])) {
     $session = mysqli_real_escape_string($conn, $filters['session']);
-    $where .= " AND sm.academic_year = '{$session}' ";
+    $where .= " AND sm.academic_year_id = '{$session}' ";
   }
 
+  
   if (!empty($filters['mentor_id'])) {
     $mentorId = intval($filters['mentor_id']);
     if ($mentorId > 0) {
@@ -74,7 +75,7 @@ function mentor_allocation_build_student_where($conn, $filters)
       OR sec.sections LIKE '%{$search}%'
       OR dep.department_name LIKE '%{$search}%'
       OR COALESCE(NULLIF(TRIM(mu.user_name), ''), ml.username) LIKE '%{$search}%'
-      OR sm.academic_year LIKE '%{$search}%'
+      OR sm.academic_year_id LIKE '%{$search}%'
     ) ";
   }
 
@@ -90,7 +91,7 @@ function mentor_allocation_fetch_student_ids($db_handle, $filters)
           LEFT JOIN st_section_master sec ON sec.id = sm.division_id
           LEFT JOIN st_department_master dep ON dep.department_id = sm.department_id
           LEFT JOIN st_mentor_student_mapping msm ON msm.student_id = sm.student_id
-          LEFT JOIN st_login ml ON ml.user_id = msm.mentor_id AND ml.role_id = 4
+          LEFT JOIN st_login ml ON ml.user_id = msm.mentor_id
           LEFT JOIN st_user_master mu ON mu.user_id = msm.mentor_id AND mu.role_id = 4
           {$where}
           ORDER BY sm.fname ASC, sm.student_id ASC";
@@ -159,11 +160,11 @@ if (isset($_GET['action']) && $_GET['action'] === 'load_students') {
               LEFT JOIN st_section_master sec ON sec.id = sm.division_id
               LEFT JOIN st_department_master dep ON dep.department_id = sm.department_id
               LEFT JOIN st_mentor_student_mapping msm ON msm.student_id = sm.student_id
-              LEFT JOIN st_login ml ON ml.user_id = msm.mentor_id AND ml.role_id = 4
+              LEFT JOIN st_login ml ON ml.user_id = msm.mentor_id
               LEFT JOIN st_user_master mu ON mu.user_id = msm.mentor_id AND mu.role_id = 4
               {$where}";
 
-  $totalRows = $db_handle->runQuery("SELECT COUNT(*) AS total FROM st_student_master sm WHERE sm.status = '0'") ?? array();
+  $totalRows = $db_handle->runQuery("SELECT COUNT(*) AS total FROM st_user_master WHERE role_id = 4") ?? array();
   $filteredRows = $db_handle->runQuery("SELECT COUNT(*) AS total {$baseSql}") ?? array();
   $totalData = intval($totalRows[0]['total'] ?? 0);
   $totalFiltered = intval($filteredRows[0]['total'] ?? 0);
@@ -175,7 +176,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'load_students') {
     3 => 'cl.class_name',
     4 => 'sec.sections',
     5 => 'dep.department_name',
-    6 => 'sm.academic_year',
+    6 => 'sm.academic_year_id',
     7 => 'mentor_name'
   );
 
@@ -193,7 +194,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'load_students') {
             COALESCE(cl.class_name, '') AS class_name,
             COALESCE(sec.sections, '') AS section_name,
             COALESCE(dep.department_name, '') AS department_name,
-            COALESCE(sm.academic_year, '') AS academic_year,
+            COALESCE(sm.academic_year_id, '') AS academic_year_id,
             COALESCE(NULLIF(TRIM(mu.user_name), ''), ml.username, '') AS mentor_name
           {$baseSql}
           ORDER BY {$orderColumn} {$orderDir}
@@ -213,7 +214,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'load_students') {
       htmlspecialchars($row['class_name'] ?? ''),
       htmlspecialchars($row['section_name'] ?? ''),
       htmlspecialchars($row['department_name'] ?? ''),
-      htmlspecialchars($row['academic_year'] ?? ''),
+      htmlspecialchars($row['academic_year_id'] ?? ''),
       htmlspecialchars($row['mentor_name'] !== '' ? $row['mentor_name'] : 'Unassigned')
     );
   }
@@ -280,7 +281,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 $mentors = mentor_allocation_fetch_mentors($db_handle);
 $classRows = $db_handle->runQuery("SELECT class_id, class_name FROM st_class_master ORDER BY class_name ASC") ?? array();
 $sectionRows = $db_handle->runQuery("SELECT id, sections FROM st_section_master ORDER BY sections ASC") ?? array();
-$sessionRows = $db_handle->runQuery("SELECT DISTINCT academic_year FROM st_student_master WHERE academic_year IS NOT NULL AND academic_year != '' ORDER BY academic_year DESC") ?? array();
+$sessionRows = $db_handle->runQuery("SELECT DISTINCT academic_year_id FROM st_student_master WHERE academic_year_id IS NOT NULL AND academic_year_id != '' ORDER BY academic_year_id DESC") ?? array();
 
 include "header/header.php";
 ?>
@@ -336,7 +337,7 @@ include "header/header.php";
                 <select class="form-control" id="session">
                   <option value="">All Sessions</option>
                   <?php foreach ($sessionRows as $sessionRow) { ?>
-                    <option value="<?php echo htmlspecialchars($sessionRow['academic_year']); ?>"><?php echo htmlspecialchars($sessionRow['academic_year']); ?></option>
+                    <option value="<?php echo htmlspecialchars($sessionRow['academic_year_id']); ?>"><?php echo htmlspecialchars($sessionRow['academic_year_id']); ?></option>
                   <?php } ?>
                 </select>
               </div>

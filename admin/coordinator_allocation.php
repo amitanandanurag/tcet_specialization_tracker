@@ -14,17 +14,17 @@ if (!isset($_SESSION['user_session'])) {
 function coordinator_allocation_fetch_coordinators($db_handle)
 {
   $sql = "SELECT
-            l.user_id AS coordinator_id,
+            u.user_id AS coordinator_id,
             COALESCE(NULLIF(TRIM(u.user_name), ''), l.username) AS coordinator_name,
             l.username,
             COALESCE(d.department_name, '') AS department_name,
             COUNT(cm.id) AS assigned_mentors
-          FROM st_login l
-          LEFT JOIN st_user_master u ON u.user_id = l.user_id AND u.role_id = 3
+          FROM st_user_master u
+          LEFT JOIN st_login l ON l.user_id = u.user_id
           LEFT JOIN st_department_master d ON d.department_id = u.department_id
-          LEFT JOIN st_coordinator_mentor cm ON cm.coordinator_id = l.user_id
-          WHERE l.role_id = 3
-          GROUP BY l.user_id, coordinator_name, l.username, d.department_name
+          LEFT JOIN st_coordinator_mentor cm ON cm.coordinator_id = u.user_id
+          WHERE u.role_id = 3
+          GROUP BY u.user_id, coordinator_name, l.username, d.department_name
           ORDER BY coordinator_name ASC";
 
   return $db_handle->runQuery($sql) ?? array();
@@ -32,7 +32,7 @@ function coordinator_allocation_fetch_coordinators($db_handle)
 
 function coordinator_allocation_build_mentor_where($conn, $filters)
 {
-  $where = " WHERE l.role_id = 4 ";
+  $where = " WHERE u.role_id = 4 ";
 
   if (!empty($filters['department_id'])) {
     $deptId = mysqli_real_escape_string($conn, $filters['department_id']);
@@ -69,15 +69,15 @@ function coordinator_allocation_build_mentor_where($conn, $filters)
 function coordinator_allocation_fetch_mentor_ids($db_handle, $filters)
 {
   $where = coordinator_allocation_build_mentor_where($db_handle->conn, $filters);
-  $sql = "SELECT l.user_id AS mentor_id
-          FROM st_login l
-          LEFT JOIN st_user_master u ON u.user_id = l.user_id AND u.role_id = 4
+    $sql = "SELECT u.user_id AS mentor_id
+      FROM st_user_master u
+      LEFT JOIN st_login l ON l.user_id = u.user_id
           LEFT JOIN st_department_master d ON d.department_id = u.department_id
-          LEFT JOIN st_coordinator_mentor cm ON cm.mentor_id = l.user_id
-          LEFT JOIN st_login cl ON cl.user_id = cm.coordinator_id AND cl.role_id = 3
+      LEFT JOIN st_coordinator_mentor cm ON cm.mentor_id = u.user_id
+      LEFT JOIN st_login cl ON cl.user_id = cm.coordinator_id
           LEFT JOIN st_user_master cu ON cu.user_id = cm.coordinator_id AND cu.role_id = 3
           {$where}
-          ORDER BY u.user_name ASC, l.user_id ASC";
+      ORDER BY u.user_name ASC, u.user_id ASC";
 
   $rows = $db_handle->runQuery($sql) ?? array();
   $ids = array();
@@ -140,11 +140,11 @@ if (isset($_GET['action']) && $_GET['action'] === 'load_mentors') {
               LEFT JOIN st_user_master u ON u.user_id = l.user_id AND u.role_id = 4
               LEFT JOIN st_department_master d ON d.department_id = u.department_id
               LEFT JOIN st_coordinator_mentor cm ON cm.mentor_id = l.user_id
-              LEFT JOIN st_login cl ON cl.user_id = cm.coordinator_id AND cl.role_id = 3
+              LEFT JOIN st_login cl ON cl.user_id = cm.coordinator_id
               LEFT JOIN st_user_master cu ON cu.user_id = cm.coordinator_id AND cu.role_id = 3
               {$where}";
 
-  $totalRows = $db_handle->runQuery("SELECT COUNT(*) AS total FROM st_login l WHERE l.role_id = 4") ?? array();
+  $totalRows = $db_handle->runQuery("SELECT COUNT(*) AS total FROM st_user_master WHERE role_id = 4") ?? array();
   $filteredRows = $db_handle->runQuery("SELECT COUNT(*) AS total {$baseSql}") ?? array();
   $totalData = intval($totalRows[0]['total'] ?? 0);
   $totalFiltered = intval($filteredRows[0]['total'] ?? 0);
@@ -191,6 +191,29 @@ if (isset($_GET['action']) && $_GET['action'] === 'load_mentors') {
     'recordsFiltered' => $totalFiltered,
     'data' => $data
   ));
+  exit();
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'get_coordinator_dept') {
+  header('Content-Type: application/json');
+  $coordId = intval($_POST['coordinator_id'] ?? 0);
+  $sql = "SELECT d.department_id, d.department_name 
+          FROM st_login l
+          INNER JOIN st_coordinator sc ON sc.login_id = l.login_id
+          LEFT JOIN st_user_master u ON u.user_id = l.user_id
+          LEFT JOIN st_department_master d ON d.department_id = u.department_id
+          WHERE l.user_id = {$coordId}";
+  $result = $db_handle->runQuery($sql) ?? array();
+  
+  if (!empty($result) && isset($result[0]['department_id'])) {
+    echo json_encode(array(
+      'success' => true,
+      'department_id' => $result[0]['department_id'],
+      'department_name' => $result[0]['department_name']
+    ));
+  } else {
+    echo json_encode(array('success' => false));
+  }
   exit();
 }
 
@@ -372,11 +395,39 @@ $(document).ready(function() {
     return true;
   }
 
+  $('#coordinator_id').on('change', function() {
+    var coordId = $(this).val();
+    if (coordId) {
+      $.ajax({
+        url: 'coordinator_allocation.php',
+        type: 'POST',
+        dataType: 'json',
+        data: { 
+            action: 'get_coordinator_dept',
+            coordinator_id: coordId 
+        },
+        success: function(resp) {
+          if (resp && resp.success) {
+            $('#department_id').val(resp.department_id).prop('disabled', true);
+          } else {
+            $('#department_id').val('').prop('disabled', false);
+          }
+        },
+        error: function() {
+          $('#department_id').val('').prop('disabled', false);
+        }
+      });
+    } else {
+      $('#department_id').val('').prop('disabled', false);
+    }
+  });
+
   $('#apply_filters').on('click', function() {
     allocationTable.ajax.reload();
   });
 
   $('#reset_filters').on('click', function() {
+    $('#department_id').prop('disabled', false);
     $('#department_id, #coordinator_filter, #assignment_status, #coordinator_id').val('');
     $('div.dataTables_filter input').val('');
     allocationTable.search('').draw();
