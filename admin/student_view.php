@@ -32,8 +32,8 @@ $sql = "SELECT
     sm.m_sem2,
     sm.m_sem3,
     sm.created_at,
-    sm.academic_year_id,
-    sm.current_semester_id,
+    sm.academic_year AS academic_year_name,
+    '' AS semester_name,
     IFNULL(cl.class_name, '') AS class_name,
     IFNULL(sec.sections, '') AS section_name,
     IFNULL(dep.department_name, '') AS department_name,
@@ -165,8 +165,8 @@ $is_honours = strpos($specialization_name, 'honour') !== false || strpos($specia
         <div class="col-md-6">
             <div class="view-field">
                 <div class="view-label">Status:</div>
-                <div class="view-value <?php echo ($row['status'] == '1') ? 'status-active' : 'status-inactive'; ?>">
-                    <?php echo ($row['status'] == '1') ? 'Active' : 'Inactive'; ?>
+                <div class="view-value <?php echo ($row['status'] == '0') ? 'status-active' : 'status-inactive'; ?>">
+                    <?php echo ($row['status'] == '0') ? 'Active' : 'Inactive'; ?>
                 </div>
             </div>
         </div>

@@ -44,10 +44,10 @@ $('document').ready(function() {
 
 				console.log(cleanResponse);
 
-
 				if(cleanResponse=="ok" || cleanResponse=="ok1" || cleanResponse=="ok2" || cleanResponse=="ok3" || cleanResponse=="ok4"){
 					$("#login_button").html('<img src="ajax-loader.gif" /> &nbsp; Signing In ...');
-					setTimeout(function(){ window.location.href = "../admin"; }, 4000);
+					var redirectUrl = cleanResponse == "ok4" ? "../admin/student_dashboard.php" : "../admin/index.php";
+					setTimeout(function(){ window.location.href = redirectUrl; }, 1000);
 				} 
 				else {
 					$("#error").fadeIn(1000, function(){

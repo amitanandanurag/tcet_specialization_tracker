@@ -14,7 +14,8 @@ $roleLabel = $roleMap[$roleKey]['label'];
 ?>
 <div class="content-wrapper">
   <section class="content-header">
-    <h1><i class="fa fa-users"></i> <?php echo htmlspecialchars($roleLabel); ?> Info</h1>
+    <!--<h1><i class="fa fa-users"></i> <?php echo htmlspecialchars($roleLabel); ?> Info</h1>-->
+    <h1><i class="fa fa-users"></i> USER LIST</h1>
     <ol class="breadcrumb">
       <li><a href="index.php"><i class="fa fa-dashboard"></i> Home</a></li>
       <li class="active"><?php echo htmlspecialchars($roleLabel); ?> Info</li>
@@ -25,11 +26,11 @@ $roleLabel = $roleMap[$roleKey]['label'];
     <div class="row">
       <div class="col-md-12">
         <div class="box box-primary">
-          <div class="box-header with-border">
+           <!-- <div class="box-header with-border">
             <a href="user_register.php?role=<?php echo urlencode($roleKey); ?>" class="btn btn-primary">
-              <i class="fa fa-plus"></i> Register <?php echo htmlspecialchars($roleLabel); ?>
+            <i class="fa fa-plus"></i> Register <?php echo htmlspecialchars($roleLabel); ?>
             </a>
-          </div>
+          </div>-->
           <div class="box-body table-responsive">
             <table id="userRoleTable" class="table table-bordered table-striped text-center" width="100%">
               <thead>

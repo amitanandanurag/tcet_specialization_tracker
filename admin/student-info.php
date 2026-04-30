@@ -86,10 +86,9 @@ include "header/header.php";
                 <select class="form-control" id="select_academic_year" name="select_academic_year">
                   <option value="">Select Academic Year</option>
                   <?php
-                  $batch_result = $db_handle->query("SELECT session_id, session_name FROM `st_session_master` ORDER BY session_id DESC");
-                  while ($row = $batch_result->fetch_assoc()) {
-                    $selected = ($row['session_id'] == 1) ? 'selected' : '';
-                    echo "<option value='{$row['session_id']}' {$selected}>{$row['session_name']}</option>";
+                  $year_result = $db_handle->query("SELECT DISTINCT academic_year FROM `st_student_master` WHERE academic_year IS NOT NULL AND academic_year != '' ORDER BY academic_year DESC");
+                  while ($row = $year_result->fetch_assoc()) {
+                    echo "<option value='" . htmlspecialchars($row['academic_year'], ENT_QUOTES) . "'>" . htmlspecialchars($row['academic_year']) . "</option>";
                   }
                   ?>
                 </select>
