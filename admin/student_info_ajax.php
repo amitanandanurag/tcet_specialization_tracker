@@ -10,7 +10,6 @@ $db_handle = new DBController();
 // Get current user's role and department
 $user_id = $_SESSION['user_id'] ?? 0;
 $user_role = $_SESSION['role_id'] ?? 0;
-
 // Get mentor's department if user is a mentor
 $mentor_department_id = null;
 $is_mentor = false;

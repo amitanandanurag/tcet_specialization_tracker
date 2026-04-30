@@ -467,5 +467,4 @@ include "header/header.php";
     document.body.removeChild(link);
   }
 </script>
-
 <?php include "header/footer.php"; ?>

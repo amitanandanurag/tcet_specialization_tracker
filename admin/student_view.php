@@ -142,7 +142,6 @@ $is_honours = strpos($specialization_name, 'honour') !== false || strpos($specia
         margin-left: 8px;
     }
 </style>
-
 <!-- STUDENT BASIC INFORMATION -->
 <div class="view-section">
     <div class="view-section-header">
