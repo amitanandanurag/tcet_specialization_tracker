@@ -20,6 +20,8 @@ $sql = "SELECT
     sm.department_id,
     sm.specialization_id,
     sm.specialization_subject_id,
+    sm.minor_course_id,
+    sm.minor_subject_id,
     sm.cgpa,
     sm.fname,
     sm.mobile,
@@ -36,14 +38,22 @@ $sql = "SELECT
     IFNULL(sec.sections, '') AS section_name,
     IFNULL(dep.department_name, '') AS department_name,
     IFNULL(sp.specialization_name, '') AS specialization_name,
-    IFNULL(ssb.subject_name, '') AS specialization_subject_name
+    IFNULL(ssb.subject_name, '') AS specialization_subject_name,
+    IFNULL(mc.course_name, '') AS minor_course_name,
+    IFNULL(ms.subject_name, '') AS minor_subject_name,
+    IFNULL(sess.session_name, '') AS academic_year_name,
+    IFNULL(sem.semester_name, '') AS semester_name
 FROM st_student_master sm
 LEFT JOIN st_class_master cl ON cl.class_id = sm.class_id
 LEFT JOIN st_section_master sec ON sec.id = sm.division_id
 LEFT JOIN st_department_master dep ON dep.department_id = sm.department_id
 LEFT JOIN st_specialization_master sp ON sp.specialization_id = sm.specialization_id
 LEFT JOIN st_specialization_subject_master ssb ON ssb.subject_id = sm.specialization_subject_id
-WHERE sm.student_id = $student_id AND sm.status = '0'";
+LEFT JOIN st_minorcourse mc ON mc.course_id = sm.minor_course_id
+LEFT JOIN st_minorsubject ms ON ms.subject_id = sm.minor_subject_id
+LEFT JOIN st_session_master sess ON sess.session_id = sm.academic_year_id
+LEFT JOIN st_semester_master sem ON sem.semester_id = sm.current_semester_id
+WHERE sm.student_id = $student_id";
 
 $result = $db_handle->query($sql);
 $row = $result ? $result->fetch_assoc() : null;
@@ -52,6 +62,11 @@ if (!$row) {
     echo "<div class='alert alert-danger'>Student record not found.</div>";
     exit;
 }
+
+// Determine specialization type for display
+$specialization_name = strtolower($row['specialization_name'] ?? '');
+$is_minor_multidisciplinary = strpos($specialization_name, 'minor multidisciplinary') !== false;
+$is_honours = strpos($specialization_name, 'honour') !== false || strpos($specialization_name, 'honor') !== false;
 ?>
 <style>
     .view-section {
@@ -110,8 +125,23 @@ if (!$row) {
         width: 30%;
         background-color: #e9ecef;
     }
+    .badge-minor {
+        background-color: #ff9800;
+        color: white;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 11px;
+        margin-left: 8px;
+    }
+    .badge-honours {
+        background-color: #9c27b0;
+        color: white;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 11px;
+        margin-left: 8px;
+    }
 </style>
-
 <!-- STUDENT BASIC INFORMATION -->
 <div class="view-section">
     <div class="view-section-header">
@@ -170,7 +200,16 @@ if (!$row) {
         <div class="col-md-4">
             <div class="view-field">
                 <div class="view-label">Graduation Year:</div>
-                <div class="view-value"><?php echo htmlspecialchars($row['grad_year'] ?? 'N/A'); ?></div>
+                <div class="view-value">
+                    <?php 
+                    $grad_year = $row['grad_year'] ?? '';
+                    if (!empty($grad_year) && $grad_year > 0) {
+                        echo htmlspecialchars($grad_year);
+                    } else {
+                        echo 'Not Specified';
+                    }
+                    ?>
+                </div>
             </div>
         </div>
     </div>
@@ -201,19 +240,77 @@ if (!$row) {
                 <div class="view-value"><?php echo htmlspecialchars($row['department_name'] ?? 'N/A'); ?></div>
             </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-8">
             <div class="view-field">
-                <div class="view-label">Specialization:</div>
+                <div class="view-label">
+                    Specialization:
+                    <?php if ($is_minor_multidisciplinary): ?>
+                        <span class="badge-minor">Minor Multidisciplinary</span>
+                    <?php elseif ($is_honours): ?>
+                        <span class="badge-honours">Honours</span>
+                    <?php endif; ?>
+                </div>
                 <div class="view-value"><?php echo htmlspecialchars($row['specialization_name'] ?? 'N/A'); ?></div>
             </div>
         </div>
-        <div class="col-md-4">
+    </div>
+    
+    <!-- For Minor Multidisciplinary: Show Minor Course and Minor Subject -->
+    <?php if ($is_minor_multidisciplinary): ?>
+    <div class="row" style="padding: 15px;">
+        <div class="col-md-6">
+            <div class="view-field">
+                <div class="view-label">Minor Course:</div>
+                <div class="view-value">
+                    <?php 
+                    if (!empty($row['minor_course_name'])) {
+                        echo htmlspecialchars($row['minor_course_name']);
+                    } elseif (!empty($row['minor_course_id'])) {
+                        echo "Course ID: " . htmlspecialchars($row['minor_course_id']);
+                    } else {
+                        echo 'N/A';
+                    }
+                    ?>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="view-field">
+                <div class="view-label">Minor Subject:</div>
+                <div class="view-value">
+                    <?php 
+                    if (!empty($row['minor_subject_name'])) {
+                        echo htmlspecialchars($row['minor_subject_name']);
+                    } elseif (!empty($row['minor_subject_id'])) {
+                        echo "Subject ID: " . htmlspecialchars($row['minor_subject_id']);
+                    } else {
+                        echo 'N/A';
+                    }
+                    ?>
+                </div>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
+    
+    <!-- For Honours: Show Specialization Subject -->
+    <?php if ($is_honours && !$is_minor_multidisciplinary): ?>
+    <div class="row" style="padding: 15px;">
+        <div class="col-md-6">
             <div class="view-field">
                 <div class="view-label">Specialization Subject:</div>
                 <div class="view-value"><?php echo htmlspecialchars($row['specialization_subject_name'] ?? 'N/A'); ?></div>
             </div>
         </div>
+        <div class="col-md-6">
+            <div class="view-field">
+                <div class="view-label">CGPA (Aggregate):</div>
+                <div class="view-value"><?php echo !empty($row['cgpa']) ? number_format($row['cgpa'], 2) : 'N/A'; ?></div>
+            </div>
+        </div>
     </div>
+    <?php else: ?>
+    <!-- For Regular and Minor: Show CGPA -->
     <div class="row" style="padding: 15px;">
         <div class="col-md-4">
             <div class="view-field">
@@ -222,6 +319,7 @@ if (!$row) {
             </div>
         </div>
     </div>
+    <?php endif; ?>
 </div>
 
 <!-- CONTACT DETAILS -->
@@ -230,10 +328,10 @@ if (!$row) {
         <i class="fa fa-phone"></i> CONTACT DETAILS
     </div>
     <div class="row" style="padding: 15px;">
-        <div class="col-md-4">
+        <div class="col-md-6">
             <div class="view-field">
                 <div class="view-label">Mobile Number:</div>
-                <div class="view-value">
+                <div class="view-value" style="display: flex; gap: 4px">
                     <?php echo htmlspecialchars($row['mobile'] ?? 'N/A'); ?>
                     <?php if (!empty($row['mobile'])): ?>
                         <a href="tel:<?php echo $row['mobile']; ?>" class="btn btn-xs btn-info" style="margin-left: 10px;">
@@ -246,7 +344,7 @@ if (!$row) {
                 </div>
             </div>
         </div>
-        <div class="col-md-8">
+        <div class="col-md-6">
             <div class="view-field">
                 <div class="view-label">Email:</div>
                 <div class="view-value">
@@ -266,19 +364,19 @@ if (!$row) {
     <div class="row" style="padding: 15px;">
         <div class="col-md-12">
             <table class="table-marks">
-                <?php if (!empty($row['m_sem1'])): ?>
+                <?php if (!empty($row['m_sem1']) && $row['m_sem1'] != '[]'): ?>
                 <tr>
                     <td>Semester 1 Marksheet:</td>
                     <td><?php echo nl2br(htmlspecialchars($row['m_sem1'])); ?></td>
                 </tr>
                 <?php endif; ?>
-                <?php if (!empty($row['m_sem2'])): ?>
+                <?php if (!empty($row['m_sem2']) && $row['m_sem2'] != '[]'): ?>
                 <tr>
                     <td>Semester 2 Marksheet:</td>
                     <td><?php echo nl2br(htmlspecialchars($row['m_sem2'])); ?></td>
                 </tr>
                 <?php endif; ?>
-                <?php if (!empty($row['m_sem3'])): ?>
+                <?php if (!empty($row['m_sem3']) && $row['m_sem3'] != '[]'): ?>
                 <tr>
                     <td>Semester 3 Marksheet:</td>
                     <td><?php echo nl2br(htmlspecialchars($row['m_sem3'])); ?></td>
@@ -301,9 +399,21 @@ if (!$row) {
             <div class="view-field">
                 <div class="view-label">Mark List Document:</div>
                 <div class="view-value">
-                    <a href="uploads/<?php echo htmlspecialchars($row['mark_list']); ?>" target="_blank" class="btn btn-primary btn-sm">
-                        <i class="fa fa-download"></i> View/Download Mark List
-                    </a>
+                    <?php
+                    $mark_list_files = explode(',', $row['mark_list']);
+                    foreach ($mark_list_files as $file):
+                        $file = trim($file);
+                        if (!empty($file)):
+                    ?>
+                        <div style="margin-bottom: 5px;">
+                            <a href="uploads/marklists/<?php echo htmlspecialchars($file); ?>" target="_blank" class="btn btn-primary btn-sm">
+                                <i class="fa fa-file-pdf-o"></i> <?php echo htmlspecialchars($file); ?>
+                            </a>
+                        </div>
+                    <?php 
+                        endif;
+                    endforeach; 
+                    ?>
                 </div>
             </div>
         </div>
@@ -313,7 +423,6 @@ if (!$row) {
 
 <script>
     $(document).ready(function() {
-        // Add any additional initialization if needed
         console.log("Student view loaded for ID: <?php echo $student_id; ?>");
     });
 </script>
