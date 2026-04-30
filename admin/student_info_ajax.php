@@ -100,14 +100,27 @@ if (!empty($select_academic_year)) {
 }
 if (!empty($select_semester)) {
 }
-if (!empty($select_department)) {
-    $sql .= " AND sm.department_id = '" . mysqli_real_escape_string($db_handle->conn, $select_department) . "'";
+
+if (!empty($searchValue)) {
+    $sql .= " AND (
+        sm.registration_no LIKE '%$searchValue%'
+        OR sm.fname LIKE '%$searchValue%'
+        OR sm.lname LIKE '%$searchValue%'
+        OR sm.roll_no LIKE '%$searchValue%'
+        OR sm.email LIKE '%$searchValue%'
+        OR sm.mobile LIKE '%$searchValue%'
+        OR cl.class_name LIKE '%$searchValue%'
+        OR sec.sections LIKE '%$searchValue%'
+        OR dep.department_name LIKE '%$searchValue%'
+        OR sp.specialization_name LIKE '%$searchValue%'
+        OR ssb.subject_name LIKE '%$searchValue%'
+        OR sm.academic_year LIKE '%$searchValue%'
+    )";
 }
 
-// Get total count
-$totalResult = $db_handle->query($sql);
-$totalData = mysqli_num_rows($totalResult);
-$totalFiltered = $totalData;
+if (!empty($departmentFilterSql)) {
+    $sql .= $departmentFilterSql;
+}
 
 // Add search functionality
 if (!empty($requestData['search']['value'])) {
