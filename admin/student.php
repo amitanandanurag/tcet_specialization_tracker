@@ -1,24 +1,32 @@
 <?php
-include "header/header.php";
+session_start();
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 require_once "../database/db_connect.php";
 $database = new DBController();
 
 if (isset($_POST['save'])) {
   $conn = $database->conn;
 
-  // Get form data
-  $academic_year = mysqli_real_escape_string($conn, $_POST['academic'] ?? '');
+  // Get form data - DON'T add quotes here, just escape
+  $academic_year_id = mysqli_real_escape_string($conn, $_POST['academic'] ?? '');
   $registration_no = mysqli_real_escape_string($conn, $_POST['registration_no'] ?? '');
   $class_id = mysqli_real_escape_string($conn, $_POST['class'] ?? '');
   $division_id = mysqli_real_escape_string($conn, $_POST['batch'] ?? '');
+  $current_semester_id = mysqli_real_escape_string($conn, $_POST['current_semester_id'] ?? '');
+  $fname = mysqli_real_escape_string($conn, $_POST['fname'] ?? '');
 
-  // Handle grad_year
+  // Handle grad_year - properly quoted
   $grad_year = 'NULL';
-  if (!empty($_POST['batch_id']) && $_POST['batch_id'] != 'Select Year' && is_numeric($_POST['batch_id'])) {
-    $grad_year = "'" . mysqli_real_escape_string($conn, $_POST['batch_id']) . "'";
+  if (!empty($_POST['academic_year_id']) && $_POST['academic_year_id'] != 'Select Year' && is_numeric($_POST['academic_year_id'])) {
+    $grad_year = "'" . mysqli_real_escape_string($conn, $_POST['academic_year_id']) . "'";
   }
 
-  $roll_no = !empty($_POST['roll_no']) ? "'" . mysqli_real_escape_string($conn, $_POST['roll_no']) . "'" : 'NULL';
+  // Handle roll_no - properly quoted
+  $roll_no = 'NULL';
+  if (!empty($_POST['roll_no'])) {
+    $roll_no = "'" . mysqli_real_escape_string($conn, $_POST['roll_no']) . "'";
+  }
 
   // Handle department_id
   $department_id = 'NULL';
@@ -38,35 +46,57 @@ if (isset($_POST['save'])) {
     $specialization_subject_id = "'" . mysqli_real_escape_string($conn, $_POST['unaided_subject']) . "'";
   }
 
-  // Handle CGPA - Check which CGPA to use
+  // Handle CGPA - FIXED LOGIC
   $cgpa = 'NULL';
-  $specializationText = strtolower($_POST['specialization_id'] ?? '');
 
-  // Get specialization name to check if it's minor or honours
-  $spec_check = mysqli_query($conn, "SELECT specialization_name FROM st_specialization_master WHERE specialization_id = '" . mysqli_real_escape_string($conn, $_POST['specialization_id'] ?? '') . "'");
-  $spec_row = mysqli_fetch_assoc($spec_check);
-  $specialization_name = strtolower($spec_row['specialization_name'] ?? '');
+  // Get specialization name
+  $spec_id = $_POST['specialization_id'] ?? '';
+  if (!empty($spec_id) && is_numeric($spec_id)) {
+    $spec_check = mysqli_query($conn, "SELECT specialization_name FROM st_specialization_master WHERE specialization_id = '" . mysqli_real_escape_string($conn, $spec_id) . "'");
+    if ($spec_check) {
+      $spec_row = mysqli_fetch_assoc($spec_check);
+      $specialization_name = strtolower($spec_row['specialization_name'] ?? '');
 
-  // Check if it's Minor specialization
-  if (strpos($specialization_name, 'minor') !== false) {
-    // For Minor: Use minor_cgpa value
-    if (!empty($_POST['minor_cgpa']) && is_numeric($_POST['minor_cgpa'])) {
-      $cgpa_val = floatval($_POST['minor_cgpa']);
-      $cgpa_val = number_format($cgpa_val, 2);
-      $cgpa = "'" . $cgpa_val . "'";
+      // Check for Minor Multidisciplinary (most specific first)
+      if (strpos($specialization_name, 'minor multidisciplinary') !== false) {
+        // For Minor Multidisciplinary - use minor_cgpa
+        if (!empty($_POST['minor_cgpa']) && is_numeric($_POST['minor_cgpa'])) {
+          $cgpa_val = floatval($_POST['minor_cgpa']);
+          $cgpa_val = number_format($cgpa_val, 2);
+          $cgpa = "'" . $cgpa_val . "'";
+        }
+      }
+      // Check for Minor (non-multidisciplinary)
+      else if (strpos($specialization_name, 'minor') !== false) {
+        // For Minor - you can use regular cgpa or leave NULL
+        if (!empty($_POST['cgpa']) && is_numeric($_POST['cgpa'])) {
+          $cgpa_val = floatval($_POST['cgpa']);
+          $cgpa_val = number_format($cgpa_val, 2);
+          $cgpa = "'" . $cgpa_val . "'";
+        }
+      }
+      // Check for Honours
+      else if (strpos($specialization_name, 'honour') !== false || strpos($specialization_name, 'honor') !== false) {
+        if (!empty($_POST['cgpa']) && is_numeric($_POST['cgpa'])) {
+          $cgpa_val = floatval($_POST['cgpa']);
+          $cgpa_val = number_format($cgpa_val, 2);
+          $cgpa = "'" . $cgpa_val . "'";
+        }
+      }
     }
   }
-  // Check if it's Honours specialization
-  else if (strpos($specialization_name, 'honour') !== false || strpos($specialization_name, 'honor') !== false) {
-    // For Honours: Use main cgpa value
-    if (!empty($_POST['cgpa']) && is_numeric($_POST['cgpa'])) {
-      $cgpa_val = floatval($_POST['cgpa']);
-      $cgpa_val = number_format($cgpa_val, 2);
-      $cgpa = "'" . $cgpa_val . "'";
-    }
+
+  // Handle minor_course_id
+  $minor_course_id = 'NULL';
+  if (!empty($_POST['minor_course_id']) && $_POST['minor_course_id'] != '') {
+    $minor_course_id = "'" . mysqli_real_escape_string($conn, $_POST['minor_course_id']) . "'";
   }
 
-  $fname = mysqli_real_escape_string($conn, $_POST['fname'] ?? '');
+  // Handle minor_subject_id
+  $minor_subject_id = 'NULL';
+  if (!empty($_POST['minor_subject_id']) && $_POST['minor_subject_id'] != '') {
+    $minor_subject_id = "'" . mysqli_real_escape_string($conn, $_POST['minor_subject_id']) . "'";
+  }
 
   // Handle mobile
   $mobile = 'NULL';
@@ -120,48 +150,53 @@ if (isset($_POST['save'])) {
     exit;
   }
 
-  // INSERT query - using only existing columns
+  // Build the INSERT query - USING PROPERLY QUOTED VALUES
   $sql = "INSERT INTO `st_student_master`(
-        `academic_year`,
-        `registration_no`,
-        `class_id`,
-        `division_id`,
-        `grad_year`,
-        `roll_no`,
-        `department_id`,
-        `specialization_id`,
-        `specialization_subject_id`,
-        `cgpa`,
-        `fname`,
-        `mobile`,
-        `email`,
-        `mark_list`,
-        `status`,
-        `m_sem1`,
-        `m_sem2`,
-        `m_sem3`,
-        `created_at`
-    ) VALUES (
-        '$academic_year',
-        '$registration_no',
-        '$class_id',
-        '$division_id',
-        $grad_year,
-        $roll_no,
-        $department_id,
-        $specialization_id,
-        $specialization_subject_id,
-        $cgpa,
-        '$fname',
-        $mobile,
-        $email,
-        $mark_list,
-        $status,
-        $m_sem1,
-        $m_sem2,
-        $m_sem3,
-        NOW()
-    )";
+    `academic_year_id`,
+    `registration_no`,
+    `class_id`,
+    `division_id`,
+    `grad_year`,
+    `roll_no`,
+    `department_id`,
+    `specialization_id`,
+    `specialization_subject_id`,
+    `cgpa`,
+    `fname`,
+    `mobile`,
+    `email`,
+    `mark_list`,
+    `status`,
+    `m_sem1`,
+    `m_sem2`,
+    `m_sem3`,
+    `created_at`,
+    `current_semester_id`
+) VALUES (
+    '$academic_year_id',
+    '$registration_no',
+    '$class_id',
+    '$division_id',
+    $grad_year,
+    $roll_no,
+    $department_id,
+    $specialization_id,
+    $specialization_subject_id,
+    $cgpa,
+    '$fname',
+    $mobile,
+    $email,
+    $mark_list,
+    $status,
+    $m_sem1,
+    $m_sem2,
+    $m_sem3,
+    NOW(),
+    '$current_semester_id'
+)";
+  // Debug - print the query to see what's wrong
+  // echo "<pre>" . htmlspecialchars($sql) . "</pre>";
+  // exit;
 
   $result = mysqli_query($conn, $sql);
 
@@ -173,4 +208,8 @@ if (isset($_POST['save'])) {
     echo "Error: " . mysqli_error($conn);
     echo "<br><br>SQL Query: <pre>" . htmlspecialchars($sql) . "</pre>";
   }
+  exit;
 }
+?>
+<?php include "header/header.php"; ?>
+<!-- Rest of your HTML form remains the same -->

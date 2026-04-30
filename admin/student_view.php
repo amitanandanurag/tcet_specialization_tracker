@@ -12,41 +12,47 @@ $student_id = intval($_REQUEST['id']);
 
 $sql = "SELECT
     sm.student_id,
-    sm.photo,
-    sm.mobile,
     sm.registration_no,
-    sm.academic_year,
+    sm.class_id,
+    sm.division_id,
+    sm.grad_year,
     sm.roll_no,
-    sm.fname,
-    sm.mname,
-    sm.lname,
-    sm.dob,
-    sm.gender,
-    sm.joining_date,
-    sm.permanent_address,
-    sm.email,
-    sm.city,
-    sm.phone,
-    sm.pincode,
-    sm.country,
-    sm.state,
-    sm.present_address,
-    sm.nationality,
-    IFNULL(sm.apaar_id, '') AS appar,
-    sm.uan,
-    sm.pan,
+    sm.department_id,
+    sm.specialization_id,
+    sm.specialization_subject_id,
+    sm.minor_course_id,
+    sm.minor_subject_id,
     sm.cgpa,
+    sm.fname,
+    sm.mobile,
+    sm.email,
+    sm.mark_list,
+    sm.status,
+    sm.m_sem1,
+    sm.m_sem2,
+    sm.m_sem3,
+    sm.created_at,
+    sm.academic_year AS academic_year_name,
+    '' AS semester_name,
     IFNULL(cl.class_name, '') AS class_name,
-    IFNULL(sec.sections, '') AS sections,
+    IFNULL(sec.sections, '') AS section_name,
     IFNULL(dep.department_name, '') AS department_name,
     IFNULL(sp.specialization_name, '') AS specialization_name,
-    IFNULL(ssb.subject_name, '') AS subject_name
+    IFNULL(ssb.subject_name, '') AS specialization_subject_name,
+    IFNULL(mc.course_name, '') AS minor_course_name,
+    IFNULL(ms.subject_name, '') AS minor_subject_name,
+    IFNULL(sess.session_name, '') AS academic_year_name,
+    IFNULL(sem.semester_name, '') AS semester_name
 FROM st_student_master sm
 LEFT JOIN st_class_master cl ON cl.class_id = sm.class_id
 LEFT JOIN st_section_master sec ON sec.id = sm.division_id
 LEFT JOIN st_department_master dep ON dep.department_id = sm.department_id
 LEFT JOIN st_specialization_master sp ON sp.specialization_id = sm.specialization_id
 LEFT JOIN st_specialization_subject_master ssb ON ssb.subject_id = sm.specialization_subject_id
+LEFT JOIN st_minorcourse mc ON mc.course_id = sm.minor_course_id
+LEFT JOIN st_minorsubject ms ON ms.subject_id = sm.minor_subject_id
+LEFT JOIN st_session_master sess ON sess.session_id = sm.academic_year_id
+LEFT JOIN st_semester_master sem ON sem.semester_id = sm.current_semester_id
 WHERE sm.student_id = $student_id";
 
 $result = $db_handle->query($sql);
@@ -57,69 +63,366 @@ if (!$row) {
     exit;
 }
 
-$photo = !empty($row['photo']) ? $row['photo'] : 'student.JPG';
+// Determine specialization type for display
+$specialization_name = strtolower($row['specialization_name'] ?? '');
+$is_minor_multidisciplinary = strpos($specialization_name, 'minor multidisciplinary') !== false;
+$is_honours = strpos($specialization_name, 'honour') !== false || strpos($specialization_name, 'honor') !== false;
 ?>
 <style>
-.view-field { margin-bottom: 15px; }
-.view-label { font-weight: bold; color: #333; margin-bottom: 5px; }
-.view-value { color: #666; padding: 8px; background-color: #f9f9f9; border-radius: 3px; }
-.view-photo { text-align: center; margin-bottom: 20px; }
-.view-photo img { max-width: 120px; border-radius: 50%; border: 2px solid #ddd; }
+    .view-section {
+        margin-bottom: 25px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        overflow: hidden;
+    }
+    .view-section-header {
+        background-color: #423cbc;
+        color: white;
+        padding: 10px 15px;
+        font-size: 16px;
+        font-weight: bold;
+    }
+    .view-field {
+        margin-bottom: 15px;
+        padding: 0 15px;
+    }
+    .view-label {
+        font-weight: bold;
+        color: #333;
+        margin-bottom: 5px;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .view-value {
+        color: #666;
+        padding: 8px 12px;
+        background-color: #f9f9f9;
+        border-radius: 4px;
+        font-size: 14px;
+        word-break: break-word;
+    }
+    .status-active {
+        color: green;
+        font-weight: bold;
+    }
+    .status-inactive {
+        color: red;
+        font-weight: bold;
+    }
+    .table-marks {
+        width: 100%;
+        background-color: #f9f9f9;
+        border-collapse: collapse;
+    }
+    .table-marks td {
+        padding: 8px;
+        border: 1px solid #ddd;
+        vertical-align: top;
+    }
+    .table-marks td:first-child {
+        font-weight: bold;
+        width: 30%;
+        background-color: #e9ecef;
+    }
+    .badge-minor {
+        background-color: #ff9800;
+        color: white;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 11px;
+        margin-left: 8px;
+    }
+    .badge-honours {
+        background-color: #9c27b0;
+        color: white;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 11px;
+        margin-left: 8px;
+    }
 </style>
-
-<div class="view-photo">
-    <img src="student_photo/<?php echo htmlspecialchars($photo); ?>" alt="Student Photo">
-</div>
-
-<div class="row">
-    <div class="col-md-6">
-        <div class="view-field"><div class="view-label">Registration Number:</div><div class="view-value"><?php echo htmlspecialchars($row['registration_no'] ?? ''); ?></div></div>
-        <div class="view-field"><div class="view-label">First Name:</div><div class="view-value"><?php echo htmlspecialchars($row['fname'] ?? ''); ?></div></div>
-        <div class="view-field"><div class="view-label">Middle Name:</div><div class="view-value"><?php echo htmlspecialchars($row['mname'] ?? ''); ?></div></div>
-        <div class="view-field"><div class="view-label">Last Name:</div><div class="view-value"><?php echo htmlspecialchars($row['lname'] ?? ''); ?></div></div>
-        <div class="view-field"><div class="view-label">Date of Birth:</div><div class="view-value"><?php echo htmlspecialchars($row['dob'] ?? ''); ?></div></div>
-        <div class="view-field"><div class="view-label">Gender:</div><div class="view-value"><?php echo htmlspecialchars($row['gender'] ?? ''); ?></div></div>
+<!-- STUDENT BASIC INFORMATION -->
+<div class="view-section">
+    <div class="view-section-header">
+        <i class="fa fa-graduation-cap"></i> STUDENT BASIC INFORMATION
     </div>
-    <div class="col-md-6">
-        <div class="view-field"><div class="view-label">Academic Year:</div><div class="view-value"><?php echo htmlspecialchars($row['academic_year'] ?? ''); ?></div></div>
-        <div class="view-field"><div class="view-label">Class:</div><div class="view-value"><?php echo htmlspecialchars($row['class_name'] ?? ''); ?></div></div>
-        <div class="view-field"><div class="view-label">Section:</div><div class="view-value"><?php echo htmlspecialchars($row['sections'] ?? ''); ?></div></div>
-        <div class="view-field"><div class="view-label">Roll No:</div><div class="view-value"><?php echo htmlspecialchars($row['roll_no'] ?? ''); ?></div></div>
-        <div class="view-field"><div class="view-label">Joining Date:</div><div class="view-value"><?php echo htmlspecialchars($row['joining_date'] ?? ''); ?></div></div>
-        <div class="view-field"><div class="view-label">Department:</div><div class="view-value"><?php echo htmlspecialchars($row['department_name'] ?? ''); ?></div></div>
+    <div class="row" style="padding: 15px;">
+        <div class="col-md-6">
+            <div class="view-field">
+                <div class="view-label">Registration Number:</div>
+                <div class="view-value"><strong><?php echo htmlspecialchars($row['registration_no'] ?? 'N/A'); ?></strong></div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="view-field">
+                <div class="view-label">Student Name:</div>
+                <div class="view-value"><?php echo htmlspecialchars($row['fname'] ?? 'N/A'); ?></div>
+            </div>
+        </div>
     </div>
-</div>
-
-<div class="row">
-    <div class="col-md-6">
-        <div class="view-field"><div class="view-label">Specialization:</div><div class="view-value"><?php echo htmlspecialchars($row['specialization_name'] ?? ''); ?></div></div>
-        <div class="view-field"><div class="view-label">Specialization Subject:</div><div class="view-value"><?php echo htmlspecialchars($row['subject_name'] ?? ''); ?></div></div>
-        <div class="view-field"><div class="view-label">CGPA:</div><div class="view-value"><?php echo htmlspecialchars($row['cgpa'] ?? ''); ?></div></div>
-        <div class="view-field"><div class="view-label">Nationality:</div><div class="view-value"><?php echo htmlspecialchars($row['nationality'] ?? ''); ?></div></div>
-    </div>
-    <div class="col-md-6">
-        <div class="view-field"><div class="view-label">Mobile:</div><div class="view-value"><?php echo htmlspecialchars($row['mobile'] ?? 'N/A'); ?></div></div>
-        <div class="view-field"><div class="view-label">Email:</div><div class="view-value"><?php echo htmlspecialchars($row['email'] ?? ''); ?></div></div>
-        <div class="view-field"><div class="view-label">City:</div><div class="view-value"><?php echo htmlspecialchars($row['city'] ?? ''); ?></div></div>
-    </div>
-</div>
-
-<div class="row">
-    <div class="col-md-6">
-        <div class="view-field"><div class="view-label">Permanent Address:</div><div class="view-value"><?php echo htmlspecialchars($row['permanent_address'] ?? ''); ?></div></div>
-        <div class="view-field"><div class="view-label">Present Address:</div><div class="view-value"><?php echo htmlspecialchars($row['present_address'] ?? ''); ?></div></div>
-    </div>
-    <div class="col-md-6">
-        <div class="view-field"><div class="view-label">Pincode:</div><div class="view-value"><?php echo htmlspecialchars($row['pincode'] ?? ''); ?></div></div>
-        <div class="view-field"><div class="view-label">State:</div><div class="view-value"><?php echo htmlspecialchars($row['state'] ?? ''); ?></div></div>
-        <div class="view-field"><div class="view-label">Country:</div><div class="view-value"><?php echo htmlspecialchars($row['country'] ?? ''); ?></div></div>
+    <div class="row" style="padding: 15px;">
+        <div class="col-md-6">
+            <div class="view-field">
+                <div class="view-label">Status:</div>
+                <div class="view-value <?php echo ($row['status'] == '0') ? 'status-active' : 'status-inactive'; ?>">
+                    <?php echo ($row['status'] == '0') ? 'Active' : 'Inactive'; ?>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="view-field">
+                <div class="view-label">Created Date:</div>
+                <div class="view-value"><?php echo date('d-m-Y H:i:s', strtotime($row['created_at'] ?? 'now')); ?></div>
+            </div>
+        </div>
     </div>
 </div>
 
-<div class="row">
-    <div class="col-md-12">
-        <div class="view-field"><div class="view-label">APAAR ID:</div><div class="view-value"><?php echo htmlspecialchars($row['appar'] ?? ''); ?></div></div>
-        <div class="view-field"><div class="view-label">UAN:</div><div class="view-value"><?php echo htmlspecialchars($row['uan'] ?? ''); ?></div></div>
-        <div class="view-field"><div class="view-label">PAN:</div><div class="view-value"><?php echo htmlspecialchars($row['pan'] ?? ''); ?></div></div>
+<!-- ACADEMIC DETAILS -->
+<div class="view-section">
+    <div class="view-section-header">
+        <i class="fa fa-book"></i> ACADEMIC DETAILS
+    </div>
+    <div class="row" style="padding: 15px;">
+        <div class="col-md-4">
+            <div class="view-field">
+                <div class="view-label">Academic Year:</div>
+                <div class="view-value"><?php echo htmlspecialchars($row['academic_year_name'] ?? 'N/A'); ?></div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="view-field">
+                <div class="view-label">Current Semester:</div>
+                <div class="view-value"><?php echo htmlspecialchars($row['semester_name'] ?? 'N/A'); ?></div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="view-field">
+                <div class="view-label">Graduation Year:</div>
+                <div class="view-value">
+                    <?php 
+                    $grad_year = $row['grad_year'] ?? '';
+                    if (!empty($grad_year) && $grad_year > 0) {
+                        echo htmlspecialchars($grad_year);
+                    } else {
+                        echo 'Not Specified';
+                    }
+                    ?>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row" style="padding: 15px;">
+        <div class="col-md-4">
+            <div class="view-field">
+                <div class="view-label">Class:</div>
+                <div class="view-value"><?php echo htmlspecialchars($row['class_name'] ?? 'N/A'); ?></div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="view-field">
+                <div class="view-label">Division:</div>
+                <div class="view-value"><?php echo htmlspecialchars($row['section_name'] ?? 'N/A'); ?></div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="view-field">
+                <div class="view-label">Roll Number:</div>
+                <div class="view-value"><?php echo htmlspecialchars($row['roll_no'] ?? 'N/A'); ?></div>
+            </div>
+        </div>
+    </div>
+    <div class="row" style="padding: 15px;">
+        <div class="col-md-4">
+            <div class="view-field">
+                <div class="view-label">Department:</div>
+                <div class="view-value"><?php echo htmlspecialchars($row['department_name'] ?? 'N/A'); ?></div>
+            </div>
+        </div>
+        <div class="col-md-8">
+            <div class="view-field">
+                <div class="view-label">
+                    Specialization:
+                    <?php if ($is_minor_multidisciplinary): ?>
+                        <span class="badge-minor">Minor Multidisciplinary</span>
+                    <?php elseif ($is_honours): ?>
+                        <span class="badge-honours">Honours</span>
+                    <?php endif; ?>
+                </div>
+                <div class="view-value"><?php echo htmlspecialchars($row['specialization_name'] ?? 'N/A'); ?></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- For Minor Multidisciplinary: Show Minor Course and Minor Subject -->
+    <?php if ($is_minor_multidisciplinary): ?>
+    <div class="row" style="padding: 15px;">
+        <div class="col-md-6">
+            <div class="view-field">
+                <div class="view-label">Minor Course:</div>
+                <div class="view-value">
+                    <?php 
+                    if (!empty($row['minor_course_name'])) {
+                        echo htmlspecialchars($row['minor_course_name']);
+                    } elseif (!empty($row['minor_course_id'])) {
+                        echo "Course ID: " . htmlspecialchars($row['minor_course_id']);
+                    } else {
+                        echo 'N/A';
+                    }
+                    ?>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="view-field">
+                <div class="view-label">Minor Subject:</div>
+                <div class="view-value">
+                    <?php 
+                    if (!empty($row['minor_subject_name'])) {
+                        echo htmlspecialchars($row['minor_subject_name']);
+                    } elseif (!empty($row['minor_subject_id'])) {
+                        echo "Subject ID: " . htmlspecialchars($row['minor_subject_id']);
+                    } else {
+                        echo 'N/A';
+                    }
+                    ?>
+                </div>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
+    
+    <!-- For Honours: Show Specialization Subject -->
+    <?php if ($is_honours && !$is_minor_multidisciplinary): ?>
+    <div class="row" style="padding: 15px;">
+        <div class="col-md-6">
+            <div class="view-field">
+                <div class="view-label">Specialization Subject:</div>
+                <div class="view-value"><?php echo htmlspecialchars($row['specialization_subject_name'] ?? 'N/A'); ?></div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="view-field">
+                <div class="view-label">CGPA (Aggregate):</div>
+                <div class="view-value"><?php echo !empty($row['cgpa']) ? number_format($row['cgpa'], 2) : 'N/A'; ?></div>
+            </div>
+        </div>
+    </div>
+    <?php else: ?>
+    <!-- For Regular and Minor: Show CGPA -->
+    <div class="row" style="padding: 15px;">
+        <div class="col-md-4">
+            <div class="view-field">
+                <div class="view-label">CGPA (Aggregate):</div>
+                <div class="view-value"><?php echo !empty($row['cgpa']) ? number_format($row['cgpa'], 2) : 'N/A'; ?></div>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
+</div>
+
+<!-- CONTACT DETAILS -->
+<div class="view-section">
+    <div class="view-section-header">
+        <i class="fa fa-phone"></i> CONTACT DETAILS
+    </div>
+    <div class="row" style="padding: 15px;">
+        <div class="col-md-6">
+            <div class="view-field">
+                <div class="view-label">Mobile Number:</div>
+                <div class="view-value" style="display: flex; gap: 4px">
+                    <?php echo htmlspecialchars($row['mobile'] ?? 'N/A'); ?>
+                    <?php if (!empty($row['mobile'])): ?>
+                        <a href="tel:<?php echo $row['mobile']; ?>" class="btn btn-xs btn-info" style="margin-left: 10px;">
+                            <i class="fa fa-phone"></i> Call
+                        </a>
+                        <a href="https://wa.me/91<?php echo $row['mobile']; ?>" target="_blank" class="btn btn-xs btn-success">
+                            <i class="fa fa-whatsapp"></i> WhatsApp
+                        </a>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="view-field">
+                <div class="view-label">Email:</div>
+                <div class="view-value">
+                    <?php echo !empty($row['email']) ? '<a href="mailto:' . htmlspecialchars($row['email']) . '">' . htmlspecialchars($row['email']) . '</a>' : 'N/A'; ?>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
+
+<!-- MARKSHEETS / SEMESTER RESULTS -->
+<?php if (!empty($row['m_sem1']) || !empty($row['m_sem2']) || !empty($row['m_sem3'])): ?>
+<div class="view-section">
+    <div class="view-section-header">
+        <i class="fa fa-file-text-o"></i> SEMESTER MARKSHEETS
+    </div>
+    <div class="row" style="padding: 15px;">
+        <div class="col-md-12">
+            <table class="table-marks">
+                <?php if (!empty($row['m_sem1']) && $row['m_sem1'] != '[]'): ?>
+                <tr>
+                    <td>Semester 1 Marksheet:</td>
+                    <td><?php echo nl2br(htmlspecialchars($row['m_sem1'])); ?></td>
+                </tr>
+                <?php endif; ?>
+                <?php if (!empty($row['m_sem2']) && $row['m_sem2'] != '[]'): ?>
+                <tr>
+                    <td>Semester 2 Marksheet:</td>
+                    <td><?php echo nl2br(htmlspecialchars($row['m_sem2'])); ?></td>
+                </tr>
+                <?php endif; ?>
+                <?php if (!empty($row['m_sem3']) && $row['m_sem3'] != '[]'): ?>
+                <tr>
+                    <td>Semester 3 Marksheet:</td>
+                    <td><?php echo nl2br(htmlspecialchars($row['m_sem3'])); ?></td>
+                </tr>
+                <?php endif; ?>
+            </table>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
+<!-- MARK LIST DOCUMENT -->
+<?php if (!empty($row['mark_list'])): ?>
+<div class="view-section">
+    <div class="view-section-header">
+        <i class="fa fa-file-pdf-o"></i> DOCUMENTS
+    </div>
+    <div class="row" style="padding: 15px;">
+        <div class="col-md-12">
+            <div class="view-field">
+                <div class="view-label">Mark List Document:</div>
+                <div class="view-value">
+                    <?php
+                    $mark_list_files = explode(',', $row['mark_list']);
+                    foreach ($mark_list_files as $file):
+                        $file = trim($file);
+                        if (!empty($file)):
+                    ?>
+                        <div style="margin-bottom: 5px;">
+                            <a href="uploads/marklists/<?php echo htmlspecialchars($file); ?>" target="_blank" class="btn btn-primary btn-sm">
+                                <i class="fa fa-file-pdf-o"></i> <?php echo htmlspecialchars($file); ?>
+                            </a>
+                        </div>
+                    <?php 
+                        endif;
+                    endforeach; 
+                    ?>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
+<script>
+    $(document).ready(function() {
+        console.log("Student view loaded for ID: <?php echo $student_id; ?>");
+    });
+</script>

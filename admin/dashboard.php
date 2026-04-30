@@ -36,6 +36,89 @@ $coordinator_role_id_list = implode(',', array_map('intval', $coordinator_role_i
 $mentor_role_id_list = implode(',', array_map('intval', $mentor_role_ids));
 
 // ========================
+// 0. GET LOGGED-IN USER INFO & RESOLVE ROLES DYNAMICALLY
+// ========================
+// Extract user ID (from session, trying user_id first, then fallback)
+$logged_user_id = null;
+if (isset($_SESSION['user_id'])) {
+    $logged_user_id = $_SESSION['user_id'];
+} elseif (isset($_SESSION['user_session'])) {
+    $logged_user_id = $_SESSION['user_session'];
+}
+
+// Extract user's role_id (numeric) from session
+$logged_user_role_id = (int) ($_SESSION['user_type'] ?? 0);
+$logged_dept_id = null;
+$current_branch_name = '';
+
+// Resolve coordinator and mentor role IDs from st_role_master
+// Use UPPER and TRIM for case-insensitive and whitespace-safe matching
+$role_query = "SELECT role_id, role_name FROM st_role_master WHERE UPPER(TRIM(role_name)) IN ('COORDINATOR', 'HOD', 'MENTOR', 'STUDENT')";
+$role_result = mysqli_query($db_handle->conn, $role_query);
+$coordinator_role_ids = [];
+$mentor_role_ids = [];
+$student_role_id = null;
+
+if ($role_result) {
+    while ($row = mysqli_fetch_assoc($role_result)) {
+        $role_upper = strtoupper(trim($row['role_name']));
+        if (in_array($role_upper, ['COORDINATOR', 'HOD'])) {
+            $coordinator_role_ids[] = (int)$row['role_id'];
+        }
+        if ($role_upper === 'MENTOR') {
+            $mentor_role_ids[] = (int)$row['role_id'];
+        }
+        if ($role_upper === 'STUDENT') {
+            $student_role_id = (int)$row['role_id'];
+        }
+    }
+}
+
+// Fallback: if query returned nothing, use known IDs from tcet_st.sql schema
+if (empty($coordinator_role_ids)) {
+    $coordinator_role_ids = [3]; // COORDINATOR/HOD typically role_id = 3
+}
+if (empty($mentor_role_ids)) {
+    $mentor_role_ids = [4]; // MENTOR typically role_id = 4
+}
+if (!$student_role_id) {
+    $student_role_id = 5; // STUDENT typically role_id = 5
+}
+
+// Get logged-in user's department
+if ($logged_user_id) {
+    $user_dept_query = "SELECT department_id FROM st_user_master WHERE user_id = " . intval($logged_user_id);
+    $user_dept_result = mysqli_query($db_handle->conn, $user_dept_query);
+    if ($user_dept_result) {
+        $user_dept_row = mysqli_fetch_assoc($user_dept_result);
+        $logged_dept_id = $user_dept_row['department_id'] ?? null;
+    }
+    
+    // If not found in st_user_master, try st_student_master
+    if (!$logged_dept_id) {
+        $student_dept_query = "SELECT department_id FROM st_student_master WHERE student_id = " . intval($logged_user_id);
+        $student_dept_result = mysqli_query($db_handle->conn, $student_dept_query);
+        if ($student_dept_result) {
+            $student_dept_row = mysqli_fetch_assoc($student_dept_result);
+            $logged_dept_id = $student_dept_row['department_id'] ?? null;
+        }
+    }
+    
+    // Get branch name for display
+    if ($logged_dept_id) {
+        $branch_name_query = "SELECT department_name FROM st_department_master WHERE department_id = " . intval($logged_dept_id);
+        $branch_name_result = mysqli_query($db_handle->conn, $branch_name_query);
+        if ($branch_name_result) {
+            $branch_row = mysqli_fetch_assoc($branch_name_result);
+            $current_branch_name = $branch_row['department_name'] ?? '';
+        }
+    }
+}
+
+// Define is_scoped_user early so it's available for all queries
+$is_scoped_user = ($logged_user_role_id && ($logged_user_role_id === $student_role_id || in_array($logged_user_role_id, $coordinator_role_ids) || in_array($logged_user_role_id, $mentor_role_ids)));
+
+// ========================
 // 1. FETCH HOD DATA FROM DATABASE
 // ========================
 $hod_query = "SELECT 
@@ -63,8 +146,14 @@ LEFT JOIN (
     WHERE role_id IN ($coordinator_role_id_list)
     GROUP BY department_id
 ) u ON u.department_id = d.department_id
-LEFT JOIN st_login l ON l.user_id = u.user_id AND l.role_id = u.role_id
-ORDER BY d.department_id";
+LEFT JOIN st_login l ON l.user_id = u.user_id AND l.role_id = u.role_id";
+
+// Add department filter for scoped users (coordinator/HOD)
+if ($is_scoped_user && $logged_dept_id) {
+    $hod_query .= " WHERE d.department_id = " . intval($logged_dept_id);
+}
+
+$hod_query .= " ORDER BY d.department_id";
 
 $hod_result = mysqli_query($db_handle->conn, $hod_query);
 $departments_hod = [];
@@ -80,20 +169,44 @@ if ($hod_result) {
     }
 }
 
-// 2. Fetch Top Summary Cards Data from Database
-$students_query = "SELECT COUNT(*) as total FROM st_student_master WHERE status = 0";
+// ========================
+// 2. FETCH TOP SUMMARY CARDS DATA (ROLE & DEPARTMENT AWARE)
+// ========================
+
+// STUDENT COUNT - department-filtered for role-scoped users
+// Check if user is coordinator, HOD, mentor, or student based on numeric role_id
+$student_count_sql = "SELECT COUNT(*) as total FROM st_student_master WHERE status = '0'";
+if ($is_scoped_user && $logged_dept_id) {
+    $student_count_sql .= " AND department_id = " . intval($logged_dept_id);
+}
+$students_query = $student_count_sql;
 $students_result = mysqli_query($db_handle->conn, $students_query);
 $total_students = $students_result ? mysqli_fetch_assoc($students_result)['total'] : 0;
 
-$users_query = "SELECT COUNT(*) as total FROM st_login";
+// USERS CARD - count users only from st_user_master
+if ($is_scoped_user && $logged_dept_id) {
+    $users_card_label = 'Department Users';
+    $users_query = "SELECT COUNT(*) as total FROM st_user_master WHERE department_id = " . intval($logged_dept_id);
+} else {
+    $users_card_label = 'Total Users';
+    $users_query = "SELECT COUNT(*) as total FROM st_user_master";
+}
 $users_result = mysqli_query($db_handle->conn, $users_query);
 $total_users = $users_result ? mysqli_fetch_assoc($users_result)['total'] : 0;
 
+// BRANCHES
 $branches_query = "SELECT COUNT(*) as total FROM st_department_master";
 $branches_result = mysqli_query($db_handle->conn, $branches_query);
 $total_branches = $branches_result ? mysqli_fetch_assoc($branches_result)['total'] : 0;
 
-$mentor_query = "SELECT COUNT(*) as total FROM st_login WHERE role_id IN ($mentor_role_id_list)";
+// MENTORS - department-filtered for role-scoped users
+if ($is_scoped_user && $logged_dept_id) {
+    $mentor_query = "SELECT COUNT(*) as total FROM st_login 
+        WHERE role_id IN (" . implode(',', $mentor_role_ids) . ")
+        AND user_id IN (SELECT user_id FROM st_user_master WHERE department_id = " . intval($logged_dept_id) . ")";
+} else {
+    $mentor_query = "SELECT COUNT(*) as total FROM st_login WHERE role_id IN (" . implode(',', $mentor_role_ids) . ")";
+}
 $mentor_result = mysqli_query($db_handle->conn, $mentor_query);
 $total_mentor = $mentor_result ? mysqli_fetch_assoc($mentor_result)['total'] : 0;
 
@@ -105,8 +218,14 @@ $spec_query = "SELECT
     SUM(CASE WHEN s.status = 0 THEN 1 ELSE 0 END) as pending,
     0 as rejected
 FROM st_specialization_master sm
-LEFT JOIN st_student_master s ON sm.specialization_id = s.specialization_id
-GROUP BY sm.specialization_id, sm.specialization_name
+LEFT JOIN st_student_master s ON sm.specialization_id = s.specialization_id";
+
+// Add department filter for scoped users (coordinator/HOD)
+if ($is_scoped_user && $logged_dept_id) {
+    $spec_query .= " WHERE s.department_id = " . intval($logged_dept_id) . " OR s.student_id IS NULL";
+}
+
+$spec_query .= " GROUP BY sm.specialization_id, sm.specialization_name
 ORDER BY sm.specialization_id";
 
 $spec_result = mysqli_query($db_handle->conn, $spec_query);
@@ -133,15 +252,17 @@ foreach ($spec_data as $sd) {
 
 // 4. Branch-wise Distribution from Database
 $branch_query = "SELECT 
-    CASE 
-        WHEN LOCATE(' ', d.department_name) > 0 
-            THEN UPPER(SUBSTRING(d.department_name, 1, LOCATE(' ', d.department_name) - 1))
-        ELSE UPPER(d.department_name)
-    END as code,
+    d.department_name as code,
     COUNT(s.student_id) as count
 FROM st_department_master d
-LEFT JOIN st_student_master s ON d.department_id = s.department_id AND s.status = 0
-GROUP BY d.department_id, d.department_name
+LEFT JOIN st_student_master s ON d.department_id = s.department_id AND s.status = 1";
+
+// Add department filter for scoped users (coordinator/HOD)
+if ($is_scoped_user && $logged_dept_id) {
+    $branch_query .= " WHERE d.department_id = " . intval($logged_dept_id);
+}
+
+$branch_query .= " GROUP BY d.department_id, d.department_name
 ORDER BY d.department_id";
 
 $branch_result = mysqli_query($db_handle->conn, $branch_query);
@@ -260,56 +381,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_hod'])) {
     }
 }
 
-$logged_user_id = (int)($userid ?? 0);
-$logged_dept_id = 0;
+$result = $db_handle->conn->query("SELECT * FROM st_student_master where status='0'" . ($is_scoped_user && $logged_dept_id ? " AND department_id = " . intval($logged_dept_id) : ""));
+$rowcount = mysqli_num_rows($result);
 
-$dept_lookup_sql = "SELECT department_id FROM st_user_master WHERE user_id = $logged_user_id AND role_id = " . (int)($usertype ?? 0) . " LIMIT 1";
-$dept_lookup_result = mysqli_query($db_handle->conn, $dept_lookup_sql);
-if ($dept_lookup_result && ($dept_row = mysqli_fetch_assoc($dept_lookup_result))) {
-    $logged_dept_id = (int)($dept_row['department_id'] ?? 0);
-}
-
-if ($logged_dept_id <= 0) {
-    $logged_dept_id = (int)($userid ?? 0);
-}
-
-$is_coordinator = in_array((int)($usertype ?? 0), $coordinator_role_ids, true);
-$is_mentor = in_array((int)($usertype ?? 0), $mentor_role_ids, true);
-$current_branch_name = '';
-
-if (($is_coordinator || $is_mentor) && $logged_dept_id > 0) {
-    $branch_name_sql = "SELECT department_name FROM st_department_master WHERE department_id = $logged_dept_id LIMIT 1";
-    $branch_name_result = mysqli_query($db_handle->conn, $branch_name_sql);
-    if ($branch_name_result && ($branch_row = mysqli_fetch_assoc($branch_name_result))) {
-        $current_branch_name = (string)($branch_row['department_name'] ?? '');
-    }
-}
-
-$student_count_sql = "SELECT COUNT(*) as total 
-                      FROM st_student_master 
-                      WHERE status = 0";
-
-if ($is_coordinator && $logged_dept_id > 0) {
-    $student_count_sql .= " AND department_id = $logged_dept_id";
-} elseif ($is_mentor && $logged_user_id > 0) {
-    $student_count_sql .= " AND student_id IN (
-            SELECT student_id
-            FROM st_mentor_student_mapping
-            WHERE mentor_id = $logged_user_id
-    )";
-}
-
-$count_result = mysqli_query($db_handle->conn, $student_count_sql);
-
-if ($count_result) {
-    $row = mysqli_fetch_assoc($count_result);
-    $rowcount = (int)$row['total'];
-} else {
-    $rowcount = 0;
-}
-
-$result1 = $db_handle->conn->query("SELECT user_id FROM st_user_master");
-$rowcount_user = $result1 ? mysqli_num_rows($result1) : 0;
+$result1 = $db_handle->conn->query("SELECT * FROM st_user_master where 1=1" . ($is_scoped_user && $logged_dept_id ? " AND department_id = " . intval($logged_dept_id) : ""));
+$rowcount_user = mysqli_num_rows($result1);
 ?>
 
 <!-- Additional CSS for dashboard (only what's not already in header) -->
@@ -506,8 +582,8 @@ $rowcount_user = $result1 ? mysqli_num_rows($result1) : 0;
             <div class="col-lg-3 col-xs-6">
                 <div class="small-box bg-green">
                     <div class="inner">
-                        <h3 class="counter" data-target="<?php echo $rowcount_user; ?>">0</h3>
-                        <p>Total Users</p>
+                        <h3 class="counter" data-target="<?php echo $total_users; ?>">0</h3>
+                        <p><?php echo isset($users_card_label) ? $users_card_label : 'Total Users'; ?></p>
                     </div>
                     <div class="icon"><i class="ion ion-ios-people"></i></div>
                     <a href="user-info.php?type=users" class="small-box-footer">More info <i class="fa fa-arrow-circle-right"></i></a>
@@ -516,13 +592,13 @@ $rowcount_user = $result1 ? mysqli_num_rows($result1) : 0;
             <div class="col-lg-3 col-xs-6">
                 <div class="small-box bg-yellow">
                     <div class="inner">
-                        <?php if ($current_branch_name !== '') { ?>
-                            <h3 style="font-size: 30px; line-height: 1.2; margin-bottom: 8px;"><?php echo htmlspecialchars($current_branch_name); ?></h3>
-                            <p>Your Branch</p>
-                        <?php } else { ?>
+                        <?php if ($is_scoped_user && $current_branch_name): ?>
+                            <h3><?php echo $current_branch_name; ?></h3>
+                            <p>Branch</p>
+                        <?php else: ?>
                             <h3 class="counter" data-target="<?php echo $total_branches; ?>">0</h3>
                             <p>Total Branches</p>
-                        <?php } ?>
+                        <?php endif; ?>
                     </div>
                     <div class="icon"><i class="ion ion-ios-book"></i></div>
                     <a href="<?php echo $current_branch_name !== '' ? 'branch_info.php?department_id=' . intval($logged_dept_id) : 'branch_info.php'; ?>" class="small-box-footer">More info <i class="fa fa-arrow-circle-right"></i></a>

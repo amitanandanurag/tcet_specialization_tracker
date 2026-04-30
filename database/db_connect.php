@@ -10,7 +10,7 @@ class DBController
     public $user = "root";
     public $password = "";
     public $database = "tcet_st"; 
-
+      
    public $conn;
   public $last_error = '';
 
@@ -29,23 +29,28 @@ class DBController
     {
       mysqli_report(MYSQLI_REPORT_OFF);
       $conn = @mysqli_connect($this->host,$this->user,$this->password,$this->database);
-
-      if (!$conn) {
+       if (!$conn) {
         $this->last_error = 'Unable to connect with database';
         return false;
       }
 
+
       return $conn;
     }
 
-    function runQuery($query) {
-        $result = mysqli_query($this->conn,$query);
-        while($row=mysqli_fetch_assoc($result)) {
-            $resultset[] = $row;
-        }
-        if(!empty($resultset))
-            return $resultset;
+    public function runQuery($query) {
+    $result = mysqli_query($this->conn, $query);
+
+    if (!$result) {
+        die("Query Failed: " . mysqli_error($this->conn));
     }
+
+    $resultset = [];
+    while ($row = mysqli_fetch_assoc($result)) {
+        $resultset[] = $row;
+    }
+    return $resultset;
+}
 
 
     function numRows($query)
