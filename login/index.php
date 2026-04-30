@@ -221,9 +221,9 @@ include_once("../database/db_connect.php");
 
         /
     </style>
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
-    <script src="script/validation.min.js"></script>
-    <script src="script/login.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="script/validation.min.js"></script>
+<script src="script/login.js"></script>
     <script>
         addEventListener("load", function () {
             setTimeout(hideURLbar, 0);
@@ -256,7 +256,7 @@ include_once("../database/db_connect.php");
                 </div>
                 <div class="school-name"> SPECIALIZATION TRACKER </div>
                 <div class="header-left-bottom">
-                    <form method="post" action="login.php">
+                    <form id="login-form">
                         <div class="icon1">
                             <i class="fa fa-user"></i>
                             <input type="text" placeholder="Enter username" name="username" id="username" required="" />
