@@ -48,6 +48,7 @@
 	unset($_SESSION['user_login_id']);
 	unset($_SESSION['user_id']);
 	unset($_SESSION['user_type']);
+	unset($_SESSION['role_id']);
 	unset($_SESSION['login_time']);
 	unset($_SESSION['audit_login_id']);
 	session_destroy();

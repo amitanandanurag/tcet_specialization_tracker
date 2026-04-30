@@ -75,25 +75,59 @@ include_once("../database/db_connect.php");
             margin-top: 20px;
         }
 
-        .icon1 {
-            margin-bottom: 15px;
-            position: relative;
-        }
-
-        .icon1 input {
+        .login-field {
+            display: flex;
+            align-items: stretch;
             width: 100%;
             height: 48px;
-            padding: 10px 10px 10px 40px;
+            margin-bottom: 15px;
             border-radius: 6px;
+            overflow: hidden;
+            background: #ffffff;
         }
 
-
-        .icon1 i {
-            position: absolute;
-            left: 10px;
-            top: 50%;
-            transform: translateY(-50%);
+        .login-field-icon {
+            width: 48px;
+            flex: 0 0 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #eef4fb;
             color: #34495e;
+        }
+
+        .login-field-input {
+            flex: 1;
+            width: 100%;
+            height: 100%;
+            border: none;
+            outline: none;
+            padding: 0 14px;
+            font-size: 14px;
+            background: #ffffff;
+            color: #1f2d3d;
+        }
+
+        .login-field-input::placeholder {
+            color: #8b97a3;
+        }
+
+        .password-toggle {
+            width: 48px;
+            flex: 0 0 48px;
+            border: none;
+            border-left: 1px solid #d7e2ec;
+            background: #eef4fb;
+            color: #34495e;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+        }
+
+        .password-toggle:focus {
+            outline: none;
         }
 
         .login-check {
@@ -116,7 +150,7 @@ include_once("../database/db_connect.php");
             justify-content: center;
             align-items: center;
 
-            background: rgba(0, 0, 0, 0.65);
+            background: transparent;
             z-index: 1000;
         }
 
@@ -127,15 +161,15 @@ include_once("../database/db_connect.php");
             width: 520px;
             height: 620px;
 
-            border-radius: 14px;
+            border-radius: 16px;
 
-            background: linear-gradient(135deg, #2c5364, #203a43, #0f2027);
+            background: rgba(255, 255, 255, 0.96);
 
             display: flex;
             justify-content: center;
             align-items: center;
 
-            box-shadow: 0px 20px 50px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 20px 55px rgba(0, 0, 0, 0.35);
         }
 
         /* iframe */
@@ -147,15 +181,19 @@ include_once("../database/db_connect.php");
             display: block;
         }
 
-        /* Close button */
         .popup span {
             position: absolute;
-            top: 10px;
-            right: 15px;
-            font-size: 22px;
+            top: 15px;
+            right: 18px;
+            font-size: 24px;
             font-weight: bold;
-            color: #ff4d6d;
+            color: #64748b;
             cursor: pointer;
+            transition: color 0.2s ease;
+        }
+
+        .popup span:hover {
+            color: #334155;
         }
 
         .btn {
@@ -222,9 +260,9 @@ include_once("../database/db_connect.php");
 
         /
     </style>
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
-    <script src="script/validation.min.js"></script>
-    <script src="script/login.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="script/validation.min.js"></script>
+<script src="script/login.js"></script>
     <script>
         addEventListener("load", function () {
             setTimeout(hideURLbar, 0);
@@ -243,6 +281,56 @@ include_once("../database/db_connect.php");
             document.getElementById("registerPopup").style.display = "none";
         }
 
+        function openForgotPassword() {
+            document.getElementById("forgotPasswordPopup").style.display = "flex";
+        }
+
+        function closeForgotPasswordPopup() {
+            document.getElementById("forgotPasswordPopup").style.display = "none";
+        }
+
+        function togglePasswordVisibility() {
+            var passwordField = document.getElementById("password");
+            var toggleButton = document.getElementById("passwordToggle");
+            var toggleIcon = document.getElementById("passwordToggleIcon");
+
+            if (!passwordField || !toggleButton || !toggleIcon) {
+                return;
+            }
+
+            var isPassword = passwordField.type === "password";
+            passwordField.type = isPassword ? "text" : "password";
+            toggleIcon.className = isPassword ? "fa fa-eye-slash" : "fa fa-eye";
+            toggleButton.setAttribute("aria-label", isPassword ? "Hide password" : "Show password");
+        }
+
+        window.addEventListener("message", function (event) {
+            if (event.origin !== window.location.origin) {
+                return;
+            }
+
+            var data = event.data || {};
+            if (data.type === "student-registration-success") {
+                var usernameField = document.getElementById("username");
+                var passwordField = document.getElementById("password");
+
+                if (usernameField) {
+                    usernameField.value = data.username || "";
+                }
+
+                if (passwordField) {
+                    passwordField.value = data.password || "";
+                }
+
+                closePopup();
+
+                if (usernameField) {
+                    usernameField.focus();
+                }
+            }
+        });
+        
+
     </script>
 </head>
 
@@ -254,20 +342,20 @@ include_once("../database/db_connect.php");
                 <div class="main-icon">
                     <img src="images/school_logo.jpg" alt="logo" width='150px' height='150px'>
                 </div>
-                <div class="school-name">
-                    SPECIALIZATION TRACKER
-                </div>
+                <div class="school-name"> SPECIALIZATION TRACKER </div>
                 <div class="header-left-bottom">
-                    <form id="login-form" method="post">
-                        <div class="icon1">
-                            <i class="fa fa-user"></i>
-                            <input type="text" placeholder="Enter username" name="username" id="username" required="" />
+                    <form id="login-form">
+                        <div class="login-field">
+                            <div class="login-field-icon"><i class="fa fa-user"></i></div>
+                            <input type="text" class="login-field-input" placeholder="Enter username" name="username" id="username" required="" />
                         </div>
-                        <div class="icon1">
-                            <i class="fa fa-lock"></i>
-                            <input type="password" placeholder="Enter password" name="password" id="password"
-                                required="" />
-                        </div>
+                        <div class="login-field">
+                            <div class="login-field-icon"><i class="fa fa-lock"></i></div>
+                            <input type="password" class="login-field-input" placeholder="Enter password" name="password" id="password" required="" />
+                            <button type="button" class="password-toggle" id="passwordToggle" aria-label="Show password" onclick="togglePasswordVisibility()">
+                                <i id="passwordToggleIcon" class="fa fa-eye"></i>
+                            </button>
+                        </div> 
                         <div class="login-check">
                             <label class="checkbox">
                                 <input type="checkbox" name="checkbox" checked="">
@@ -295,8 +383,17 @@ include_once("../database/db_connect.php");
 
                 </div>
             </div>
+            <div id="forgotPasswordPopup" class="overlay">
+                <div class="popup">
+
+                    <span style="float:right; cursor:pointer;" onclick="closeForgotPasswordPopup()">❌</span>
+
+                    <iframe src="forgot_password.php" width="100%" height="500px" style="border:none;"></iframe>
+
+                </div>
+            </div>
                 <div style="text-align:center; margin-top:10px;">
-                <a href="forgot_password.php" style="color:white;">Forgot Password?</a>
+                <button type="button" class="btn" onclick="openForgotPassword()" style="color:white; background-color:transparent; border:1px solid white; padding:8px 16px; border-radius:4px; cursor:pointer;">Forgot Password?</button>
             </div>
             <div class="copyright">
                 <p>© 2019. All rights reserved | Designed by <a href="https://dignityitsolution.com/"
@@ -308,3 +405,5 @@ include_once("../database/db_connect.php");
 </body>
 
 </html>
+
+

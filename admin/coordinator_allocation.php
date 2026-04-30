@@ -69,15 +69,15 @@ function coordinator_allocation_build_mentor_where($conn, $filters)
 function coordinator_allocation_fetch_mentor_ids($db_handle, $filters)
 {
   $where = coordinator_allocation_build_mentor_where($db_handle->conn, $filters);
-    $sql = "SELECT u.user_id AS mentor_id
-      FROM st_user_master u
-      LEFT JOIN st_login l ON l.user_id = u.user_id
+  $sql = "SELECT u.user_id AS mentor_id
+          FROM st_user_master u
+          LEFT JOIN st_login l ON l.user_id = u.user_id
           LEFT JOIN st_department_master d ON d.department_id = u.department_id
-      LEFT JOIN st_coordinator_mentor cm ON cm.mentor_id = u.user_id
-      LEFT JOIN st_login cl ON cl.user_id = cm.coordinator_id
+          LEFT JOIN st_coordinator_mentor cm ON cm.mentor_id = u.user_id
+          LEFT JOIN st_login cl ON cl.user_id = cm.coordinator_id
           LEFT JOIN st_user_master cu ON cu.user_id = cm.coordinator_id AND cu.role_id = 3
           {$where}
-      ORDER BY u.user_name ASC, u.user_id ASC";
+          ORDER BY u.user_name ASC, u.user_id ASC";
 
   $rows = $db_handle->runQuery($sql) ?? array();
   $ids = array();
@@ -136,10 +136,10 @@ if (isset($_GET['action']) && $_GET['action'] === 'load_mentors') {
   );
 
   $where = coordinator_allocation_build_mentor_where($db_handle->conn, $filters);
-  $baseSql = "FROM st_login l
-              LEFT JOIN st_user_master u ON u.user_id = l.user_id AND u.role_id = 4
+  $baseSql = "FROM st_user_master u
+              LEFT JOIN st_login l ON l.user_id = u.user_id
               LEFT JOIN st_department_master d ON d.department_id = u.department_id
-              LEFT JOIN st_coordinator_mentor cm ON cm.mentor_id = l.user_id
+              LEFT JOIN st_coordinator_mentor cm ON cm.mentor_id = u.user_id
               LEFT JOIN st_login cl ON cl.user_id = cm.coordinator_id
               LEFT JOIN st_user_master cu ON cu.user_id = cm.coordinator_id AND cu.role_id = 3
               {$where}";
@@ -162,7 +162,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'load_mentors') {
   $length = isset($requestData['length']) ? intval($requestData['length']) : 15;
 
   $sql = "SELECT
-            l.user_id AS mentor_id,
+            u.user_id AS mentor_id,
             COALESCE(NULLIF(TRIM(u.user_name), ''), l.username, '') AS mentor_name,
             COALESCE(d.department_name, '') AS department_name,
             COALESCE(NULLIF(TRIM(cu.user_name), ''), cl.username, '') AS coordinator_name
@@ -195,26 +195,33 @@ if (isset($_GET['action']) && $_GET['action'] === 'load_mentors') {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'get_coordinator_dept') {
-  header('Content-Type: application/json');
-  $coordId = intval($_POST['coordinator_id'] ?? 0);
-  $sql = "SELECT d.department_id, d.department_name 
-          FROM st_login l
-          INNER JOIN st_coordinator sc ON sc.login_id = l.login_id
-          LEFT JOIN st_user_master u ON u.user_id = l.user_id
-          LEFT JOIN st_department_master d ON d.department_id = u.department_id
-          WHERE l.user_id = {$coordId}";
-  $result = $db_handle->runQuery($sql) ?? array();
-  
-  if (!empty($result) && isset($result[0]['department_id'])) {
-    echo json_encode(array(
-      'success' => true,
-      'department_id' => $result[0]['department_id'],
-      'department_name' => $result[0]['department_name']
-    ));
-  } else {
-    echo json_encode(array('success' => false));
-  }
-  exit();
+    header('Content-Type: application/json');
+    $coordId = intval($_POST['coordinator_id'] ?? 0);
+    
+    $sql = "SELECT 
+                COALESCE(u.department_id, sm.department_id) as department_id,
+                COALESCE(d.department_name, dm.department_name) as department_name
+            FROM st_user_master u
+            LEFT JOIN st_login l ON l.user_id = u.user_id
+            LEFT JOIN st_department_master d ON d.department_id = u.department_id
+            LEFT JOIN st_student_master sm ON sm.student_id = u.user_id
+            LEFT JOIN st_department_master dm ON dm.department_id = sm.department_id
+            WHERE u.user_id = {$coordId} AND u.role_id = 3
+            LIMIT 1";
+    
+    $result = $db_handle->runQuery($sql) ?? array();
+    
+    if (!empty($result) && isset($result[0]['department_id']) && $result[0]['department_id'] > 0) {
+        echo json_encode(array(
+            'success' => true,
+            'department_id' => $result[0]['department_id'],
+            'department_name' => $result[0]['department_name']
+        ));
+    } else {
+        // Return false but don't show error - department field will remain editable
+        echo json_encode(array('success' => false));
+    }
+    exit();
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'assign_selected') {
@@ -320,7 +327,7 @@ include "header/header.php";
 
             <div class="row" style="margin-bottom: 15px;">
               <div class="col-md-3">
-                <label>Current Coordinator Filter</label>
+                <label>Search</label>
                 <select class="form-control" id="coordinator_filter">
                   <option value="">All Coordinators</option>
                   <?php foreach ($coordinators as $coord) { ?>

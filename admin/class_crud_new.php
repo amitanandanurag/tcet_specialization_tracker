@@ -27,6 +27,191 @@ $masters = array(
   )
 );
 
+$customMasters = array(
+  'academic_year' => array(
+    'title' => 'Academic Year',
+    'table' => 'st_session_master',
+    'pk' => 'session_id',
+    'formFields' => array(
+      array(
+        'name' => 'session_name',
+        'label' => 'Academic Year',
+        'type' => 'text',
+        'required' => true,
+        'unique' => true
+      )
+    ),
+    'displayFields' => array('session_name')
+  ),
+  'graduating_year' => array(
+    'title' => 'Graduating Year',
+    'table' => 'st_batch_master',
+    'pk' => 'batch_id',
+    'formFields' => array(
+      array(
+        'name' => 'batch_name',
+        'label' => 'Graduating Year',
+        'type' => 'text',
+        'required' => true,
+        'unique' => true
+      )
+    ),
+    'displayFields' => array('batch_name')
+  ),
+  'specialization' => array(
+    'title' => 'Specialization',
+    'table' => 'st_specialization_master',
+    'pk' => 'specialization_id',
+    'formFields' => array(
+      array(
+        'name' => 'specialization_name',
+        'label' => 'Specialization Name',
+        'type' => 'text',
+        'required' => true,
+        'unique' => true
+      ),
+      array(
+        'name' => 'min_cgpa',
+        'label' => 'Minimum CGPA',
+        'type' => 'number',
+        'step' => '0.01',
+        'default' => '0.00'
+      ),
+      array(
+        'name' => 'kt_allowed',
+        'label' => 'KT Allowed',
+        'type' => 'boolean_select',
+        'default' => '0'
+      ),
+      array(
+        'name' => 'sem_from',
+        'label' => 'Semester From',
+        'type' => 'number',
+        'default' => ''
+      ),
+      array(
+        'name' => 'sem_to',
+        'label' => 'Semester To',
+        'type' => 'number',
+        'default' => ''
+      ),
+      array(
+        'name' => 'is_exclusive',
+        'label' => 'Is Exclusive',
+        'type' => 'boolean_select',
+        'default' => '0'
+      )
+    ),
+    'displayFields' => array('specialization_name', 'min_cgpa', 'kt_allowed', 'sem_from', 'sem_to', 'is_exclusive')
+  ),
+  'specialization_subject' => array(
+    'title' => 'Specialization Subject',
+    'table' => 'st_specialization_subject_master',
+    'pk' => 'subject_id',
+    'formFields' => array(
+      array(
+        'name' => 'subject_name',
+        'label' => 'Subject Name',
+        'type' => 'text',
+        'required' => true,
+        'unique' => true
+      ),
+      array(
+        'name' => 'specialization_id',
+        'label' => 'Specialization',
+        'type' => 'select',
+        'lookupTable' => 'st_specialization_master',
+        'lookupKey' => 'specialization_id',
+        'lookupLabel' => 'specialization_name',
+        'required' => true
+      )
+    ),
+    'displayFields' => array('subject_name', 'specialization_id')
+  ),
+  'minor_course' => array(
+    'title' => 'Minor Course',
+    'table' => 'st_minorcourse',
+    'pk' => 'course_id',
+    'formFields' => array(
+      array(
+        'name' => 'course_name',
+        'label' => 'Course Name',
+        'type' => 'text',
+        'required' => true,
+        'unique' => true
+      ),
+      array(
+        'name' => 'course_type',
+        'label' => 'Course Type',
+        'type' => 'text',
+        'required' => true
+      ),
+      array(
+        'name' => 'coordinator',
+        'label' => 'Coordinator',
+        'type' => 'text'
+      ),
+      array(
+        'name' => 'total_credits',
+        'label' => 'Total Credits',
+        'type' => 'number',
+        'default' => '18'
+      )
+    ),
+    'displayFields' => array('course_name', 'course_type', 'coordinator', 'total_credits')
+  ),
+  'minor_subject' => array(
+    'title' => 'Minor Subject',
+    'table' => 'st_minorsubject',
+    'pk' => 'subject_id',
+    'formFields' => array(
+      array(
+        'name' => 'course_id',
+        'label' => 'Minor Course',
+        'type' => 'select',
+        'lookupTable' => 'st_minorcourse',
+        'lookupKey' => 'course_id',
+        'lookupLabel' => 'course_name',
+        'required' => true
+      ),
+      array(
+        'name' => 'semester_id',
+        'label' => 'Semester',
+        'type' => 'select',
+        'lookupTable' => 'st_semester_master',
+        'lookupKey' => 'semester_id',
+        'lookupLabel' => 'semester_name',
+        'required' => true
+      ),
+      array(
+        'name' => 'subject_name',
+        'label' => 'Subject Name',
+        'type' => 'text',
+        'required' => true,
+        'unique' => true
+      ),
+      array(
+        'name' => 'duration',
+        'label' => 'Duration',
+        'type' => 'text',
+        'default' => '12 weeks'
+      ),
+      array(
+        'name' => 'detail',
+        'label' => 'Detail',
+        'type' => 'textarea'
+      ),
+      array(
+        'name' => 'credits',
+        'label' => 'Credits',
+        'type' => 'number',
+        'default' => '3'
+      )
+    ),
+    'displayFields' => array('course_id', 'semester_id', 'subject_name', 'duration', 'credits')
+  )
+);
+
 function clean_master_value($value)
 {
   $value = trim((string) $value);
@@ -148,6 +333,147 @@ function get_default_submenu_route($subMenuName)
   );
 
   return isset($map[$subMenuName]) ? $map[$subMenuName] : '#';
+}
+
+function get_lookup_map($conn, $table, $keyColumn, $labelColumn)
+{
+  $map = array();
+  $query = "SELECT $keyColumn AS lookup_id, $labelColumn AS lookup_label FROM $table ORDER BY $labelColumn ASC";
+  $result = mysqli_query($conn, $query);
+
+  if ($result) {
+    while ($row = mysqli_fetch_assoc($result)) {
+      $map[(string) $row['lookup_id']] = (string) $row['lookup_label'];
+    }
+    mysqli_free_result($result);
+  }
+
+  return $map;
+}
+
+function render_custom_field_control($prefix, $field, $value, $lookupMaps)
+{
+  $fieldName = $field['name'];
+  $fieldId = $prefix . '_' . $fieldName;
+  $fieldLabel = $field['label'];
+  $fieldType = $field['type'];
+  $requiredAttr = !empty($field['required']) ? ' required' : '';
+  $currentValue = (string) $value;
+
+  ob_start();
+  if ($fieldType === 'textarea') {
+    ?>
+    <div class="form-group">
+      <label for="<?php echo htmlspecialchars($fieldId); ?>" class="control-label"><?php echo htmlspecialchars($fieldLabel); ?></label>
+      <textarea name="<?php echo htmlspecialchars($fieldName); ?>" id="<?php echo htmlspecialchars($fieldId); ?>" class="form-control"<?php echo $requiredAttr; ?>><?php echo htmlspecialchars($currentValue); ?></textarea>
+    </div>
+    <?php
+  } elseif ($fieldType === 'select') {
+    $lookupTable = $field['lookupTable'];
+    $options = isset($lookupMaps[$lookupTable]) ? $lookupMaps[$lookupTable] : array();
+    ?>
+    <div class="form-group">
+      <label for="<?php echo htmlspecialchars($fieldId); ?>" class="control-label"><?php echo htmlspecialchars($fieldLabel); ?></label>
+      <select name="<?php echo htmlspecialchars($fieldName); ?>" id="<?php echo htmlspecialchars($fieldId); ?>" class="form-control"<?php echo $requiredAttr; ?>>
+        <option value="">Select <?php echo htmlspecialchars($fieldLabel); ?></option>
+        <?php foreach ($options as $optionValue => $optionLabel) { ?>
+          <option value="<?php echo htmlspecialchars($optionValue); ?>" <?php echo ((string) $optionValue === $currentValue) ? 'selected' : ''; ?>><?php echo htmlspecialchars($optionLabel); ?></option>
+        <?php } ?>
+      </select>
+    </div>
+    <?php
+  } elseif ($fieldType === 'boolean_select') {
+    ?>
+    <div class="form-group">
+      <label for="<?php echo htmlspecialchars($fieldId); ?>" class="control-label"><?php echo htmlspecialchars($fieldLabel); ?></label>
+      <select name="<?php echo htmlspecialchars($fieldName); ?>" id="<?php echo htmlspecialchars($fieldId); ?>" class="form-control"<?php echo $requiredAttr; ?>>
+        <option value="0" <?php echo ($currentValue === '0' || $currentValue === '') ? 'selected' : ''; ?>>No</option>
+        <option value="1" <?php echo ($currentValue === '1') ? 'selected' : ''; ?>>Yes</option>
+      </select>
+    </div>
+    <?php
+  } else {
+    $stepAttr = isset($field['step']) ? ' step="' . htmlspecialchars((string) $field['step']) . '"' : '';
+    $inputType = ($fieldType === 'number') ? 'number' : 'text';
+    ?>
+    <div class="form-group">
+      <label for="<?php echo htmlspecialchars($fieldId); ?>" class="control-label"><?php echo htmlspecialchars($fieldLabel); ?></label>
+      <input type="<?php echo $inputType; ?>" name="<?php echo htmlspecialchars($fieldName); ?>" id="<?php echo htmlspecialchars($fieldId); ?>" class="form-control" value="<?php echo htmlspecialchars($currentValue); ?>"<?php echo $requiredAttr . $stepAttr; ?>>
+    </div>
+    <?php
+  }
+
+  return ob_get_clean();
+}
+
+function prepare_custom_master_value($field, $rawValue)
+{
+  $fieldType = $field['type'];
+  $rawValue = isset($rawValue) ? trim((string) $rawValue) : '';
+
+  if ($fieldType === 'boolean_select') {
+    return (int) ($rawValue === '1');
+  }
+
+  if ($rawValue === '') {
+    if ($fieldType === 'number') {
+      return null;
+    }
+
+    return '';
+  }
+
+  if ($fieldType === 'number') {
+    return (strpos((string) ($field['name'] ?? ''), 'cgpa') !== false) ? (float) $rawValue : (int) $rawValue;
+  }
+
+  return clean_master_value($rawValue);
+}
+
+function custom_master_list_display($row, $field, $lookupMaps)
+{
+  $fieldName = $field['name'];
+  $fieldType = $field['type'];
+  $rawValue = isset($row[$fieldName]) ? $row[$fieldName] : '';
+
+  if ($fieldType === 'select') {
+    $lookupTable = $field['lookupTable'];
+    return isset($lookupMaps[$lookupTable][(string) $rawValue]) ? $lookupMaps[$lookupTable][(string) $rawValue] : '';
+  }
+
+  if ($fieldType === 'boolean_select') {
+    return ((string) $rawValue === '1') ? 'Yes' : 'No';
+  }
+
+  return (string) $rawValue;
+}
+
+function get_next_master_id($conn, $table, $pk)
+{
+  $nextId = 1;
+  $query = "SELECT COALESCE(MAX($pk), 0) + 1 AS next_id FROM $table";
+  $result = mysqli_query($conn, $query);
+
+  if ($result) {
+    $row = mysqli_fetch_assoc($result);
+    if ($row && isset($row['next_id'])) {
+      $nextId = intval($row['next_id']);
+    }
+    mysqli_free_result($result);
+  }
+
+  return $nextId;
+}
+
+function bind_prepared_statement($stmt, $types, $params)
+{
+  $bindArgs = array($types);
+  foreach ($params as $index => $value) {
+    $bindArgs[] = &$params[$index];
+  }
+
+  array_unshift($bindArgs, $stmt);
+  return call_user_func_array('mysqli_stmt_bind_param', $bindArgs);
 }
 
 function ensure_menu_metadata_columns($conn)
@@ -623,6 +949,264 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['master_action'], $_PO
   }
 }
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['custom_master_action'], $_POST['custom_master_type'])) {
+  $customMasterType = $_POST['custom_master_type'];
+  $customMasterAction = $_POST['custom_master_action'];
+
+  if (isset($customMasters[$customMasterType])) {
+    $meta = $customMasters[$customMasterType];
+    $table = $meta['table'];
+    $pk = $meta['pk'];
+    $formFields = $meta['formFields'];
+    $activeTab = $customMasterType . '-list';
+
+    $values = array();
+    $types = '';
+    $columns = array();
+    $placeholders = array();
+    $setClauses = array();
+    $uniqueField = null;
+    $uniqueValue = null;
+    $validationFailed = false;
+
+    foreach ($formFields as $field) {
+      $fieldName = $field['name'];
+      $rawValue = $_POST[$fieldName] ?? '';
+      if ($rawValue === '' && isset($field['default'])) {
+        $rawValue = $field['default'];
+      }
+
+      $value = prepare_custom_master_value($field, $rawValue);
+      if ($customMasterAction !== 'delete' && !empty($field['required']) && ($value === '' || $value === null)) {
+        $alertType = 'warning';
+        $alertMessage = $meta['title'] . ' fields are required.';
+        $validationFailed = true;
+        break;
+      }
+
+      if (!empty($field['unique']) && $uniqueField === null) {
+        $uniqueField = $fieldName;
+        $uniqueValue = $value;
+      }
+
+      $values[] = $value;
+      $columns[] = $fieldName;
+      $placeholders[] = '?';
+      $setClauses[] = $fieldName . ' = ?';
+
+      if ($field['type'] === 'boolean_select') {
+        $types .= 'i';
+      } elseif ($field['type'] === 'number') {
+        $types .= (strpos($fieldName, 'cgpa') !== false) ? 'd' : 'i';
+      } else {
+        $types .= 's';
+      }
+    }
+
+    if (!$validationFailed && $customMasterAction === 'add') {
+      if (!in_array($pk, $columns, true)) {
+        $nextId = get_next_master_id($db_handle->conn, $table, $pk);
+        array_unshift($columns, $pk);
+        array_unshift($values, $nextId);
+        array_unshift($placeholders, '?');
+        $types = 'i' . $types;
+      }
+
+      if ($uniqueField !== null && $uniqueValue !== null && $uniqueValue !== '') {
+        $dupSql = "SELECT COUNT(*) AS cnt FROM $table WHERE LOWER(TRIM($uniqueField)) = LOWER(TRIM(?))";
+        $dupStmt = mysqli_prepare($db_handle->conn, $dupSql);
+        if ($dupStmt) {
+          mysqli_stmt_bind_param($dupStmt, 's', $uniqueValue);
+          mysqli_stmt_execute($dupStmt);
+          $dupResult = mysqli_stmt_get_result($dupStmt);
+          $dupRow = $dupResult ? mysqli_fetch_assoc($dupResult) : array('cnt' => 0);
+          mysqli_stmt_close($dupStmt);
+
+          if (!empty($dupRow) && intval($dupRow['cnt']) > 0) {
+            $alertType = 'warning';
+            $alertMessage = $meta['title'] . ' already exists.';
+          } else {
+            $insertSql = "INSERT INTO $table (" . implode(', ', $columns) . ") VALUES (" . implode(', ', $placeholders) . ")";
+            $insertStmt = mysqli_prepare($db_handle->conn, $insertSql);
+            if ($insertStmt) {
+              bind_prepared_statement($insertStmt, $types, $values);
+              $ok = mysqli_stmt_execute($insertStmt);
+              mysqli_stmt_close($insertStmt);
+
+              if ($ok) {
+                $alertType = 'success';
+                $alertMessage = $meta['title'] . ' added successfully.';
+              } else {
+                $alertType = 'danger';
+                $alertMessage = 'Unable to add ' . strtolower($meta['title']) . '.';
+              }
+            } else {
+              $alertType = 'danger';
+              $alertMessage = 'Unable to prepare add statement for ' . strtolower($meta['title']) . '.';
+            }
+          }
+        }
+      } else {
+        $insertSql = "INSERT INTO $table (" . implode(', ', $columns) . ") VALUES (" . implode(', ', $placeholders) . ")";
+        $insertStmt = mysqli_prepare($db_handle->conn, $insertSql);
+        if ($insertStmt) {
+          bind_prepared_statement($insertStmt, $types, $values);
+          $ok = mysqli_stmt_execute($insertStmt);
+          mysqli_stmt_close($insertStmt);
+
+          if ($ok) {
+            $alertType = 'success';
+            $alertMessage = $meta['title'] . ' added successfully.';
+          } else {
+            $alertType = 'danger';
+            $alertMessage = 'Unable to add ' . strtolower($meta['title']) . '.';
+          }
+        } else {
+          $alertType = 'danger';
+          $alertMessage = 'Unable to prepare add statement for ' . strtolower($meta['title']) . '.';
+        }
+      }
+    } elseif (!$validationFailed && $customMasterAction === 'update') {
+      $customMasterId = intval($_POST['custom_master_id'] ?? 0);
+      if ($customMasterId <= 0) {
+        $alertType = 'warning';
+        $alertMessage = 'Invalid ' . strtolower($meta['title']) . ' selected for update.';
+      } else {
+        if ($uniqueField !== null && $uniqueValue !== null && $uniqueValue !== '') {
+          $dupSql = "SELECT COUNT(*) AS cnt FROM $table WHERE LOWER(TRIM($uniqueField)) = LOWER(TRIM(?)) AND $pk <> ?";
+          $dupStmt = mysqli_prepare($db_handle->conn, $dupSql);
+          if ($dupStmt) {
+            mysqli_stmt_bind_param($dupStmt, 'si', $uniqueValue, $customMasterId);
+            mysqli_stmt_execute($dupStmt);
+            $dupResult = mysqli_stmt_get_result($dupStmt);
+            $dupRow = $dupResult ? mysqli_fetch_assoc($dupResult) : array('cnt' => 0);
+            mysqli_stmt_close($dupStmt);
+
+            if (!empty($dupRow) && intval($dupRow['cnt']) > 0) {
+              $alertType = 'warning';
+              $alertMessage = $meta['title'] . ' already exists.';
+            } else {
+              $updateSql = "UPDATE $table SET " . implode(', ', $setClauses) . " WHERE $pk = ?";
+              $updateStmt = mysqli_prepare($db_handle->conn, $updateSql);
+              if ($updateStmt) {
+                $updateValues = $values;
+                $updateValues[] = $customMasterId;
+                $updateTypes = $types . 'i';
+                bind_prepared_statement($updateStmt, $updateTypes, $updateValues);
+                $ok = mysqli_stmt_execute($updateStmt);
+                mysqli_stmt_close($updateStmt);
+
+                if ($ok) {
+                  $alertType = 'success';
+                  $alertMessage = $meta['title'] . ' updated successfully.';
+                } else {
+                  $alertType = 'danger';
+                  $alertMessage = 'Unable to update ' . strtolower($meta['title']) . '.';
+                }
+              } else {
+                $alertType = 'danger';
+                $alertMessage = 'Unable to prepare update statement for ' . strtolower($meta['title']) . '.';
+              }
+            }
+          }
+        } else {
+          $updateSql = "UPDATE $table SET " . implode(', ', $setClauses) . " WHERE $pk = ?";
+          $updateStmt = mysqli_prepare($db_handle->conn, $updateSql);
+          if ($updateStmt) {
+            $updateValues = $values;
+            $updateValues[] = $customMasterId;
+            $updateTypes = $types . 'i';
+            bind_prepared_statement($updateStmt, $updateTypes, $updateValues);
+            $ok = mysqli_stmt_execute($updateStmt);
+            mysqli_stmt_close($updateStmt);
+
+            if ($ok) {
+              $alertType = 'success';
+              $alertMessage = $meta['title'] . ' updated successfully.';
+            } else {
+              $alertType = 'danger';
+              $alertMessage = 'Unable to update ' . strtolower($meta['title']) . '.';
+            }
+          } else {
+            $alertType = 'danger';
+            $alertMessage = 'Unable to prepare update statement for ' . strtolower($meta['title']) . '.';
+          }
+        }
+      }
+    } elseif (!$validationFailed && $customMasterAction === 'delete') {
+      $customMasterId = intval($_POST['custom_master_id'] ?? 0);
+      if ($customMasterId <= 0) {
+        $alertType = 'warning';
+        $alertMessage = 'Invalid ' . strtolower($meta['title']) . ' selected for delete.';
+      } else {
+        mysqli_begin_transaction($db_handle->conn);
+
+        $deleteChildrenOk = true;
+        $childDeleteError = '';
+
+        if ($customMasterType === 'specialization') {
+          $childSql = "DELETE FROM st_specialization_subject_master WHERE specialization_id = ?";
+          $childStmt = mysqli_prepare($db_handle->conn, $childSql);
+          if ($childStmt) {
+            mysqli_stmt_bind_param($childStmt, 'i', $customMasterId);
+            $deleteChildrenOk = mysqli_stmt_execute($childStmt);
+            if (!$deleteChildrenOk) {
+              $childDeleteError = mysqli_stmt_error($childStmt);
+            }
+            mysqli_stmt_close($childStmt);
+          } else {
+            $deleteChildrenOk = false;
+            $childDeleteError = mysqli_error($db_handle->conn);
+          }
+        } elseif ($customMasterType === 'minor_course') {
+          $childSql = "DELETE FROM st_minorsubject WHERE course_id = ?";
+          $childStmt = mysqli_prepare($db_handle->conn, $childSql);
+          if ($childStmt) {
+            mysqli_stmt_bind_param($childStmt, 'i', $customMasterId);
+            $deleteChildrenOk = mysqli_stmt_execute($childStmt);
+            if (!$deleteChildrenOk) {
+              $childDeleteError = mysqli_stmt_error($childStmt);
+            }
+            mysqli_stmt_close($childStmt);
+          } else {
+            $deleteChildrenOk = false;
+            $childDeleteError = mysqli_error($db_handle->conn);
+          }
+        }
+
+        if ($deleteChildrenOk) {
+          $deleteSql = "DELETE FROM $table WHERE $pk = ?";
+          $deleteStmt = mysqli_prepare($db_handle->conn, $deleteSql);
+          if ($deleteStmt) {
+            mysqli_stmt_bind_param($deleteStmt, 'i', $customMasterId);
+            $ok = mysqli_stmt_execute($deleteStmt);
+            $affectedRows = mysqli_stmt_affected_rows($deleteStmt);
+            mysqli_stmt_close($deleteStmt);
+
+            if ($ok && $affectedRows > 0) {
+              mysqli_commit($db_handle->conn);
+              $alertType = 'success';
+              $alertMessage = $meta['title'] . ' deleted successfully.';
+            } else {
+              mysqli_rollback($db_handle->conn);
+              $alertType = 'danger';
+              $alertMessage = 'Unable to delete ' . strtolower($meta['title']) . '. It may still be used by student records.';
+            }
+          } else {
+            mysqli_rollback($db_handle->conn);
+            $alertType = 'danger';
+            $alertMessage = 'Unable to prepare delete statement for ' . strtolower($meta['title']) . '.';
+          }
+        } else {
+          mysqli_rollback($db_handle->conn);
+          $alertType = 'danger';
+          $alertMessage = 'Unable to delete ' . strtolower($meta['title']) . '. ' . ($childDeleteError !== '' ? $childDeleteError : 'Related rows could not be removed.');
+        }
+      }
+    }
+  }
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['sub_menu_action'])) {
   $subMenuAction = $_POST['sub_menu_action'];
   $activeTab = 'sub-menu-list';
@@ -860,6 +1444,50 @@ if ($isAjaxRequest && $ajaxResponse !== null) {
 
 normalize_sub_menu_sequence_by_menu($db_handle->conn);
 
+$customLookupMaps = array(
+  'st_specialization_master' => get_lookup_map($db_handle->conn, 'st_specialization_master', 'specialization_id', 'specialization_name'),
+  'st_minorcourse' => get_lookup_map($db_handle->conn, 'st_minorcourse', 'course_id', 'course_name'),
+  'st_semester_master' => get_lookup_map($db_handle->conn, 'st_semester_master', 'semester_id', 'semester_name'),
+  'st_batch_master' => get_lookup_map($db_handle->conn, 'st_batch_master', 'batch_id', 'batch_name'),
+  'st_session_master' => get_lookup_map($db_handle->conn, 'st_session_master', 'session_id', 'session_name')
+);
+
+$customMasterRows = array();
+foreach ($customMasters as $type => $meta) {
+  $table = $meta['table'];
+  $pk = $meta['pk'];
+  $result = $db_handle->conn->query("SELECT * FROM $table ORDER BY $pk DESC");
+  $rows = array();
+
+  if ($result) {
+    while ($row = $result->fetch_assoc()) {
+      $rows[] = $row;
+    }
+  }
+
+  $customMasterRows[$type] = $rows;
+}
+
+$customEditType = isset($_GET['custom_edit_type']) ? trim($_GET['custom_edit_type']) : '';
+$customEditId = isset($_GET['custom_edit_id']) ? intval($_GET['custom_edit_id']) : 0;
+$customEditRow = array();
+
+if ($customEditType !== '' && $customEditId > 0 && isset($customMasters[$customEditType])) {
+  $meta = $customMasters[$customEditType];
+  $table = $meta['table'];
+  $pk = $meta['pk'];
+  $editStmt = mysqli_prepare($db_handle->conn, "SELECT * FROM $table WHERE $pk = ? LIMIT 1");
+  if ($editStmt) {
+    mysqli_stmt_bind_param($editStmt, 'i', $customEditId);
+    mysqli_stmt_execute($editStmt);
+    $editResult = mysqli_stmt_get_result($editStmt);
+    if ($editResult) {
+      $customEditRow = mysqli_fetch_assoc($editResult) ?: array();
+    }
+    mysqli_stmt_close($editStmt);
+  }
+}
+
 $masterRows = array();
 foreach ($masters as $type => $meta) {
   $table = $meta['table'];
@@ -920,11 +1548,16 @@ if ($subMenuResult) {
 
       <ul class="nav nav-tabs" style="margin-top: 20px;">
         <li class="<?php echo ($activeTab === 'class-list') ? 'active' : ''; ?>"><a data-toggle="tab" href="#class-list">Class</a></li>
-
         <li class="<?php echo ($activeTab === 'section-list') ? 'active' : ''; ?>"><a data-toggle="tab" href="#section-list">Section</a></li>
-
         <li class="<?php echo ($activeTab === 'department-list') ? 'active' : ''; ?>"><a data-toggle="tab" href="#department-list">Departments</a></li>
-
+        <li class="<?php echo ($activeTab === 'academic_year-list') ? 'active' : ''; ?>"><a data-toggle="tab" href="#academic_year-list">Academic Year</a></li>
+        <li class="<?php echo ($activeTab === 'graduating_year-list') ? 'active' : ''; ?>"><a data-toggle="tab" href="#graduating_year-list">Graduating Year</a></li>
+        <li class="<?php echo ($activeTab === 'specialization-list') ? 'active' : ''; ?>"><a data-toggle="tab" href="#specialization-list">Specialization</a></li>
+        <li class="<?php echo ($activeTab === 'specialization_subject-list') ? 'active' : ''; ?>"><a data-toggle="tab" href="#specialization_subject-list">Specialization Subject</a></li>
+        <li class="<?php echo ($activeTab === 'minor_course-list') ? 'active' : ''; ?>"><a data-toggle="tab" href="#minor_course-list">Minor Course</a></li>
+        <li class="<?php echo ($activeTab === 'minor_subject-list') ? 'active' : ''; ?>"><a data-toggle="tab" href="#minor_subject-list">Minor Subject</a></li>
+        <li class="<?php echo ($activeTab === 'menu-list') ? 'active' : ''; ?>"><a data-toggle="tab" href="#menu-list">Menu</a></li>
+        <li class="<?php echo ($activeTab === 'sub-menu-list') ? 'active' : ''; ?>"><a data-toggle="tab" href="#sub-menu-list">Sub Menu</a></li>
       </ul>
 
       <div class="tab-content" style="padding-top: 20px;">
@@ -1015,6 +1648,137 @@ if ($subMenuResult) {
             </div>
           </div>
 
+        <?php } ?>
+
+        <?php foreach ($customMasters as $type => $meta) {
+          $listTabId = $type . '-list';
+          $title = $meta['title'];
+          $rows = $customMasterRows[$type];
+          $formFields = $meta['formFields'];
+          $isEditingThisType = ($customEditType === $type && $customEditId > 0 && !empty($customEditRow));
+        ?>
+          <div id="<?php echo $listTabId; ?>" class="tab-pane fade <?php echo ($activeTab === $listTabId) ? 'in active' : ''; ?>">
+            <?php if ($isEditingThisType) { ?>
+              <div class="box box-warning" style="padding: 10px; margin-bottom: 20px;">
+                <div class="box-header with-border">
+                  <h4 class="box-title">Edit <?php echo htmlspecialchars($title); ?></h4>
+                </div>
+                <form method="POST" class="form-horizontal" style="margin-top: 15px;">
+                  <input type="hidden" name="custom_master_action" value="update">
+                  <input type="hidden" name="custom_master_type" value="<?php echo htmlspecialchars($type, ENT_QUOTES); ?>">
+                  <input type="hidden" name="custom_master_id" value="<?php echo $customEditId; ?>">
+                  <?php foreach ($formFields as $field) {
+                    echo render_custom_field_control('edit_' . $type, $field, $customEditRow[$field['name']] ?? '', $customLookupMaps);
+                  } ?>
+                  <div class="form-group">
+                    <div class="col-sm-offset-2 col-sm-10" style="padding-left: 0;">
+                      <button type="submit" class="btn btn-primary">Update</button>
+                      <a href="class_crud_new.php?tab=<?php echo urlencode($listTabId); ?>" class="btn btn-default">Cancel</a>
+                    </div>
+                  </div>
+                </form>
+              </div>
+            <?php } ?>
+
+            <div class="box box-default" style="padding: 10px; margin-bottom: 20px;">
+              <div class="box-header with-border">
+                <h4 class="box-title">Add <?php echo htmlspecialchars($title); ?></h4>
+              </div>
+              <form method="POST" class="form-horizontal" style="margin-top: 15px;">
+                <input type="hidden" name="custom_master_action" value="add">
+                <input type="hidden" name="custom_master_type" value="<?php echo htmlspecialchars($type, ENT_QUOTES); ?>">
+                <?php foreach ($formFields as $field) {
+                  $defaultValue = isset($field['default']) ? $field['default'] : '';
+                  echo render_custom_field_control('add_' . $type, $field, $defaultValue, $customLookupMaps);
+                } ?>
+                <div class="form-group">
+                  <div class="col-sm-offset-2 col-sm-10" style="padding-left: 0;">
+                    <button type="submit" class="btn btn-success">Save</button>
+                  </div>
+                </div>
+              </form>
+            </div>
+
+            <div class="table-responsive">
+              <table class="table table-bordered table-striped text-center">
+                <thead>
+                  <tr>
+                    <th style="width: 80px;">No.</th>
+                    <?php foreach ($meta['displayFields'] as $displayField) {
+                      $headerLabel = '';
+                      foreach ($formFields as $field) {
+                        if ($field['name'] === $displayField) {
+                          $headerLabel = $field['label'];
+                          break;
+                        }
+                      }
+                      if ($headerLabel === '') {
+                        $headerLabel = ucwords(str_replace('_', ' ', $displayField));
+                      }
+                    ?>
+                      <th><?php echo htmlspecialchars($headerLabel); ?></th>
+                    <?php } ?>
+                    <th style="width: 100px;">Edit</th>
+                    <th style="width: 100px;">Delete</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <?php if (empty($rows)) { ?>
+                    <tr>
+                      <td colspan="<?php echo count($meta['displayFields']) + 3; ?>">No <?php echo htmlspecialchars(strtolower($title)); ?> found.</td>
+                    </tr>
+                  <?php } else {
+                    $serialNumber = 1;
+                    foreach ($rows as $row) {
+                      $customRowId = intval($row[$meta['pk']]);
+                      $rowLabelParts = array();
+                  ?>
+                    <tr>
+                      <td><?php echo $serialNumber; ?></td>
+                      <?php foreach ($meta['displayFields'] as $displayField) {
+                        $fieldConfig = null;
+                        foreach ($formFields as $field) {
+                          if ($field['name'] === $displayField) {
+                            $fieldConfig = $field;
+                            break;
+                          }
+                        }
+                        $displayValue = '';
+                        if ($fieldConfig !== null) {
+                          $displayValue = custom_master_list_display($row, $fieldConfig, $customLookupMaps);
+                        } else {
+                          $displayValue = isset($row[$displayField]) ? $row[$displayField] : '';
+                        }
+                        $rowLabelParts[] = (string) $displayValue;
+                      ?>
+                        <td><?php echo htmlspecialchars((string) $displayValue); ?></td>
+                      <?php } ?>
+                      <?php $rowLabel = trim(implode(' - ', array_filter($rowLabelParts, 'strlen'))); ?>
+                      <td>
+                        <a href="class_crud_new.php?tab=<?php echo urlencode($listTabId); ?>&custom_edit_type=<?php echo urlencode($type); ?>&custom_edit_id=<?php echo $customRowId; ?>" class="btn btn-sm btn-primary">
+                          <i class="fa fa-pencil"></i>
+                        </a>
+                      </td>
+                      <td>
+                        <form method="POST" style="display:inline;" onsubmit="return confirm('Delete ' + <?php echo json_encode($rowLabel !== '' ? $rowLabel : $title); ?> + '?');">
+                          <input type="hidden" name="custom_master_action" value="delete">
+                          <input type="hidden" name="custom_master_type" value="<?php echo htmlspecialchars($type, ENT_QUOTES); ?>">
+                          <input type="hidden" name="custom_master_id" value="<?php echo $customRowId; ?>">
+                          <button type="submit" class="btn btn-sm btn-danger">
+                            <i class="fa fa-trash"></i>
+                          </button>
+                        </form>
+                      </td>
+                    </tr>
+                  <?php
+                      $serialNumber++;
+                    }
+                  }
+                  ?>
+                </tbody>
+              </table>
+            </div>
+          </div>
         <?php } ?>
 
         <div id="sub-menu-list" class="tab-pane fade <?php echo ($activeTab === 'sub-menu-list') ? 'in active' : ''; ?>">
