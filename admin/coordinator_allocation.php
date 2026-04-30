@@ -195,26 +195,34 @@ if (isset($_GET['action']) && $_GET['action'] === 'load_mentors') {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'get_coordinator_dept') {
-  header('Content-Type: application/json');
-  $coordId = intval($_POST['coordinator_id'] ?? 0);
-  $sql = "SELECT d.department_id, d.department_name 
-          FROM st_login l
-          INNER JOIN st_coordinator sc ON sc.login_id = l.login_id
-          LEFT JOIN st_user_master u ON u.user_id = l.user_id
-          LEFT JOIN st_department_master d ON d.department_id = u.department_id
-          WHERE l.user_id = {$coordId} AND l.role_id = 3";
-  $result = $db_handle->runQuery($sql) ?? array();
-  
-  if (!empty($result) && isset($result[0]['department_id'])) {
-    echo json_encode(array(
-      'success' => true,
-      'department_id' => $result[0]['department_id'],
-      'department_name' => $result[0]['department_name']
-    ));
-  } else {
-    echo json_encode(array('success' => false));
-  }
-  exit();
+    header('Content-Type: application/json');
+    $coordId = intval($_POST['coordinator_id'] ?? 0);
+    
+    // FIXED: Removed the AND u.role_id = 3 condition and added fallback to get department
+    $sql = "SELECT 
+                COALESCE(u.department_id, sm.department_id) as department_id,
+                COALESCE(d.department_name, dm.department_name) as department_name
+            FROM st_login l
+            LEFT JOIN st_user_master u ON u.user_id = l.user_id
+            LEFT JOIN st_department_master d ON d.department_id = u.department_id
+            LEFT JOIN st_student_master sm ON sm.student_id = l.user_id
+            LEFT JOIN st_department_master dm ON dm.department_id = sm.department_id
+            WHERE l.user_id = {$coordId} AND l.role_id = 3
+            LIMIT 1";
+    
+    $result = $db_handle->runQuery($sql) ?? array();
+    
+    if (!empty($result) && isset($result[0]['department_id']) && $result[0]['department_id'] > 0) {
+        echo json_encode(array(
+            'success' => true,
+            'department_id' => $result[0]['department_id'],
+            'department_name' => $result[0]['department_name']
+        ));
+    } else {
+        // Return false but don't show error - department field will remain editable
+        echo json_encode(array('success' => false));
+    }
+    exit();
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'assign_selected') {
@@ -320,7 +328,7 @@ include "header/header.php";
 
             <div class="row" style="margin-bottom: 15px;">
               <div class="col-md-3">
-                <label>Current Coordinator Filter</label>
+                <label>Search</label>
                 <select class="form-control" id="coordinator_filter">
                   <option value="">All Coordinators</option>
                   <?php foreach ($coordinators as $coord) { ?>
