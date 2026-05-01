@@ -4,18 +4,16 @@ require "../database/db_connect.php";
 
 $db_handle = new DBController();
 $requestData = $_REQUEST;
-
-// 🔥 EXPORT FLAG
 $isExport = isset($_POST['export']) && $_POST['export'] == 'true';
 
-// 🔥 FILTERS
+// FILTERS
 $select_class = $_POST['select_class'] ?? '';
 $select_section = $_POST['select_section'] ?? '';
 $select_department = $_POST['select_department'] ?? '';
 $select_specialization = $_POST['select_specialization'] ?? '';
 $select_specialization_subject = $_POST['select_specialization_subject'] ?? '';
 
-// 🔥 BASE QUERY
+//   BASE QUERY
 $baseSql = " FROM st_student_master sm
 
 INNER JOIN st_class_master cm 
@@ -36,7 +34,7 @@ INNER JOIN st_specialization_subject_master subj
 WHERE sm.status = '0'
 ";
 
-// 🔥 APPLY FILTERS
+//   APPLY FILTERS
 if (!empty($select_class)) {
     $baseSql .= " AND sm.class_id = '" . mysqli_real_escape_string($db_handle->conn, $select_class) . "'";
 }
@@ -57,7 +55,7 @@ if (!empty($select_specialization_subject)) {
     $baseSql .= " AND sm.specialization_subject_id = '" . mysqli_real_escape_string($db_handle->conn, $select_specialization_subject) . "'";
 }
 
-// 🔥 TOTAL RECORDS
+//   TOTAL RECORDS
 $countSql = "SELECT COUNT(*) as total " . $baseSql;
 $countResult = $db_handle->query($countSql);
 $totalRow = mysqli_fetch_assoc($countResult);
@@ -65,7 +63,7 @@ $totalRow = mysqli_fetch_assoc($countResult);
 $totalData = $totalRow['total'] ?? 0;
 $totalFiltered = $totalData;
 
-// 🔥 MAIN QUERY
+//   MAIN QUERY
 $sql = "SELECT 
     cm.class_name AS class,
     sec.sections AS division,
@@ -83,7 +81,7 @@ $sql = "SELECT
     ORDER BY cm.class_name ASC
 ";
 
-// 🔥 PAGINATION
+//   PAGINATION
 $start  = $requestData['start'] ?? 0;
 $length = $requestData['length'] ?? 10;
 
@@ -91,10 +89,10 @@ if (!$isExport && $length != -1) {
     $sql .= " LIMIT $start, $length";
 }
 
-// 🔥 EXECUTE QUERY
+//   EXECUTE QUERY
 $result = $db_handle->query($sql);
 
-// 🔥 DATA BUILD
+//   DATA BUILD
 $data = [];
 $srNo = $start;
 $totalStudentCount = 0;
@@ -116,7 +114,7 @@ while ($row = mysqli_fetch_assoc($result)) {
     $totalStudentCount += $count;
 }
 
-// 🔥 TOTAL ROW (ONLY FOR TABLE VIEW)
+//   TOTAL ROW (ONLY FOR TABLE VIEW)
 if (!$isExport) {
     $data[] = [
         '',
@@ -129,7 +127,7 @@ if (!$isExport) {
     ];
 }
 
-// 🔥 RETURN RESPONSE
+//   RETURN RESPONSE
 echo json_encode([
     "draw" => intval($requestData['draw'] ?? 0),
     "recordsTotal" => intval($totalData),

@@ -258,7 +258,7 @@
         pageLength: 10,
         lengthMenu: [[10, 25, 100], [10, 25, 100]],
 
-        // 🔥 FIXED (ADD 'l' FOR DROPDOWN)
+        //   FIXED (ADD 'l' FOR DROPDOWN)
         dom: 'lBfrtip',
 
         buttons: [
@@ -281,21 +281,21 @@
       });
     }
 
-    // 🔥 FILTER CHANGE (NO DUPLICATE CALLS)
+    //   FILTER CHANGE (NO DUPLICATE CALLS)
     $('#select_class, #select_section, #select_department, #select_specialization, #select_specialization_subject')
       .on('change', function () {
         $('#myTable').DataTable().destroy();
         fetch_data();
       });
 
-    // 🔥 RESET (FIXED - RELOAD TABLE ALSO)
+    //   RESET (FIXED - RELOAD TABLE ALSO)
     $('#resetFilters').click(function () {
       $('#select_class, #select_section, #select_department, #select_specialization, #select_specialization_subject').val('');
       $('#myTable').DataTable().destroy();
       fetch_data();
     });
 
-    // 🔥 LOADING HANDLER (ATTACH AFTER INIT)
+    //   LOADING HANDLER (ATTACH AFTER INIT)
     $('#myTable').on('preXhr.dt', function () {
       $('#loadingSkeleton').show();
     });
@@ -304,7 +304,7 @@
       $('#loadingSkeleton').hide();
     });
 
-    // 🔥 EXPORT BUTTON
+    //   EXPORT BUTTON
     $('#exportData').click(function () {
 
       let params = {
