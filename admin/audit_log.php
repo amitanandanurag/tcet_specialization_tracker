@@ -65,6 +65,9 @@ if ($typeResult) {
 		}
 	}
 }
+if (!in_array('NEVER_LOGGED_IN', $auditTypes, true)) {
+	$auditTypes[] = 'NEVER_LOGGED_IN';
+}
 
 $auditSql = "SELECT a.audit_id, a.user_id, a.action_type, a.affected_table, a.affected_record, a.description, a.username, a.ip_address, a.browser_user_agent, a.session_duration_seconds, a.logout_at, a.performed_at FROM st_audit_log a";
 if (!empty($where)) {
@@ -94,8 +97,65 @@ if ($auditStmt) {
 	mysqli_stmt_close($auditStmt);
 }
 
+$neverLoggedRows = array();
+$includeNeverLogged = ($actionType === '' || $actionType === 'NEVER_LOGGED_IN') && $fromDate === '' && $toDate === '';
+if ($includeNeverLogged) {
+	$neverSql = "SELECT u.user_id,
+		COALESCE(NULLIF(TRIM(u.email_id), ''), NULLIF(TRIM(l.username), ''), NULLIF(TRIM(u.user_name), ''), CONCAT('User #', u.user_id)) AS username
+		FROM st_user_master u
+		LEFT JOIN st_login l ON l.user_id = u.user_id
+		LEFT JOIN st_audit_log a ON a.user_id = u.user_id AND a.action_type = 'LOGIN_SUCCESS'
+		WHERE a.audit_id IS NULL";
+
+	$neverParams = array();
+	$neverTypes = '';
+	if ($search !== '') {
+		$neverSql .= " AND (
+			u.user_name LIKE ? OR u.email_id LIKE ? OR l.username LIKE ? OR CAST(u.user_id AS CHAR) LIKE ?
+		)";
+		$searchLike = '%' . $search . '%';
+		$neverParams = array($searchLike, $searchLike, $searchLike, $searchLike);
+		$neverTypes = 'ssss';
+	}
+
+	$neverSql .= ' ORDER BY u.user_id DESC LIMIT 300';
+	$neverStmt = mysqli_prepare($db_handle->conn, $neverSql);
+	if ($neverStmt) {
+		if (!empty($neverParams)) {
+			mysqli_stmt_bind_param($neverStmt, $neverTypes, $neverParams[0], $neverParams[1], $neverParams[2], $neverParams[3]);
+		}
+
+		mysqli_stmt_execute($neverStmt);
+		$neverResult = mysqli_stmt_get_result($neverStmt);
+		if ($neverResult) {
+			while ($neverRow = mysqli_fetch_assoc($neverResult)) {
+				$neverLoggedRows[] = array(
+					'audit_id' => 0,
+					'user_id' => (int) ($neverRow['user_id'] ?? 0),
+					'action_type' => 'NEVER_LOGGED_IN',
+					'affected_table' => '',
+					'affected_record' => '',
+					'description' => 'User has not logged in yet.',
+					'username' => (string) ($neverRow['username'] ?? ''),
+					'ip_address' => '',
+					'browser_user_agent' => '',
+					'session_duration_seconds' => null,
+					'logout_at' => '',
+					'performed_at' => ''
+				);
+			}
+		}
+		mysqli_stmt_close($neverStmt);
+	}
+}
+
+if (!empty($neverLoggedRows)) {
+	$auditLogs = array_merge($auditLogs, $neverLoggedRows);
+}
+
 $totalCountResult = mysqli_query($db_handle->conn, "SELECT COUNT(*) AS total FROM st_audit_log");
 $totalCount = $totalCountResult ? (int) (mysqli_fetch_assoc($totalCountResult)['total'] ?? 0) : 0;
+$totalCount += count($neverLoggedRows);
 $filteredCount = count($auditLogs);
 $loginCountResult = mysqli_query($db_handle->conn, "SELECT COUNT(*) AS total FROM st_audit_log WHERE action_type = 'LOGIN_SUCCESS'");
 $loginCount = $loginCountResult ? (int) (mysqli_fetch_assoc($loginCountResult)['total'] ?? 0) : 0;
@@ -134,6 +194,10 @@ function audit_session_status($logRow)
 
 	if ($actionType === 'LOGOUT_SUCCESS') {
 		return array('Logged Out', 'label-default', 'Old separate logout record');
+	}
+
+	if ($actionType === 'NEVER_LOGGED_IN') {
+		return array('Never Logged In', 'label-default', 'User exists but has not visited website yet');
 	}
 
 	return array($actionType, 'label-info', trim((string) ($logRow['description'] ?? '')));
@@ -365,6 +429,8 @@ function audit_session_status($logRow)
 			<span class="label label-warning">Logged In</span> logout pending
 			&nbsp;&nbsp;
 			<span class="label label-danger">Failed Login</span> invalid attempt
+			&nbsp;&nbsp;
+			<span class="label label-default">Never Logged In</span> user created but no website entry
 		</div>
 
 		<div class="table-responsive">
@@ -409,7 +475,10 @@ function audit_session_status($logRow)
 												?>
 											</td>
 											<td>
-												<?php echo htmlspecialchars((string) ($logRow['ip_address'] ?? '-')); ?>
+												<?php
+												$locationIp = trim((string) ($logRow['ip_address'] ?? ''));
+												echo htmlspecialchars($locationIp !== '' ? $locationIp : '-');
+												?>
 											</td>
 											<td>
 												<?php if ($browser !== '') { ?>
@@ -423,7 +492,7 @@ function audit_session_status($logRow)
 									<?php } ?>
 								<?php } else { ?>
 									<tr>
-										<td colspan="6" class="text-center text-muted">No audit log entries found.</td>
+										<td colspan="7" class="text-center text-muted">No audit log entries found.</td>
 									</tr>
 								<?php } ?>
 							</tbody>

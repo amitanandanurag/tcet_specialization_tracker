@@ -10,6 +10,27 @@ $profileAlertMessage = '';
 $currentUserId = intval($userid ?? 0);
 $currentRoleId = intval($usertype ?? 0);
 
+$defaultProfilePhoto = 'dist/img/user2-160x160.jpg';
+$profilePhotoStorageDir = __DIR__ . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'profile_photos';
+$profilePhotoWebDir = 'uploads/profile_photos';
+
+function getUserProfilePhotoWebPath($userId, $storageDir, $webDir, $defaultPath)
+{
+  $userId = intval($userId);
+  if ($userId <= 0 || !is_dir($storageDir)) {
+    return $defaultPath;
+  }
+
+  $matches = glob($storageDir . DIRECTORY_SEPARATOR . 'user_' . $userId . '.*');
+  if (!$matches || count($matches) === 0) {
+    return $defaultPath;
+  }
+
+  return $webDir . '/' . basename($matches[0]);
+}
+
+$profilePhotoWebPath = getUserProfilePhotoWebPath($currentUserId, $profilePhotoStorageDir, $profilePhotoWebDir, $defaultProfilePhoto);
+
 if ($currentUserId <= 0 || $currentRoleId <= 0) {
   $profileAlertType = 'danger';
   $profileAlertMessage = 'Unable to load profile. Please login again.';
@@ -19,6 +40,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile']) && 
   $profileName = trim((string) ($_POST['profile_name'] ?? ''));
   $profileEmail = trim((string) ($_POST['profile_email'] ?? ''));
   $profilePhone = trim((string) ($_POST['profile_phone'] ?? ''));
+  $hasPhotoUpload = isset($_FILES['profile_photo']) && is_array($_FILES['profile_photo']) && intval($_FILES['profile_photo']['error'] ?? 4) !== 4;
+  $uploadedPhotoTmpPath = '';
+  $uploadedPhotoExt = '';
 
   if ($profileName === '') {
     $profileAlertType = 'warning';
@@ -26,6 +50,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile']) && 
   } elseif ($profileEmail !== '' && !filter_var($profileEmail, FILTER_VALIDATE_EMAIL)) {
     $profileAlertType = 'warning';
     $profileAlertMessage = 'Please enter a valid email address.';
+  } elseif ($hasPhotoUpload) {
+    $photoErrorCode = intval($_FILES['profile_photo']['error'] ?? 1);
+    if ($photoErrorCode !== 0) {
+      $profileAlertType = 'warning';
+      $profileAlertMessage = 'Unable to upload photo. Please try again.';
+    } else {
+      $uploadedPhotoTmpPath = (string) ($_FILES['profile_photo']['tmp_name'] ?? '');
+      $uploadedPhotoSize = intval($_FILES['profile_photo']['size'] ?? 0);
+      $uploadedPhotoName = (string) ($_FILES['profile_photo']['name'] ?? '');
+      $uploadedPhotoExt = strtolower(pathinfo($uploadedPhotoName, PATHINFO_EXTENSION));
+      $allowedPhotoExt = array('jpg', 'jpeg', 'png', 'webp');
+
+      if ($uploadedPhotoTmpPath === '' || !is_uploaded_file($uploadedPhotoTmpPath)) {
+        $profileAlertType = 'warning';
+        $profileAlertMessage = 'Invalid photo upload request.';
+      } elseif (!in_array($uploadedPhotoExt, $allowedPhotoExt, true)) {
+        $profileAlertType = 'warning';
+        $profileAlertMessage = 'Profile photo must be JPG, PNG, or WEBP format.';
+      } elseif ($uploadedPhotoSize <= 0 || $uploadedPhotoSize > 2 * 1024 * 1024) {
+        $profileAlertType = 'warning';
+        $profileAlertMessage = 'Profile photo size must be less than 2 MB.';
+      }
+    }
   } else {
     mysqli_begin_transaction($db_handle->conn);
     $ok = true;
@@ -82,6 +129,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile']) && 
       $profileAlertMessage = 'Profile updated successfully.';
       $username = $profileName;
       $name = $profileName;
+
+      if ($hasPhotoUpload && $uploadedPhotoTmpPath !== '' && $uploadedPhotoExt !== '') {
+        if (!is_dir($profilePhotoStorageDir)) {
+          @mkdir($profilePhotoStorageDir, 0777, true);
+        }
+
+        if (is_dir($profilePhotoStorageDir)) {
+          $existingPhotos = glob($profilePhotoStorageDir . DIRECTORY_SEPARATOR . 'user_' . intval($currentUserId) . '.*');
+          if ($existingPhotos) {
+            foreach ($existingPhotos as $existingPhotoPath) {
+              @unlink($existingPhotoPath);
+            }
+          }
+
+          $targetPhotoFilename = 'user_' . intval($currentUserId) . '.' . $uploadedPhotoExt;
+          $targetPhotoPath = $profilePhotoStorageDir . DIRECTORY_SEPARATOR . $targetPhotoFilename;
+          if (move_uploaded_file($uploadedPhotoTmpPath, $targetPhotoPath)) {
+            $profilePhotoWebPath = $profilePhotoWebDir . '/' . $targetPhotoFilename;
+          } else {
+            $profileAlertType = 'warning';
+            $profileAlertMessage = 'Profile updated, but photo upload failed.';
+          }
+        } else {
+          $profileAlertType = 'warning';
+          $profileAlertMessage = 'Profile updated, but photo storage is not available.';
+        }
+      }
     } else {
       mysqli_rollback($db_handle->conn);
       $profileAlertType = 'danger';
@@ -152,6 +226,28 @@ if ($currentUserId > 0 && $currentRoleId > 0) {
     border-radius: 50%;
     border: 4px solid #fff;
     box-shadow: 0 8px 18px rgba(18, 36, 66, 0.22);
+    object-fit: cover;
+  }
+
+  .profile-avatar-wrap {
+    width: 120px;
+    margin: 0 auto;
+    position: relative;
+  }
+
+  .profile-avatar-edit-tag {
+    position: absolute;
+    right: 6px;
+    bottom: 4px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(120deg, #1aa7cf 0%, #44c4e8 100%);
+    color: #fff;
+    box-shadow: 0 6px 14px rgba(30, 167, 207, 0.35);
   }
 
   .profile-display-name {
@@ -292,6 +388,36 @@ if ($currentUserId > 0 && $currentRoleId > 0) {
     color: #fff !important;
     background: linear-gradient(120deg, #1596ba 0%, #38b6d8 100%) !important;
   }
+
+  .profile-photo-upload-card {
+    border: 1px dashed #a6d6eb;
+    border-radius: 12px;
+    padding: 14px;
+    background: linear-gradient(180deg, #f8fdff 0%, #f2f9ff 100%);
+  }
+
+  .profile-photo-preview {
+    width: 78px;
+    height: 78px;
+    border-radius: 12px;
+    object-fit: cover;
+    border: 2px solid #d8ecf7;
+    background: #fff;
+  }
+
+  .profile-photo-upload-card .help-block {
+    margin: 6px 0 0;
+    color: #556372;
+    font-size: 12px;
+  }
+
+  .profile-file-input {
+    border-radius: 8px;
+    border: 1px solid #dbe3ec;
+    background: #fff;
+    padding: 7px 10px;
+    width: 100%;
+  }
 </style>
 
 <div class="content-wrapper">
@@ -309,7 +435,10 @@ if ($currentUserId > 0 && $currentRoleId > 0) {
         <div class="box profile-summary-card">
           <div class="profile-summary-head"></div>
           <div class="box-body box-profile text-center profile-summary-body">
-            <img class="profile-avatar" src="dist/img/user2-160x160.jpg" alt="User profile picture">
+            <div class="profile-avatar-wrap">
+              <img class="profile-avatar" src="<?php echo htmlspecialchars($profilePhotoWebPath); ?>" alt="User profile picture">
+              <span class="profile-avatar-edit-tag"><i class="fa fa-camera"></i></span>
+            </div>
             <h3 class="profile-display-name text-center"><?php echo htmlspecialchars($profileData['username']); ?></h3>
             <div class="profile-role-pill"><?php echo htmlspecialchars($profileData['role_name']); ?></div>
 
@@ -346,7 +475,7 @@ if ($currentUserId > 0 && $currentRoleId > 0) {
             </div>
           <?php } ?>
 
-          <form class="form-horizontal" method="POST">
+          <form class="form-horizontal" method="POST" enctype="multipart/form-data">
             <div class="box-body">
               <div class="form-group">
                 <label class="col-sm-3 control-label">Name</label>
@@ -387,6 +516,23 @@ if ($currentUserId > 0 && $currentRoleId > 0) {
                   </div>
                 </div>
               </div>
+
+              <div class="form-group">
+                <label class="col-sm-3 control-label">Profile Photo</label>
+                <div class="col-sm-9">
+                  <div class="profile-photo-upload-card">
+                    <div class="row">
+                      <div class="col-xs-3" style="text-align:center;">
+                        <img src="<?php echo htmlspecialchars($profilePhotoWebPath); ?>" id="profilePhotoPreview" class="profile-photo-preview" alt="Profile photo preview">
+                      </div>
+                      <div class="col-xs-9">
+                        <input type="file" class="profile-file-input" id="profile_photo" name="profile_photo" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
+                        <p class="help-block">Upload JPG, PNG, or WEBP image (max 2MB).</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
             <div class="box-footer">
               <input type="hidden" name="update_profile" value="1">
@@ -398,5 +544,31 @@ if ($currentUserId > 0 && $currentRoleId > 0) {
     </div>
   </section>
 </div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    var fileInput = document.getElementById('profile_photo');
+    var preview = document.getElementById('profilePhotoPreview');
+
+    if (!fileInput || !preview) {
+      return;
+    }
+
+    fileInput.addEventListener('change', function () {
+      var selectedFile = this.files && this.files.length > 0 ? this.files[0] : null;
+      if (!selectedFile) {
+        return;
+      }
+
+      var reader = new FileReader();
+      reader.onload = function (event) {
+        if (event && event.target && event.target.result) {
+          preview.src = event.target.result;
+        }
+      };
+      reader.readAsDataURL(selectedFile);
+    });
+  });
+</script>
 
 <?php include "header/footer.php"; ?>

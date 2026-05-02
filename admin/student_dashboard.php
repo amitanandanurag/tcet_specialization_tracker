@@ -2,36 +2,54 @@
 require "header/header.php";
 
 $student = null;
-$studentId = (int) ($userid ?? 0);
+$linkedStudentId = 0;
 
 if ((int) ($usertype ?? 0) !== 5) {
     header("location: index.php");
     exit;
 }
 
-$studentSql = "SELECT s.student_id, s.academic_year, s.registration_no, s.roll_no, s.grad_year,
-                      s.cgpa, s.fname, s.mobile, s.email, s.status, s.created_at,
-                      c.class_name, sec.sections AS division_name, d.department_name,
-                      sp.specialization_name, sub.subject_name
-               FROM st_student_master s
-               LEFT JOIN st_class_master c ON c.class_id = s.class_id
-               LEFT JOIN st_section_master sec ON sec.id = s.division_id
-               LEFT JOIN st_department_master d ON d.department_id = s.department_id
-               LEFT JOIN st_specialization_master sp ON sp.specialization_id = s.specialization_id
-               LEFT JOIN st_specialization_subject_master sub ON sub.subject_id = s.specialization_subject_id
-               WHERE s.student_id = ?
-               LIMIT 1";
-$studentStmt = mysqli_prepare($db_handle->conn, $studentSql);
-if ($studentStmt) {
-    mysqli_stmt_bind_param($studentStmt, 'i', $studentId);
-    mysqli_stmt_execute($studentStmt);
-    $studentResult = mysqli_stmt_get_result($studentStmt);
-    if ($studentResult) {
-        $student = mysqli_fetch_assoc($studentResult);
+if (!empty($userid)) {
+    $userCheckSql = "SELECT student_id FROM st_user_master WHERE user_id = ? AND student_id > 0 LIMIT 1";
+    $userCheckStmt = mysqli_prepare($db_handle->conn, $userCheckSql);
+
+    if ($userCheckStmt) {
+        mysqli_stmt_bind_param($userCheckStmt, 'i', $userid);
+        mysqli_stmt_execute($userCheckStmt);
+        $userCheckResult = mysqli_stmt_get_result($userCheckStmt);
+        if ($userCheckResult && ($userRow = mysqli_fetch_assoc($userCheckResult))) {
+            $linkedStudentId = intval($userRow['student_id']);
+        }
+        mysqli_stmt_close($userCheckStmt);
     }
-    mysqli_stmt_close($studentStmt);
 }
 
+if ($linkedStudentId > 0) {
+    $studentSql = "SELECT s.student_id, s.academic_year_id, s.registration_no, s.roll_no, s.grad_year,
+                          s.cgpa, s.fname, s.mobile, s.email, s.status, s.created_at,
+                          c.class_name, sec.sections AS division_name, d.department_name,
+                          sp.specialization_name, sub.subject_name, ay.session_name
+                   FROM st_student_master s
+                   LEFT JOIN st_class_master c ON c.class_id = s.class_id
+                   LEFT JOIN st_section_master sec ON sec.id = s.division_id
+                   LEFT JOIN st_department_master d ON d.department_id = s.department_id
+                   LEFT JOIN st_specialization_master sp ON sp.specialization_id = s.specialization_id
+                   LEFT JOIN st_specialization_subject_master sub ON sub.subject_id = s.specialization_subject_id
+                   LEFT JOIN st_session_master ay ON ay.session_id = s.academic_year_id
+                   WHERE s.student_id = ?
+                   LIMIT 1";
+
+    $studentStmt = mysqli_prepare($db_handle->conn, $studentSql);
+    if ($studentStmt) {
+        mysqli_stmt_bind_param($studentStmt, 'i', $linkedStudentId);
+        mysqli_stmt_execute($studentStmt);
+        $studentResult = mysqli_stmt_get_result($studentStmt);
+        if ($studentResult) {
+            $student = mysqli_fetch_assoc($studentResult);
+        }
+        mysqli_stmt_close($studentStmt);
+    }
+}
 $statusText = 'Pending';
 $statusClass = 'label-warning';
 if ($student && (int) $student['status'] === 1) {
@@ -90,8 +108,13 @@ function student_dashboard_value($value)
 
     <section class="content">
         <?php if (!$student): ?>
-            <div class="alert alert-warning">
-                <i class="fa fa-info-circle"></i> Student profile details are not available for this login.
+            <div class="alert alert-warning" style="padding: 15px;">
+                <i class="fa fa-info-circle"></i> 
+                <strong>No profile found.</strong> Please complete your admission form to see your dashboard.
+                <br>
+                <a href="student_admission.php" class="btn btn-primary btn-sm" style="margin-top: 10px;">
+                    <i class="fa fa-arrow-right"></i> Go to Admission Form
+                </a>
             </div>
         <?php else: ?>
             <div class="box student-hero">
@@ -157,7 +180,7 @@ function student_dashboard_value($value)
                                 <dt class="col-sm-4">Mobile</dt>
                                 <dd class="col-sm-8"><?php echo student_dashboard_value($student['mobile']); ?></dd>
                                 <dt class="col-sm-4">Academic Year</dt>
-                                <dd class="col-sm-8"><?php echo student_dashboard_value($student['academic_year']); ?></dd>
+                                <dd class="col-sm-8"><?php echo student_dashboard_value($student['session_name'] ?? $student['academic_year_id']); ?></dd>
                                 <dt class="col-sm-4">Graduation Year</dt>
                                 <dd class="col-sm-8"><?php echo student_dashboard_value($student['grad_year']); ?></dd>
                             </dl>

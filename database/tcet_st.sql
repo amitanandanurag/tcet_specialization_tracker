@@ -75,7 +75,6 @@ INSERT INTO `st_audit_log` (`audit_id`, `user_id`, `action_type`, `affected_tabl
 (59, 1, 'LOGIN_SUCCESS', 'st_login', 1, 'User \'superadmin@tcetmumbai.in\' logged in successfully with role 1 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36\nLogout: User \'superadmin@tcetmumbai.in\' logged out from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', 'superadmin@tcetmumbai.in', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', 669, '2026-04-30 10:20:22', '2026-04-30 10:09:13'),
 (60, 3, 'LOGIN_SUCCESS', 'st_login', 3, 'User \'coordinator@tcetmumbai.in\' logged in successfully with role 2 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36\nLogout: User \'coordinator@tcetmumbai.in\' logged out from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', 'coordinator@tcetmumbai.in', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', 998, '2026-04-30 10:37:14', '2026-04-30 10:20:36'),
 (61, 0, 'LOGIN_SUCCESS', 'st_login', 0, 'User \'ashutosh3276s16@tcetmumbai.in\' logged in successfully with role 5 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', 'ashutosh3276s16@tcetmumbai.in', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', NULL, NULL, '2026-04-30 10:39:34'),
-(62, 0, 'LOGIN_SUCCESS', 'st_login', 0, 'User \'ashutosh3276s16@tcetmumbai.in\' logged in successfully with role 5 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', 'ashutosh3276s16@tcetmumbai.in', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', NULL, NULL, '2026-04-30 10:40:02'),
 (63, 1, 'LOGIN_SUCCESS', 'st_login', 1, 'User \'superadmin@tcetmumbai.in\' logged in successfully with role 1 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36\nLogout: User \'superadmin@tcetmumbai.in\' logged out from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', 'superadmin@tcetmumbai.in', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', 96, '2026-04-30 10:44:35', '2026-04-30 10:42:59');
 
 -- --------------------------------------------------------
@@ -1622,8 +1621,7 @@ INSERT INTO `st_user_master` (`user_id`, `user_name`, `email_id`, `phone_number`
 (14, 'ashutosh', '1235679@tcetmumbai.in', '9876543121', 10, 5, 0, 0),
 (15, 'amit', '13245678@tcetmumbai.in', '6878934567', 7, 5, 0, 0),
 (16, 'rita', '14525376@tcetmumbai.in', '8967453423', 10, 5, 0, 1),
-(0, 'Asdggghhg', 'ashutosh3276s16@tcetmumbai.in', '7899555544', 9, 5, 0, 1),
-(0, 'ashutosh', '1032251401@tcetmumbai.in', '9874563650', 1, 5, 0, 1);
+
 
 -- --------------------------------------------------------
 

@@ -1,4 +1,52 @@
 <?php include "header/header.php"; ?>
+<?php
+$admissionForm = $_SESSION['student_admission_form'] ?? [];
+$admissionSuccess = $_SESSION['student_admission_success'] ?? '';
+unset($_SESSION['student_admission_success']);
+
+$isEditMode = isset($_GET['edit']) && $_GET['edit'] === '1';
+$linkedStudentId = 0;
+if ((int) ($usertype ?? 0) === 5 && !empty($userid)) {
+  $linkedRes = $db_handle->query("SELECT student_id FROM st_user_master WHERE user_id = " . intval($userid) . " AND student_id > 0 LIMIT 1");
+  if ($linkedRes && ($linkedRow = mysqli_fetch_assoc($linkedRes))) {
+    $linkedStudentId = intval($linkedRow['student_id']);
+  }
+}
+
+if ($linkedStudentId > 0 && !$isEditMode) {
+  echo "<script>window.location.replace('student_admission_view.php?id=" . $linkedStudentId . "');</script>";
+  exit;
+}
+
+// If admission form not in session, attempt to prefill from linked student record
+if (($isEditMode || empty($admissionForm)) && !empty($userid)) {
+  $mapRes = $db_handle->query("SELECT student_id FROM st_user_master WHERE user_id = " . intval($userid) . " LIMIT 1");
+  if ($mapRes && ($mapRow = mysqli_fetch_assoc($mapRes))) {
+    $sid = intval($mapRow['student_id']);
+    if ($sid > 0) {
+      $sres = $db_handle->query("SELECT * FROM st_student_master WHERE student_id = " . $sid . " LIMIT 1");
+      if ($sres && ($srow = mysqli_fetch_assoc($sres))) {
+        $admissionForm['registration_no'] = $srow['registration_no'] ?? '';
+        $admissionForm['roll_no'] = $srow['roll_no'] ?? '';
+        $admissionForm['class'] = $srow['class_id'] ?? '';
+        $admissionForm['current_semester_id'] = $srow['current_semester_id'] ?? '';
+        $admissionForm['batch'] = $srow['academic_year_id'] ?? '';
+        $admissionForm['graduation_year'] = $srow['grad_year'] ?? '';
+        $admissionForm['department_id'] = $srow['department_id'] ?? '';
+        $admissionForm['specialization_id'] = $srow['specialization_id'] ?? '';
+        $admissionForm['cgpa'] = $srow['cgpa'] ?? '';
+        $admissionForm['minor_course_id'] = $srow['minor_course_id'] ?? '';
+        $admissionForm['minor_subject_id'] = $srow['minor_subject_id'] ?? '';
+        $admissionForm['minor_cgpa'] = '';
+        $admissionForm['unaided_subject'] = $srow['specialization_subject_id'] ?? '';
+        $admissionForm['fname'] = $srow['fname'] ?? '';
+        $admissionForm['email'] = $srow['email'] ?? '';
+        $admissionForm['mobile'] = $srow['mobile'] ?? '';
+      }
+    }
+  }
+}
+?>
 
 <script>
   function validateform() {
@@ -124,11 +172,25 @@
         data: {
           "register1": register,
         },
+        dataType: 'json',
         success: function(response) {
           console.log(response);
-          if (response == 1) {
-            $('#registration_no').val("");
-            alert("The Register number already exists!!");
+          if (response && response.exists) {
+            var fullNameField = document.getElementById('full_name');
+            var emailField = document.getElementById('college_email');
+            var mobileField = document.getElementById('mobile');
+
+            if (fullNameField && response.fname) {
+              fullNameField.value = response.fname;
+            }
+
+            if (emailField && response.email) {
+              emailField.value = response.email;
+            }
+
+            if (mobileField && response.mobile) {
+              mobileField.value = response.mobile;
+            }
           }
         }
       });
@@ -254,8 +316,12 @@
 
     if (isHonours) {
       $('#cgpa_section').show();
+      setAdmissionDetailSectionsVisible(true);
       return;
     }
+
+    // For regular specializations, show admission detail sections
+    setAdmissionDetailSectionsVisible(true);
   }
 
   $(document).ready(function() {
@@ -277,9 +343,7 @@
       }
 
       $('#specialization_select').val("");
-      if (typeof resetSpecializationConditionalUI === "function") {
-        resetSpecializationConditionalUI();
-      }
+      // Keep sections visible when class changes - don't reset UI visibility
     });
 
     handleSpecializationSelection();
@@ -338,6 +402,11 @@
   </section>
 
   <section class="content">
+    <?php if (!empty($admissionSuccess)) { ?>
+      <div class="alert alert-success" style="margin-bottom: 15px;">
+        <?php echo htmlspecialchars($admissionSuccess); ?>
+      </div>
+    <?php } ?>
     <form action="student_process.php" name="myform" method="POST" onsubmit="return validateform()" enctype="multipart/form-data">
       <div class="box box-default" style="padding: 10px;">
         <div class="box-header with-border" style="border-bottom: 2px solid #9C27B0;">
@@ -363,7 +432,7 @@
                       $name = $row['session_name'];
 
                       // This makes the latest batch selected by default
-                      $selected = ($id == 1) ? 'selected' : '';
+                      $selected = (!empty($admissionForm['academic']) && (string)$admissionForm['academic'] === (string)$id) ? 'selected' : (($id == 1 && empty($admissionForm['academic'])) ? 'selected' : '');
 
                       echo "<option value='{$id}' {$selected}>{$name}</option>";
                     }
@@ -374,13 +443,13 @@
               <div class="col-md-4">
                 <div class="form-group">
                   <label>ERP ID <span style="color: red;">*</span></label>
-                  <input type="text" name="registration_no" value="" id="registration_no" onblur="ckeck_reg()" class="form-control" style="width: 100%;" required>
+                  <input type="text" name="registration_no" value="<?php echo htmlspecialchars($admissionForm['registration_no'] ?? ''); ?>" id="registration_no" onblur="ckeck_reg()" class="form-control" style="width: 100%;" required>
                 </div>
               </div>
               <div class="col-md-4">
                 <div class="form-group">
                   <label>Roll No.</label>
-                  <input type="text" name="roll_no" class="form-control" id="data421" style="width: 100%;" required>
+                  <input type="text" name="roll_no" value="<?php echo htmlspecialchars($admissionForm['roll_no'] ?? ''); ?>" class="form-control" id="data421" style="width: 100%;" required>
                 </div>
               </div>
             </div>
@@ -390,14 +459,15 @@
                 <div class="form-group">
                   <label>Class <span style="color: red;">*</span></label>
                   <select class="form-control select" name="class" id="class4" class="class" style="width: 100%;" required>
-                    <option>Select Class</option>
+                    <option value="">Select Class</option>
                     <?php
                     $result = $db_handle->conn->query("select * from st_class_master");
                     while ($row = $result->fetch_assoc()) {
                       $class_name = $row['class_name'];
                       $class_id = $row['class_id'];
+                      $selected = (!empty($admissionForm['class']) && (string)$admissionForm['class'] === (string)$class_id) ? 'selected' : '';
                     ?>
-                      <option value="<?php echo $class_id; ?>"><?php echo $class_name; ?></option>
+                      <option value="<?php echo $class_id; ?>" <?php echo $selected; ?>><?php echo $class_name; ?></option>
                     <?php } ?>
                   </select>
                 </div>
@@ -412,13 +482,15 @@
                     $result = $db_handle->conn->query("SELECT semester_id, semester_name FROM st_semester_master ORDER BY semester_id ASC");
                     if ($result && $result->num_rows > 0) {
                       while ($row = $result->fetch_assoc()) {
-                        echo "<option value='{$row['semester_id']}'>{$row['semester_name']}</option>";
+                        $selected = (!empty($admissionForm['current_semester_id']) && (string)$admissionForm['current_semester_id'] === (string)$row['semester_id']) ? 'selected' : '';
+                        echo "<option value='{$row['semester_id']}' {$selected}>{$row['semester_name']}</option>";
                       }
                     } else {
                       // Fallback if table name is different
                       $result = $db_handle->conn->query("SELECT semester_id, semester_name FROM st_semester ORDER BY semester_id ASC");
                       while ($row = $result->fetch_assoc()) {
-                        echo "<option value='{$row['semester_id']}'>{$row['semester_name']}</option>";
+                        $selected = (!empty($admissionForm['current_semester_id']) && (string)$admissionForm['current_semester_id'] === (string)$row['semester_id']) ? 'selected' : '';
+                        echo "<option value='{$row['semester_id']}' {$selected}>{$row['semester_name']}</option>";
                       }
                     }
                     ?>
@@ -429,14 +501,15 @@
                 <div class="form-group">
                   <label>Division<span style="color: red;">*</span></label>
                   <select class="form-control select" name="batch" id="batch4" class="batch" onchange="display2()" style="width: 100%;" required>
-                    <option>Select Division</option>
+                    <option value="">Select Division</option>
                     <?php
                     $result = $db_handle->conn->query("SELECT * from st_section_master");
                     while ($row = $result->fetch_assoc()) {
                       $section_name = $row['sections'];
                       $s_id = $row['id'];
+                      $selected = (!empty($admissionForm['batch']) && (string)$admissionForm['batch'] === (string)$s_id) ? 'selected' : '';
                     ?>
-                      <option value="<?php echo $s_id;  ?>"><?php echo $section_name;  ?></option>
+                      <option value="<?php echo $s_id;  ?>" <?php echo $selected; ?>><?php echo $section_name;  ?></option>
                     <?php } ?>
                   </select>
                 </div>
@@ -455,7 +528,8 @@
                 
                 // Extract year from batch_name if it contains the year
                 // Or use academic_year_id if it represents the year
-                echo "<option value='{$batch_name}'>{$batch_name}</option>";
+              $selected = (!empty($admissionForm['graduation_year']) && (string)$admissionForm['graduation_year'] === (string)$batch_name) ? 'selected' : '';
+              echo "<option value='{$batch_name}' {$selected}>{$batch_name}</option>";
             }
             ?>
         </select>
@@ -468,14 +542,15 @@
                 <div class="form-group">
                   <label>Department<span style="color: red;">*</span></label>
                   <select class="form-control select" name="department_id" id="department_select" class="batch" style="width: 100%;" required>
-                    <option>Select Department</option>
+                    <option value="">Select Department</option>
                     <?php
                     $result = $db_handle->conn->query("SELECT * from st_department_master");
                     while ($row = $result->fetch_assoc()) {
                       $department_name = $row['department_name'];
                       $department_id = $row['department_id'];
+                      $selected = (!empty($admissionForm['department_id']) && (string)$admissionForm['department_id'] === (string)$department_id) ? 'selected' : '';
                     ?>
-                      <option value="<?php echo $department_id;  ?>"><?php echo $department_name;  ?></option>
+                      <option value="<?php echo $department_id;  ?>" <?php echo $selected; ?>><?php echo $department_name;  ?></option>
                     <?php } ?>
                   </select>
                 </div>
@@ -485,14 +560,15 @@
                 <div class="form-group">
                   <label>Specialization<span style="color: red;">*</span></label>
                   <select class="form-control select" name="specialization_id" id="specialization_select" class="batch" style="width: 100%;" required>
-                    <option>Select Specialization</option>
+                    <option value="">Select Specialization</option>
                     <?php
                     $result = $db_handle->conn->query("SELECT * from st_specialization_master");
                     while ($row = $result->fetch_assoc()) {
                       $specialization_name = $row['specialization_name'];
                       $specialization_id = $row['specialization_id'];
+                      $selected = (!empty($admissionForm['specialization_id']) && (string)$admissionForm['specialization_id'] === (string)$specialization_id) ? 'selected' : '';
                     ?>
-                      <option value="<?php echo $specialization_id;  ?>"><?php echo $specialization_name;  ?></option>
+                      <option value="<?php echo $specialization_id;  ?>" <?php echo $selected; ?>><?php echo $specialization_name;  ?></option>
                     <?php } ?>
                   </select>
                 </div>
@@ -502,7 +578,7 @@
               <div class="col-md-4" id="cgpa_section" style="display: none;">
                 <div class="form-group">
                   <label>Enter Your CGPA (Aggregate)<span style="color: red;">*</span></label>
-                  <input type="text" name="cgpa" id="cgpa" class="form-control" placeholder="Enter CGPA" style="width: 100%;">
+                  <input type="text" name="cgpa" id="cgpa" class="form-control" value="<?php echo htmlspecialchars($admissionForm['cgpa'] ?? ''); ?>" placeholder="Enter CGPA" style="width: 100%;">
                 </div>
               </div>
             </div>
@@ -520,7 +596,8 @@
                       while ($row = $result->fetch_assoc()) {
                         $course_id = $row['course_id'];
                         $course_name = $row['course_name'];
-                        echo '<option value="' . $course_id . '">' . $course_name . '</option>';
+                        $selected = (!empty($admissionForm['minor_course_id']) && (string)$admissionForm['minor_course_id'] === (string)$course_id) ? 'selected' : '';
+                        echo '<option value="' . $course_id . '" ' . $selected . '>' . $course_name . '</option>';
                       }
                     } else {
                       echo '<option value="">No courses available</option>';
@@ -535,6 +612,11 @@
                   <label>Minor Subject <span style="color: red;">*</span></label>
                   <select class="form-control select" name="minor_subject_id" id="minor_subject_select" style="width: 100%;">
                     <option value="">Select Minor Subject</option>
+                    <?php if (!empty($admissionForm['minor_subject_id'])) { ?>
+                      <option value="<?php echo htmlspecialchars($admissionForm['minor_subject_id']); ?>" selected>
+                        <?php echo htmlspecialchars($admissionForm['minor_subject_id']); ?>
+                      </option>
+                    <?php } ?>
                   </select>
                 </div>
               </div>
@@ -543,7 +625,7 @@
               <div class="col-md-4">
                 <div class="form-group">
                   <label>Minor CGPA <span style="color: red;">*</span></label>
-                  <input type="text" name="minor_cgpa" id="minor_cgpa" class="form-control" placeholder="Enter Minor CGPA (0-10)" style="width: 100%;">
+                  <input type="text" name="minor_cgpa" id="minor_cgpa" class="form-control" value="<?php echo htmlspecialchars($admissionForm['minor_cgpa'] ?? ''); ?>" placeholder="Enter Minor CGPA (0-10)" style="width: 100%;">
                 </div>
               </div>
             </div>
@@ -559,8 +641,9 @@
                     while ($row = $result->fetch_assoc()) {
                       $subject_name = $row['subject_name'];
                       $subject_id = $row['subject_id'];
+                      $selected = (!empty($admissionForm['unaided_subject']) && (string)$admissionForm['unaided_subject'] === (string)$subject_id) ? 'selected' : '';
                     ?>
-                      <option value="<?php echo $subject_id;  ?>"><?php echo $subject_name;  ?></option>
+                      <option value="<?php echo $subject_id;  ?>" <?php echo $selected; ?>><?php echo $subject_name;  ?></option>
                     <?php } ?>
                   </select>
                 </div>
@@ -588,13 +671,15 @@
                 <div class="col-md-4">
                   <div class="form-group">
                     <label>Full Name</label>
-                    <input type="text" name="fname" class="form-control" style="width: 100%;" required>
+                    <input type="text" name="fname" id="full_name" value="<?php echo htmlspecialchars($admissionForm['fname'] ?? ''); ?>" class="form-control" autocomplete="name" style="width: 100%;" required>
                   </div>
                 </div>
                 <div class="col-md-4">
                   <div class="form-group">
                     <label>College Email <span style="color: red;">*</span></label>
                     <input type="email" name="email" id="college_email" class="form-control"
+                      value="<?php echo htmlspecialchars($admissionForm['email'] ?? ''); ?>"
+                      autocomplete="email"
                       placeholder="example@tcetmumbai.in" style="width: 100%;"
                       pattern="[a-zA-Z0-9._%+\-]+@tcetmumbai\.in"
                       title="Email must end with @tcetmumbai.in" required>
@@ -604,7 +689,7 @@
                   <div class="form-group">
                     <label>Mobile</label>
                     <input type="text" pattern="^\d{10}$" class="form-control"
-                      id="mobile" name="mobile" minlength="10" maxlength="10"
+                      id="mobile" name="mobile" value="<?php echo htmlspecialchars($admissionForm['mobile'] ?? ''); ?>" autocomplete="tel" minlength="10" maxlength="10"
                       oninput="javascript: if (this.value.length > this.maxLength) this.value = this.value.slice(0, this.maxLength);"
                       placeholder="Mobile No." style="width: 100%;" />
                   </div>
@@ -616,53 +701,17 @@
 
         <div class="box box-default" id="upload_documents_section" style="padding: 10px;">
           <div class="box-header with-border" style="border-bottom: 2px solid #9C27B0;">
-            <h3 class="box-title">Upload Documents:- </h3>
+            <h3 class="box-title"><i class="fa fa-file-pdf-o"></i> Upload MarkSheets:- </h3>
+            <p style="margin: 8px 0 0; color: #999; font-size: 12px;">Upload marksheets for all completed semesters</p>
             <div class="box-tools pull-right">
               <button type="button" class="btn btn-box-tool" data-widget="collapse"><i class="fa fa-minus"></i></button>
             </div>
           </div>
           <div class="box-body">
-            <div class="row doc-row">
-              <div class="col-md-3 col-sm-4">
-                <label class="doc-label" for="checkbox1">
-                  <input type="checkbox" id="checkbox1"> Mark List
-                </label>
-              </div>
-              <div class="col-md-9 col-sm-8 doc-upload-field" id="autoUpdate1" style="display:none;">
-                <input type="file" class="form-control" name="mark-list1" accept=".pdf,.jpg,.jpeg,.png">
-              </div>
+            <div id="semester_uploads_container" style="background: #f8f9fa; padding: 20px; border-radius: 8px;">
+              <!-- Dynamic semester uploads will be inserted here -->
             </div>
-            <div class="row doc-row">
-              <div class="col-md-3 col-sm-4">
-                <label class="doc-label" for="checkbox2">
-                  <input type="checkbox" id="checkbox2"> MarkSheet of Semester 1
-                </label>
-              </div>
-              <div class="col-md-9 col-sm-8 doc-upload-field" id="autoUpdate2" style="display:none;">
-                <input type="file" class="form-control" name="mark-list2" accept=".pdf,.jpg,.jpeg,.png">
-              </div>
-            </div>
-            <div class="row doc-row">
-              <div class="col-md-3 col-sm-4">
-                <label class="doc-label" for="checkbox6">
-                  <input type="checkbox" id="checkbox6"> MarkSheet of Semester 2
-                </label>
-              </div>
-              <div class="col-md-9 col-sm-8 doc-upload-field" id="autoUpdate6" style="display:none;">
-                <input type="file" class="form-control" name="mark-list6" accept=".pdf,.jpg,.jpeg,.png">
-              </div>
-            </div>
-            <div class="row doc-row">
-              <div class="col-md-3 col-sm-4">
-                <label class="doc-label" for="checkbox4">
-                  <input type="checkbox" id="checkbox4"> MarkSheet of Semester 3
-                </label>
-              </div>
-              <div class="col-md-9 col-sm-8 doc-upload-field" id="autoUpdate4" style="display:none;">
-                <input type="file" class="form-control" name="mark-list4" accept=".pdf,.jpg,.jpeg,.png">
-              </div>
-            </div>
-            <div class="row" style="margin: 20px 0 0 0;">
+            <div class="row" style="margin: 30px 0 0 0;">
               <div style="margin-top: 20px; text-align: center;">
                 <input type="submit" name="save" value="Save Changes" class="btn-submit">
                 <input type="reset" name="reset" value="Reset" class="btn-reset">
@@ -675,66 +724,143 @@
   </section>
 </div>
 
-<script type="text/javascript">
-  function show(input) {
-    var validExtensions = ['jpg', 'png', 'jpeg'];
-    var fileName = input.files[0].name;
-    var fileNameExt = fileName.substr(fileName.lastIndexOf('.') + 1);
-    if ($.inArray(fileNameExt, validExtensions) == -1) {
-      input.type = ''
-      input.type = 'file'
-      $('#user_img').attr('src', "");
-      alert("Only these file types are accepted : " + validExtensions.join(', '));
-    } else {
-      if (input.files && input.files[0]) {
-        var filerdr = new FileReader();
-        filerdr.onload = function(e) {
-          $('#user_img').attr('src', e.target.result);
-        }
-        filerdr.readAsDataURL(input.files[0]);
-      }
-    }
+<style>
+  .semester-upload-card {
+    background: white;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 14px;
+    transition: all 0.3s ease;
   }
-</script>
 
-<script type="text/javascript">
+  .semester-upload-card:hover {
+    border-color: #2563eb;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
+  }
+
+  .semester-upload-card.completed {
+    border-color: #10b981;
+    background: #f0fdf4;
+  }
+
+  .semester-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, #2563eb, #0ea5e9);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-right: 10px;
+    min-width: 80px;
+    text-align: center;
+  }
+
+  .semester-badge.completed {
+    background: linear-gradient(135deg, #10b981, #059669);
+  }
+
+  .semester-label {
+    font-weight: 600;
+    color: #2f3b45;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .file-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .file-input-wrapper input[type="file"] {
+    flex: 1;
+    padding: 10px 12px;
+    border: 2px dashed #cbd5e1;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .file-input-wrapper input[type="file"]:hover {
+    border-color: #2563eb;
+    background: #f0f9ff;
+  }
+
+  .file-input-label {
+    color: #64748b;
+    font-size: 12px;
+    margin-top: 6px;
+  }
+
+  .upload-icon {
+    color: #2563eb;
+    font-size: 18px;
+  }
+</style>
+
+<script>
+  // Show all previous semester marksheets with improved UI
+  function updateAllPreviousMarksUpload() {
+    var selText = $('#semester_select option:selected').text() || '';
+    var numMatch = selText.match(/(\d+)/);
+    var currentSem = numMatch ? parseInt(numMatch[1], 10) : parseInt($('#semester_select').val(), 10);
+
+    // Clear previous dynamic content
+    $('#semester_uploads_container').empty();
+
+    if (!currentSem || currentSem <= 1) {
+      $('#semester_uploads_container').html('<p style="color: #999; text-align: center; padding: 20px;">No previous semesters to upload</p>');
+      return;
+    }
+
+    // Create rows for all previous semesters (1 to currentSem - 1)
+    var html = '';
+    for (var i = 1; i < currentSem; i++) {
+      var inputName = 'mark-list' + i;
+      var cardClass = 'semester-upload-card';
+      var badgeClass = 'semester-badge';
+
+      html += '<div class="' + cardClass + '" id="sem_card_' + i + '">';
+      html += '<div class="semester-label">';
+      html += '<span class="' + badgeClass + '">Semester ' + i + '</span>';
+      html += '<span style="color: #94a3b8; font-weight: 400;">Upload marksheet</span>';
+      html += '</div>';
+      html += '<div class="file-input-wrapper">';
+      html += '<i class="fa fa-cloud-upload upload-icon"></i>';
+      html += '<input type="file" class="form-control semester-file-input" name="' + inputName + '" accept=".pdf,.jpg,.jpeg,.png">';
+      html += '</div>';
+      html += '<p class="file-input-label">Accepted formats: PDF, JPG, JPEG, PNG (Max 10MB)</p>';
+      html += '</div>';
+    }
+
+    $('#semester_uploads_container').html(html);
+
+    // Add event listener for file selection to update card styling
+    $('.semester-file-input').on('change', function() {
+      var cardId = $(this).closest('.semester-upload-card').attr('id');
+      if ($(this).val() !== '') {
+        $(this).closest('.semester-upload-card').addClass('completed').find('.semester-badge').addClass('completed');
+      } else {
+        $(this).closest('.semester-upload-card').removeClass('completed').find('.semester-badge').removeClass('completed');
+      }
+    });
+  }
+
   $(document).ready(function() {
-    $('#checkbox1').on('change', function() {
-      if (this.checked) {
-        $('#autoUpdate1').stop(true, true).slideDown('fast');
-      } else {
-        $('#autoUpdate1').stop(true, true).slideUp('fast');
-      }
+    // Bind change event
+    $('#semester_select').on('change', function() {
+      updateAllPreviousMarksUpload();
     });
-    $('#checkbox2').on('change', function() {
-      if (this.checked) {
-        $('#autoUpdate2').stop(true, true).slideDown('fast');
-      } else {
-        $('#autoUpdate2').stop(true, true).slideUp('fast');
-      }
-    });
-    $('#checkbox3').on('change', function() {
-      if (this.checked) {
-        $('#autoUpdate3').stop(true, true).slideDown('fast');
-      } else {
-        $('#autoUpdate3').stop(true, true).slideUp('fast');
-      }
-    });
-    $('#checkbox4').on('change', function() {
-      if (this.checked) {
-        $('#autoUpdate4').stop(true, true).slideDown('fast');
-      } else {
-        $('#autoUpdate4').stop(true, true).slideUp('fast');
-      }
-    });
-    $('#checkbox6').on('change', function() {
-      if (this.checked) {
-        $('#autoUpdate6').stop(true, true).slideDown('fast');
-      } else {
-        $('#autoUpdate6').stop(true, true).slideUp('fast');
-      }
-    });
+
+    // Initialize on page load if semester already selected
+    updateAllPreviousMarksUpload();
   });
 </script>
+
 </div>
 <?php include "header/footer.php"; ?>

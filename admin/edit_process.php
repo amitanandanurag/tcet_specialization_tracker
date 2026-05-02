@@ -13,7 +13,7 @@ if (isset($_POST['save'])) {
     
     if ($student_id == 0) {
         echo '<script type="text/javascript">alert("Invalid student ID!");</script>';
-        echo "<script>window.open('student_list.php','_self')</script>";
+        echo "<script>window.open('student-info.php','_self')</script>";
         exit;
     }
     
@@ -183,7 +183,7 @@ if (isset($_POST['save'])) {
         }
         
         echo '<script type="text/javascript">alert("Student updated successfully!");</script>';
-        echo "<script>window.open('student_list.php','_self')</script>";
+        echo "<script>window.open('student-info.php','_self')</script>";
     } else {
         echo "Error: " . mysqli_error($conn);
         echo "<br><br>SQL Query: <pre>" . htmlspecialchars($sql) . "</pre>";

@@ -9,6 +9,7 @@ $passwordAlertMessage = '';
 
 $currentUserId = intval($userid ?? 0);
 $currentRoleId = intval($usertype ?? 0);
+$closeRoute = ($currentRoleId === 5) ? 'student_dashboard.php' : 'index.php';
 
 if ($currentUserId <= 0 || $currentRoleId <= 0) {
   $passwordAlertType = 'danger';
@@ -106,12 +107,40 @@ if ($currentUserId > 0 && $currentRoleId > 0) {
     color: #fff;
     border-bottom: 0;
     padding: 14px 18px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .profile-form-card .box-title {
     color: #fff;
     font-weight: 700;
     letter-spacing: 0.2px;
+  }
+
+  .profile-form-card .profile-close-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    color: #b4232f;
+    background: #fdecef;
+    border: 1px solid #f3b7bf;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    right: 6px;
+    top: 6px;
+    text-decoration: none;
+    transition: background 0.2s ease, color 0.2s ease;
+  }
+
+  .profile-form-card .profile-close-icon:hover,
+  .profile-form-card .profile-close-icon:focus {
+    color: #8f1a24;
+    background: #f9d8dd;
+    text-decoration: none;
   }
 
   .profile-form-card .box-body {
@@ -166,6 +195,8 @@ if ($currentUserId > 0 && $currentRoleId > 0) {
     border-top: 1px solid #edf1f6;
     background: #fbfdff;
     padding: 12px 18px;
+    position: relative;
+    text-align: center;
   }
 
   .profile-form-card .profile-save-btn {
@@ -187,6 +218,28 @@ if ($currentUserId > 0 && $currentRoleId > 0) {
     color: #fff !important;
     background: linear-gradient(120deg, #1596ba 0%, #38b6d8 100%) !important;
   }
+
+  .profile-form-card .profile-close-btn {
+    display: inline-block;
+    border: 1px solid #f3b7bf;
+    border-radius: 8px;
+    padding: 9px 16px;
+    background: #fdecef;
+    color: #b4232f;
+    font-weight: 700;
+    text-decoration: none;
+    position: absolute;
+    right: 18px;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+
+  .profile-form-card .profile-close-btn:hover,
+  .profile-form-card .profile-close-btn:focus {
+    background: #f9d8dd;
+    color: #8f1a24;
+    text-decoration: none;
+  }
 </style>
 
 <div class="content-wrapper">
@@ -204,6 +257,9 @@ if ($currentUserId > 0 && $currentRoleId > 0) {
         <div class="box profile-form-card">
           <div class="box-header with-border">
             <h3 class="box-title">Update Password</h3>
+            <a href="<?php echo htmlspecialchars($closeRoute); ?>" class="profile-close-icon" aria-label="Close update password">
+              <i class="fa fa-times"></i>
+            </a>
           </div>
 
           <div class="box-body" style="padding-bottom: 0;">
@@ -269,7 +325,8 @@ if ($currentUserId > 0 && $currentRoleId > 0) {
             </div>
             <div class="box-footer">
               <input type="hidden" name="update_password" value="1">
-              <button type="submit" class="pull-right profile-save-btn"><i class="fa fa-refresh"></i> Update Password</button>
+              <a href="<?php echo htmlspecialchars($closeRoute); ?>" class="profile-close-btn"><i class="fa fa-times"></i> Close</a>
+              <button type="submit" class="profile-save-btn"><i class="fa fa-refresh"></i> Update Password</button>
             </div>
           </form>
         </div>
