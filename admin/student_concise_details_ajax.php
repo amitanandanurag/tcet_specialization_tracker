@@ -1,19 +1,19 @@
-<?php 
-session_start(); 
+<?php
+session_start();
 require "../database/db_connect.php";
 
-$db_handle = new DBController(); 
+$db_handle = new DBController();
 $requestData = $_REQUEST;
+$isExport = isset($_POST['export']) && $_POST['export'] == 'true';
 
-// for filters
+// FILTERS
 $select_class = $_POST['select_class'] ?? '';
 $select_section = $_POST['select_section'] ?? '';
 $select_department = $_POST['select_department'] ?? '';
-$select_specialization = $_POST['select_specialization'] ?? ''; 
+$select_specialization = $_POST['select_specialization'] ?? '';
 $select_specialization_subject = $_POST['select_specialization_subject'] ?? '';
 
-//base query 
-
+//   BASE QUERY
 $baseSql = " FROM st_student_master sm
 
 INNER JOIN st_class_master cm 
@@ -34,7 +34,7 @@ INNER JOIN st_specialization_subject_master subj
 WHERE sm.status = '0'
 ";
 
-//filter application  
+//   APPLY FILTERS
 if (!empty($select_class)) {
     $baseSql .= " AND sm.class_id = '" . mysqli_real_escape_string($db_handle->conn, $select_class) . "'";
 }
@@ -55,17 +55,15 @@ if (!empty($select_specialization_subject)) {
     $baseSql .= " AND sm.specialization_subject_id = '" . mysqli_real_escape_string($db_handle->conn, $select_specialization_subject) . "'";
 }
 
-//total records 
-
+//   TOTAL RECORDS
 $countSql = "SELECT COUNT(*) as total " . $baseSql;
 $countResult = $db_handle->query($countSql);
 $totalRow = mysqli_fetch_assoc($countResult);
 
-$totalData = $totalRow['total'];
+$totalData = $totalRow['total'] ?? 0;
 $totalFiltered = $totalData;
 
-//final data query 
-
+//   MAIN QUERY
 $sql = "SELECT 
     cm.class_name AS class,
     sec.sections AS division,
@@ -83,26 +81,27 @@ $sql = "SELECT
     ORDER BY cm.class_name ASC
 ";
 
-//pagination 
+//   PAGINATION
 $start  = $requestData['start'] ?? 0;
 $length = $requestData['length'] ?? 10;
 
-if ($length != -1) {
+if (!$isExport && $length != -1) {
     $sql .= " LIMIT $start, $length";
 }
 
+//   EXECUTE QUERY
 $result = $db_handle->query($sql);
 
-//data processing
-$data = array();
+//   DATA BUILD
+$data = [];
 $srNo = $start;
 $totalStudentCount = 0;
 
 while ($row = mysqli_fetch_assoc($result)) {
 
-    $count = (int)$row["student_count"];
+    $count = (int) $row["student_count"];
 
-    $data[] = array(
+    $data[] = [
         ++$srNo,
         $row["class"],
         $row["division"],
@@ -110,27 +109,29 @@ while ($row = mysqli_fetch_assoc($result)) {
         $row["specialization"],
         $row["specialization_subject"],
         $count
-    );
+    ];
 
     $totalStudentCount += $count;
 }
 
-//adding total row
-$data[] = array(
-    '',
-    '<b>Total</b>',
-    '',
-    '',
-    '',
-    '',
-    '<b>'.$totalStudentCount.'</b>'
-);
+//   TOTAL ROW (ONLY FOR TABLE VIEW)
+if (!$isExport) {
+    $data[] = [
+        '',
+        '<b>Total</b>',
+        '',
+        '',
+        '',
+        '',
+        '<b>' . $totalStudentCount . '</b>'
+    ];
+}
 
-//returning json response
-echo json_encode(array(
+//   RETURN RESPONSE
+echo json_encode([
     "draw" => intval($requestData['draw'] ?? 0),
     "recordsTotal" => intval($totalData),
     "recordsFiltered" => intval($totalFiltered),
     "data" => $data
-));
+]);
 ?>
