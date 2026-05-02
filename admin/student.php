@@ -203,7 +203,7 @@ if (isset($_POST['save'])) {
   if ($result === TRUE) {
     $student_id = mysqli_insert_id($conn);
     echo '<script type="text/javascript">alert("Student registered successfully! Student ID: ' . $student_id . '");</script>';
-    echo "<script>window.open('student_list.php','_self')</script>";
+    echo "<script>window.open('student-info.php','_self')</script>";
   } else {
     echo "Error: " . mysqli_error($conn);
     echo "<br><br>SQL Query: <pre>" . htmlspecialchars($sql) . "</pre>";

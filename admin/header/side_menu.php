@@ -17,6 +17,21 @@ $subMenuHasIconColumn = sidebar_has_column($db_handle->conn, 'st_sub_menu_master
 $subMenuHasRouteColumn = sidebar_has_column($db_handle->conn, 'st_sub_menu_master', 'sub_menu_route');
 
 $menuTree = array();
+$studentAdmissionRoute = 'student_admission.php';
+
+if ((int) ($usertype ?? 0) === 5 && !empty($userid)) {
+	$studentRouteSql = "SELECT student_id FROM st_user_master WHERE user_id = ? AND student_id > 0 LIMIT 1";
+	$studentRouteStmt = mysqli_prepare($db_handle->conn, $studentRouteSql);
+	if ($studentRouteStmt) {
+		mysqli_stmt_bind_param($studentRouteStmt, 'i', $userid);
+		mysqli_stmt_execute($studentRouteStmt);
+		$studentRouteResult = mysqli_stmt_get_result($studentRouteStmt);
+		if ($studentRouteResult && ($studentRouteRow = mysqli_fetch_assoc($studentRouteResult))) {
+			$studentAdmissionRoute = 'student_admission_view.php?id=' . intval($studentRouteRow['student_id']);
+		}
+		mysqli_stmt_close($studentRouteStmt);
+	}
+}
 
 $menuIconSelect = $menuHasIconColumn
 	? "COALESCE(NULLIF(TRIM(m.menu_icon), ''), 'fa fa-folder') AS menu_icon"
@@ -293,7 +308,12 @@ if ($menuStmt) {
 ?>
 
 <ul class="sidebar-menu" id="sidebar-dynamic-menu">
-<li class="active"><a href="index.php"><i class="fa fa-user"></i><span><?php echo htmlspecialchars($role_name); ?></span></a></li>
+<?php
+$sidebarHomeRoute = ((int) ($usertype ?? 0) === 5) ? 'student_dashboard.php' : 'index.php';
+$sidebarHomeLabel = ((int) ($usertype ?? 0) === 5) ? 'DASHBOARD' : strtoupper((string) ($role_name ?? 'Dashboard'));
+$sidebarHomeIcon = ((int) ($usertype ?? 0) === 5) ? 'fa fa-dashboard' : 'fa fa-user';
+?>
+<li class="active"><a href="<?php echo htmlspecialchars($sidebarHomeRoute); ?>"><i class="<?php echo htmlspecialchars($sidebarHomeIcon); ?>"></i><span><?php echo htmlspecialchars($sidebarHomeLabel); ?></span></a></li>
 
 <?php foreach ($menuTree as $menuId => $menuData) {
 	$menuName = trim((string) $menuData['menu_name']);
@@ -318,6 +338,9 @@ if ($menuStmt) {
 		$subIcon = trim((string) ($subMenu['sub_menu_icon'] ?? 'fa fa-angle-double-right'));
 		if ($subRoute === '') {
 			$subRoute = '#';
+		}
+		if ((int) ($usertype ?? 0) === 5 && $subRoute === 'student_admission.php') {
+			$subRoute = $studentAdmissionRoute;
 		}
 		if ($subIcon === '') {
 			$subIcon = 'fa fa-angle-double-right';

@@ -52,37 +52,61 @@ if (isset($_POST['register'])) {
 
             $user_id = getNextId($db_handle->conn, 'st_user_master', 'user_id');
             $login_id = getNextId($db_handle->conn, 'st_login', 'login_id');
+            $student_id = getNextId($db_handle->conn, 'st_student_master', 'student_id');
 
             mysqli_begin_transaction($db_handle->conn);
 
-            $sql1 = "INSERT INTO st_user_master 
-            (user_id, user_name, email_id, phone_number, department_id, role_id, student_id)
-            VALUES ($user_id,'$username','$email','$phone',$department,$role_id,0)";
+            // Insert minimal student record so admission form can be prefilled
+            $regNo = '';
+            $classId = 0;
+            $divisionId = 0;
+            $gradYear = 'NULL';
+            $rollNo = '';
+            $specId = 'NULL';
+            $specSubId = 'NULL';
+            $minorCourse = 'NULL';
+            $minorSubject = 'NULL';
+            $cgpa = 'NULL';
+            $fname = $username;
+            $mobile = $phone;
+            $createdAt = date('Y-m-d H:i:s');
 
-            if ($db_handle->query($sql1)) {
+            $sqlStudent = "INSERT INTO st_student_master (student_id, registration_no, class_id, division_id, grad_year, roll_no, department_id, specialization_id, specialization_subject_id, minor_course_id, minor_subject_id, cgpa, fname, mobile, email, mark_list, status, m_sem1, m_sem2, m_sem3, created_at, academic_year_id, current_semester_id)
+                           VALUES ($student_id, '" . mysqli_real_escape_string($db_handle->conn, $regNo) . "', $classId, $divisionId, $gradYear, '" . mysqli_real_escape_string($db_handle->conn, $rollNo) . "', $department, $specId, $specSubId, $minorCourse, $minorSubject, $cgpa, '" . mysqli_real_escape_string($db_handle->conn, $fname) . "', '" . mysqli_real_escape_string($db_handle->conn, $mobile) . "', '" . mysqli_real_escape_string($db_handle->conn, $email) . "', '', 1, '', '', '', '$createdAt', NULL, NULL)";
 
-                $sql2 = "INSERT INTO st_login(login_id, username, password, user_id)
-                         VALUES($login_id,'$email','$password',$user_id)";
+            if ($db_handle->query($sqlStudent)) {
+                // Insert user with linked student_id
+                $sql1 = "INSERT INTO st_user_master 
+                (user_id, user_name, email_id, phone_number, department_id, role_id, student_id)
+                VALUES ($user_id,'$username','$email','$phone',$department,$role_id,$student_id)";
 
-                if ($db_handle->query($sql2)) {
-                    mysqli_commit($db_handle->conn);
+                if ($db_handle->query($sql1)) {
+                    $sql2 = "INSERT INTO st_login(login_id, username, password, user_id)
+                             VALUES($login_id,'$email','$password',$user_id)";
 
-                    // ✅ STORE IN SESSION (SHOW ONCE)
-                    $_SESSION['show_credentials'] = true;
-                    $_SESSION['registered_username'] = $email;
-                    $_SESSION['registered_password'] = $password;
+                    if ($db_handle->query($sql2)) {
+                        mysqli_commit($db_handle->conn);
 
-                    header("Location: " . $_SERVER['PHP_SELF']);
-                    exit();
+                        // ✅ STORE IN SESSION (SHOW ONCE)
+                        $_SESSION['show_credentials'] = true;
+                        $_SESSION['registered_username'] = $email;
+                        $_SESSION['registered_password'] = $password;
+
+                        header("Location: " . $_SERVER['PHP_SELF']);
+                        exit();
+
+                    } else {
+                        mysqli_rollback($db_handle->conn);
+                        $message = "Login Insert Error";
+                    }
 
                 } else {
                     mysqli_rollback($db_handle->conn);
-                    $message = "Login Insert Error";
+                    $message = "User Insert Error";
                 }
-
             } else {
                 mysqli_rollback($db_handle->conn);
-                $message = "User Insert Error";
+                $message = "Student Insert Error";
             }
         }
     }
@@ -299,6 +323,27 @@ button:hover {
     box-shadow: 0 8px 16px rgba(5, 150, 105, 0.3);
 }
 
+.btn-proceed {
+    margin-top: 14px;
+    width: 100%;
+    height: 44px;
+    padding: 0;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #0ea5e9, #2563eb);
+    color: white;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 14px;
+}
+
+.btn-proceed:hover {
+    background: linear-gradient(135deg, #0284c7, #1d4ed8);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(2, 132, 199, 0.3);
+}
+
 .form-hidden {
     display: none;
 }
@@ -326,8 +371,102 @@ function copyCredentials() {
     navigator.clipboard.writeText(text);
 
     alert("Copied!");
-
 }
+
+function proceedToEnrollment() {
+    // Close the modal - user can now access enrollment form
+    if (window.parent && window.parent !== window) {
+        if (typeof window.parent.closePopup === 'function') {
+            window.parent.closePopup();
+            // Show alert with next steps
+            setTimeout(function() {
+                alert("Registration successful!\n\nNext: Log in with your credentials or contact admin for enrollment.");
+            }, 300);
+        }
+    }
+}
+
+function showRegisterError(message) {
+    var msgBox = document.getElementById('msgBox');
+    if (!msgBox) {
+        msgBox = document.createElement('div');
+        msgBox.id = 'msgBox';
+        var form = document.querySelector('.register-body form');
+        if (form) {
+            form.parentNode.insertBefore(msgBox, form);
+        }
+    }
+
+    msgBox.textContent = message;
+    msgBox.style.display = 'block';
+}
+
+function validateStudentRegisterForm(event) {
+    var username = document.querySelector('input[name="username"]');
+    var email = document.querySelector('input[name="email"]');
+    var phone = document.querySelector('input[name="phone"]');
+    var department = document.querySelector('select[name="department"]');
+
+    var usernameValue = username ? username.value.trim() : '';
+    var emailValue = email ? email.value.trim() : '';
+    var phoneValue = phone ? phone.value.trim() : '';
+    var departmentValue = department ? department.value.trim() : '';
+
+    var emailPattern = /^[^\s@]+@tcetmumbai\.in$/i;
+    var phonePattern = /^[0-9]{10}$/;
+    var usernamePattern = /^[A-Za-z_ ]{3,20}$/;
+
+    if (!usernameValue) {
+        event.preventDefault();
+        showRegisterError('Username is required.');
+        return false;
+    }
+
+    if (!usernamePattern.test(usernameValue)) {
+        event.preventDefault();
+        showRegisterError('Username must be 3-20 characters and contain only letters, spaces, or underscore.');
+        return false;
+    }
+
+    if (!emailValue) {
+        event.preventDefault();
+        showRegisterError('Institute email is required.');
+        return false;
+    }
+
+    if (!emailPattern.test(emailValue)) {
+        event.preventDefault();
+        showRegisterError('Use institute email only.');
+        return false;
+    }
+
+    if (!phoneValue) {
+        event.preventDefault();
+        showRegisterError('Phone number is required.');
+        return false;
+    }
+
+    if (!phonePattern.test(phoneValue)) {
+        event.preventDefault();
+        showRegisterError('Phone must be 10 digits.');
+        return false;
+    }
+
+    if (!departmentValue) {
+        event.preventDefault();
+        showRegisterError('Please select a department.');
+        return false;
+    }
+
+    return true;
+}
+
+window.addEventListener('DOMContentLoaded', function () {
+    var form = document.querySelector('.register-body form');
+    if (form) {
+        form.addEventListener('submit', validateStudentRegisterForm);
+    }
+});
 </script>
 
 <?php if (isset($_SESSION['show_credentials']) && $_SESSION['show_credentials']) { ?>
@@ -345,10 +484,6 @@ window.addEventListener('load', function () {
 
             if (passwordField) {
                 passwordField.value = <?php echo json_encode($_SESSION['registered_password']); ?>;
-            }
-
-            if (typeof window.parent.closePopup === 'function') {
-                window.parent.closePopup();
             }
 
             if (usernameField) {
@@ -378,7 +513,7 @@ window.addEventListener('load', function () {
 
         <div class="register-body">
             <?php if (!empty($message)) { ?>
-            <div id="msgBox"><?php echo $message; ?></div>
+            <div id="msgBox"><?php echo htmlspecialchars($message); ?></div>
             <?php } ?>
 
             <?php if (isset($_SESSION['show_credentials']) && $_SESSION['show_credentials']) { ?>
@@ -397,24 +532,20 @@ window.addEventListener('load', function () {
                     Login with these credentials.<br>
                     <strong>Keep this information secure</strong>
                 </p>
+                <button type="button" class="btn-proceed" onclick="proceedToEnrollment()">→ Proceed to Enrollment</button>
             </div>
-            <script>
-                document.querySelector('form').style.display = 'none';
-            </script>
-
             <?php
             unset($_SESSION['show_credentials']);
             unset($_SESSION['registered_username']);
             unset($_SESSION['registered_password']);
             ?>
-            <?php } ?>
-
+            <?php } else { ?>
             <form method="POST" autocomplete="off">
                 <div class="form-group">
                     <label>Username</label>
                     <div class="input-group">
                         <span class="input-group-addon"><i class="fa fa-user"></i></span>
-                        <input type="text" name="username" class="form-control" placeholder="Enter username" required>
+                        <input type="text" name="username" class="form-control" placeholder="Enter username" required autocomplete="off">
                     </div>
                 </div>
 
@@ -422,7 +553,7 @@ window.addEventListener('load', function () {
                     <label>Institute Email</label>
                     <div class="input-group">
                         <span class="input-group-addon"><i class="fa fa-envelope"></i></span>
-                        <input type="email" name="email" class="form-control" placeholder="name@tcetmumbai.in" required>
+                        <input type="email" name="email" class="form-control" placeholder="name@tcetmumbai.in" required autocomplete="email">
                     </div>
                 </div>
 
@@ -430,7 +561,7 @@ window.addEventListener('load', function () {
                     <label>Phone Number</label>
                     <div class="input-group">
                         <span class="input-group-addon"><i class="fa fa-phone"></i></span>
-                        <input type="text" name="phone" class="form-control" placeholder="10 digit phone number" required>
+                        <input type="text" name="phone" class="form-control" placeholder="10 digit phone number" required maxlength="10" inputmode="numeric" autocomplete="tel">
                     </div>
                 </div>
 
@@ -454,6 +585,7 @@ window.addEventListener('load', function () {
                     <button type="submit" name="register">REGISTER</button>
                 </div>
             </form>
+            <?php } ?>
         </div>
 </div>
 

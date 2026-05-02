@@ -5,8 +5,31 @@ ini_set('display_errors', 1);
 require_once "../database/db_connect.php";
 $database = new DBController();
 
+// Get current user ID from session
+$userid = intval($_SESSION['user_id'] ?? $_SESSION['user_session'] ?? 0);
+
 if (isset($_POST['save'])) {
     $conn = $database->conn;
+
+    $_SESSION['student_admission_form'] = [
+        'academic' => $_POST['academic'] ?? '',
+        'registration_no' => $_POST['registration_no'] ?? '',
+        'roll_no' => $_POST['roll_no'] ?? '',
+        'class' => $_POST['class'] ?? '',
+        'current_semester_id' => $_POST['current_semester_id'] ?? '',
+        'batch' => $_POST['batch'] ?? '',
+        'graduation_year' => $_POST['graduation_year'] ?? '',
+        'department_id' => $_POST['department_id'] ?? '',
+        'specialization_id' => $_POST['specialization_id'] ?? '',
+        'cgpa' => $_POST['cgpa'] ?? '',
+        'minor_course_id' => $_POST['minor_course_id'] ?? '',
+        'minor_subject_id' => $_POST['minor_subject_id'] ?? '',
+        'minor_cgpa' => $_POST['minor_cgpa'] ?? '',
+        'unaided_subject' => $_POST['unaided_subject'] ?? '',
+        'fname' => $_POST['fname'] ?? '',
+        'email' => $_POST['email'] ?? '',
+        'mobile' => $_POST['mobile'] ?? '',
+    ];
 
     // Get form data
     $academic_year_id = mysqli_real_escape_string($conn, $_POST['academic'] ?? '');
@@ -131,15 +154,21 @@ if (isset($_POST['save'])) {
     }
     
     $mark_list_files = [];
-    $semester_fields = ['mark-list1', 'mark-list2', 'mark-list3', 'mark-list4', 'mark-list6'];
-    
+    // Accept any uploaded file whose input name starts with 'mark-list'
+    $semester_fields = [];
+    foreach (array_keys($_FILES) as $f) {
+        if (strpos($f, 'mark-list') === 0) {
+            $semester_fields[] = $f;
+        }
+    }
+
     foreach ($semester_fields as $field) {
         if (isset($_FILES[$field]) && $_FILES[$field]['error'] == 0 && !empty($_FILES[$field]['name'])) {
             $file_ext = pathinfo($_FILES[$field]['name'], PATHINFO_EXTENSION);
             $safe_reg_no = preg_replace('/[^a-zA-Z0-9]/', '_', $registration_no);
             $file_name = time() . '_' . $safe_reg_no . '_' . $field . '.' . $file_ext;
             $target_path = $upload_dir . $file_name;
-            
+
             if (move_uploaded_file($_FILES[$field]['tmp_name'], $target_path)) {
                 $mark_list_files[] = $file_name;
             }
@@ -148,6 +177,17 @@ if (isset($_POST['save'])) {
     
     $mark_list = !empty($mark_list_files) ? "'" . implode(',', $mark_list_files) . "'" : 'NULL';
     
+    // Check if current user already has a linked student record
+    $existingStudentId = 0;
+    if (!empty($userid)) {
+        $checkUserSql = "SELECT student_id FROM st_user_master WHERE user_id = " . intval($userid) . " AND student_id > 0 LIMIT 1";
+        $checkUserResult = mysqli_query($conn, $checkUserSql);
+        if ($checkUserResult && mysqli_num_rows($checkUserResult) > 0) {
+            $userRow = mysqli_fetch_assoc($checkUserResult);
+            $existingStudentId = intval($userRow['student_id']);
+        }
+    }
+
     // Semester marks data
     $m_sem1 = "'[]'";
     $m_sem2 = "'[]'";
@@ -156,6 +196,9 @@ if (isset($_POST['save'])) {
     
     // Check if registration number exists
     $check_sql = "SELECT registration_no FROM st_student_master WHERE registration_no = '$registration_no'";
+    if ($existingStudentId > 0) {
+        $check_sql .= " AND student_id != " . $existingStudentId;
+    }
     $check_result = mysqli_query($conn, $check_sql);
     
     if (mysqli_num_rows($check_result) > 0) {
@@ -164,61 +207,102 @@ if (isset($_POST['save'])) {
         exit;
     }
     
-    // Build the INSERT query with corrected grad_year handling
-    $sql = "INSERT INTO `st_student_master`(
-        `academic_year_id`,
-        `registration_no`,
-        `class_id`,
-        `division_id`,
-        `grad_year`,
-        `roll_no`,
-        `department_id`,
-        `specialization_id`,
-        `specialization_subject_id`,
-        `minor_course_id`,
-        `minor_subject_id`,
-        `cgpa`,
-        `fname`,
-        `mobile`,
-        `email`,
-        `mark_list`,
-        `status`,
-        `m_sem1`,
-        `m_sem2`,
-        `m_sem3`,
-        `created_at`,
-        `current_semester_id`
-    ) VALUES (
-        '$academic_year_id',
-        '$registration_no',
-        '$class_id',
-        '$division_id',
-        $grad_year_sql,
-        $roll_no,
-        $department_id,
-        $specialization_id,
-        $specialization_subject_id,
-        $minor_course_id,
-        $minor_subject_id,
-        $cgpa,
-        '$fname',
-        $mobile,
-        $email,
-        $mark_list,
-        $status,
-        $m_sem1,
-        $m_sem2,
-        $m_sem3,
-        NOW(),
-        '$current_semester_id'
-    )";
-    
-    $result = mysqli_query($conn, $sql);
+    // If user has existing linked student, UPDATE that record; otherwise INSERT new
+    if ($existingStudentId > 0) {
+        // UPDATE existing student record
+        $sql = "UPDATE `st_student_master` SET
+            `academic_year_id` = '$academic_year_id',
+            `registration_no` = '$registration_no',
+            `class_id` = '$class_id',
+            `division_id` = '$division_id',
+            `grad_year` = $grad_year_sql,
+            `roll_no` = $roll_no,
+            `department_id` = $department_id,
+            `specialization_id` = $specialization_id,
+            `specialization_subject_id` = $specialization_subject_id,
+            `minor_course_id` = $minor_course_id,
+            `minor_subject_id` = $minor_subject_id,
+            `cgpa` = $cgpa,
+            `fname` = '$fname',
+            `mobile` = $mobile,
+            `email` = $email,
+            `mark_list` = $mark_list,
+            `status` = $status,
+            `m_sem1` = $m_sem1,
+            `m_sem2` = $m_sem2,
+            `m_sem3` = $m_sem3,
+            `current_semester_id` = '$current_semester_id'
+            WHERE `student_id` = $existingStudentId";
+        
+        $result = mysqli_query($conn, $sql);
+        $student_id = $existingStudentId;
+    } else {
+        // Build the INSERT query for new student
+        $sql = "INSERT INTO `st_student_master`(
+            `academic_year_id`,
+            `registration_no`,
+            `class_id`,
+            `division_id`,
+            `grad_year`,
+            `roll_no`,
+            `department_id`,
+            `specialization_id`,
+            `specialization_subject_id`,
+            `minor_course_id`,
+            `minor_subject_id`,
+            `cgpa`,
+            `fname`,
+            `mobile`,
+            `email`,
+            `mark_list`,
+            `status`,
+            `m_sem1`,
+            `m_sem2`,
+            `m_sem3`,
+            `created_at`,
+            `current_semester_id`
+        ) VALUES (
+            '$academic_year_id',
+            '$registration_no',
+            '$class_id',
+            '$division_id',
+            $grad_year_sql,
+            $roll_no,
+            $department_id,
+            $specialization_id,
+            $specialization_subject_id,
+            $minor_course_id,
+            $minor_subject_id,
+            $cgpa,
+            '$fname',
+            $mobile,
+            $email,
+            $mark_list,
+            $status,
+            $m_sem1,
+            $m_sem2,
+            $m_sem3,
+            NOW(),
+            '$current_semester_id'
+        )";
+        
+        $result = mysqli_query($conn, $sql);
+        $student_id = mysqli_insert_id($conn);
+    }
     
     if ($result === TRUE) {
-        $student_id = mysqli_insert_id($conn);
-        echo '<script type="text/javascript">alert("Student registered successfully! Student ID: ' . $student_id . '");</script>';
-        echo "<script>window.open('student_list.php','_self')</script>";
+        // Link the student to the current user
+        if (!empty($userid)) {
+            $updateUserSql = "UPDATE st_user_master SET student_id = $student_id WHERE user_id = " . intval($userid);
+            mysqli_query($conn, $updateUserSql);
+        }
+        
+        // Store in session and redirect to view page
+        $_SESSION['student_admission_success'] = 'Student admitted successfully! Student ID: ' . $student_id;
+        $_SESSION['viewed_student_id'] = $student_id;
+        
+        echo '<script type="text/javascript">alert("Student admitted successfully! Student ID: ' . $student_id . '");</script>';
+        echo "<script>window.open('student_admission_view.php?id=" . $student_id . "','_self')</script>";
     } else {
         echo "Error: " . mysqli_error($conn);
         echo "<br><br>SQL Query: <pre>" . htmlspecialchars($sql) . "</pre>";

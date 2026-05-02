@@ -14,7 +14,7 @@ include_once("../database/db_connect.php");
         body {
             height: 100%;
             margin: 0;
-            overflow: hidden;
+            overflow-x: hidden;
         }
 
         body {
@@ -150,7 +150,7 @@ include_once("../database/db_connect.php");
             justify-content: center;
             align-items: center;
 
-            background: transparent;
+            background: rgba(15, 23, 42, 0.72);
             z-index: 1000;
         }
 
@@ -258,7 +258,64 @@ include_once("../database/db_connect.php");
             border: none;
         }
 
-        /
+        @media (max-width: 991px) {
+            body {
+                justify-content: center;
+                align-items: stretch;
+            }
+
+            .w3layouts-main {
+                justify-content: center;
+                align-items: stretch;
+            }
+
+            .bg-layer {
+                width: 100%;
+                padding: 30px 20px;
+            }
+
+            .header-main {
+                width: 100%;
+                max-width: 540px;
+            }
+
+            .popup {
+                width: min(92vw, 620px);
+                height: min(88vh, 700px);
+            }
+        }
+
+        @media (max-width: 600px) {
+            body,
+            .w3layouts-main {
+                align-items: flex-start;
+            }
+
+            .bg-layer {
+                padding: 16px 12px;
+            }
+
+            .header-main {
+                border-radius: 10px;
+                padding: 24px 16px;
+            }
+
+            .school-name {
+                font-size: 17px;
+                margin-bottom: 14px;
+            }
+
+            .popup {
+                width: 96vw;
+                height: 92vh;
+                border-radius: 12px;
+            }
+
+            .popup span {
+                top: 10px;
+                right: 12px;
+            }
+        }
     </style>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="script/validation.min.js"></script>

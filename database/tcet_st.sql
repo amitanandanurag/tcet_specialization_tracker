@@ -1624,8 +1624,7 @@ INSERT INTO `st_user_master` (`user_id`, `user_name`, `email_id`, `phone_number`
 (14, 'ashutosh', '1235679@tcetmumbai.in', '9876543121', 10, 5, 0, 0),
 (15, 'amit', '13245678@tcetmumbai.in', '6878934567', 7, 5, 0, 0),
 (16, 'rita', '14525376@tcetmumbai.in', '8967453423', 10, 5, 0, 1),
-(0, 'Asdggghhg', 'ashutosh3276s16@tcetmumbai.in', '7899555544', 9, 5, 0, 1),
-(0, 'ashutosh', '1032251401@tcetmumbai.in', '9874563650', 1, 5, 0, 1);
+
 
 -- --------------------------------------------------------
 

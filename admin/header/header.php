@@ -129,9 +129,103 @@ $dashboardRoute = ($usertype === 5) ? 'student_dashboard.php' : 'index.php';
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.2/FileSaver.min.js"></script>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.13/jspdf.plugin.autotable.min.js"></script>
+	<style>
+		/* Global responsive helpers for admin pages */
+		.main-content-responsive .box,
+		.main-content-responsive .small-box,
+		.main-content-responsive .info-box {
+			max-width: 100%;
+		}
+
+		.main-content-responsive .box-body,
+		.main-content-responsive .table-responsive {
+			overflow-x: auto;
+		}
+
+		.main-content-responsive .content-wrapper img,
+		.main-content-responsive .main-footer img {
+			max-width: 100%;
+			height: auto;
+		}
+
+		.main-content-responsive .main-header .logo img {
+			height: 32px !important;
+			width: auto !important;
+			max-width: none;
+			object-fit: contain;
+		}
+
+		@media (max-width: 991px) {
+			.main-content-responsive .content {
+				padding-left: 10px;
+				padding-right: 10px;
+			}
+
+			.main-content-responsive .content-header {
+				padding: 12px 10px;
+			}
+
+			.main-content-responsive .content-header h1 {
+				font-size: 22px;
+				line-height: 1.25;
+			}
+
+			.main-content-responsive .main-footer {
+				margin-left: 0 !important;
+			}
+		}
+
+		@media (max-width: 767px) {
+			.main-content-responsive .main-header .logo img {
+				height: 26px !important;
+			}
+
+			.main-content-responsive .content-header>.breadcrumb {
+				position: static;
+				float: none;
+				display: block;
+				margin-top: 8px;
+				padding-left: 0;
+			}
+
+			.main-content-responsive .navbar-custom-menu>.navbar-nav>li>.dropdown-menu {
+				right: 0;
+				left: auto;
+			}
+
+			.main-content-responsive .form-horizontal .control-label {
+				text-align: left;
+				padding-top: 0;
+				margin-bottom: 6px;
+			}
+
+			.main-content-responsive .btn {
+				white-space: normal;
+			}
+		}
+
+		@media (max-width: 480px) {
+			.main-content-responsive .content {
+				padding-left: 8px;
+				padding-right: 8px;
+			}
+
+			.main-content-responsive .content-header h1 {
+				font-size: 20px;
+			}
+
+			.main-content-responsive .main-header .logo {
+				width: 160px;
+			}
+
+			.main-content-responsive .main-header .navbar {
+				margin-left: 160px;
+			}
+		}
+	</style>
 </head>
 
-<body class="hold-transition skin-blue sidebar-mini">
+<body class="hold-transition skin-blue sidebar-mini main-content-responsive">
 	<div class="wrapper">
 
 		<header class="main-header">
