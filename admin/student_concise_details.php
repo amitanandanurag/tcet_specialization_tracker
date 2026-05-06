@@ -133,111 +133,119 @@
 </style>
 <div class="content-wrapper">
   <section class="content">
- <div class="row">
+    <div class="row">
       <div class="col-md-12">
 
         <div class="page-header-box">
           <h1>STUDENT CONCISE DETAILS</h1>
         </div>
 
-    <div id="loadingSkeleton" style="display:none;">
-      <div class="skeleton"></div>
-      <div class="skeleton"></div>
-      <div class="skeleton"></div>
-    </div>
+        <div id="loadingSkeleton" style="display:none;">
+          <div class="skeleton"></div>
+          <div class="skeleton"></div>
+          <div class="skeleton"></div>
+        </div>
 
-    <div class="wrapper2 box box-primary">
+        <div class="wrapper2 box box-primary">
 
-      <!-- FILTER ROW -->
-      <table class="table table-bordered">
-        <thead>
-          <tr>
+          <!-- FILTER ROW -->
+          <table class="table table-bordered">
+            <thead>
+              <tr>
 
-            <th>
-              <select class="form-control" id="select_class">
-                <option value="" hidden>Class</option>
-                <?php
-                $result = $db_handle->query("SELECT * FROM st_class_master");
-                while ($row = $result->fetch_assoc()) {
-                  echo '<option value="' . $row['class_id'] . '">' . $row['class_name'] . '</option>';
-                }
-                ?>
-              </select>
-            </th>
+                <th>
+                  <select class="form-control" id="select_class">
+                    <option value="" hidden>Class</option>
+                    <?php
+                    $result = $db_handle->query("SELECT * FROM st_class_master");
+                    while ($row = $result->fetch_assoc()) {
+                      echo '<option value="' . $row['class_id'] . '">' . $row['class_name'] . '</option>';
+                    }
+                    ?>
+                  </select>
+                </th>
 
-            <th>
-              <select class="form-control" id="select_section">
-                <option value="" hidden>Division</option>
-                <?php
-                $result = $db_handle->query("SELECT * FROM st_section_master");
-                while ($row = $result->fetch_assoc()) {
-                  echo '<option value="' . $row['id'] . '">' . $row['sections'] . '</option>';
-                }
-                ?>
-              </select>
-            </th>
+                <th>
+                  <select class="form-control" id="select_section">
+                    <option value="" hidden>Division</option>
+                    <?php
+                    $result = $db_handle->query("SELECT * FROM st_section_master");
+                    while ($row = $result->fetch_assoc()) {
+                      echo '<option value="' . $row['id'] . '">' . $row['sections'] . '</option>';
+                    }
+                    ?>
+                  </select>
+                </th>
 
-            <th>
-              <select class="form-control" id="select_specialization">
-                <option value="" hidden>Specialization</option>
-                <?php
-                $result = $db_handle->query("SELECT * FROM st_specialization_master");
-                while ($row = $result->fetch_assoc()) {
-                  echo '<option value="' . $row['specialization_id'] . '">' . $row['specialization_name'] . '</option>';
-                }
-                ?>
-              </select>
-            </th>
+                <th>
+                  <select class="form-control" id="select_specialization">
+                    <option value="" hidden>Specialization</option>
+                    <?php
+                    $result = $db_handle->query("SELECT * FROM st_specialization_master");
+                    while ($row = $result->fetch_assoc()) {
+                      echo '<option value="' . $row['specialization_id'] . '">' . $row['specialization_name'] . '</option>';
+                    }
+                    ?>
+                  </select>
+                </th>
 
-            <th>
-              <select class="form-control" id="select_department">
-                <option value="" hidden>Department</option>
-                <?php
-                $result = $db_handle->query("SELECT * FROM st_department_master");
-                while ($row = $result->fetch_assoc()) {
-                  echo '<option value="' . $row['department_id'] . '">' . $row['department_name'] . '</option>';
-                }
-                ?>
-              </select>
-            </th>
+                <?php if ($_SESSION['user_type'] == 1 || $_SESSION['user_type'] == 2) { ?>
 
-            <th>
-              <select class="form-control" id="select_specialization_subject">
-                <option value="" hidden>Specialization Subject</option>
-                <?php
-                $result = $db_handle->query("SELECT * FROM st_specialization_subject_master");
-                while ($row = $result->fetch_assoc()) {
-                  echo '<option value="' . $row['subject_id'] . '">' . $row['subject_name'] . '</option>';
-                }
-                ?>
-              </select>
-            </th>
+                  <th>
+                    <select class="form-control" id="select_department">
+                      <option value="" hidden>Department</option>
 
-            <th>
-              <button id="exportData" class="btn">Export data</button>
-              <button id="resetFilters" class="btn">Reset</button>
-            </th>
+                      <?php
+                      $result = $db_handle->query("SELECT * FROM st_department_master");
 
-          </tr>
-        </thead>
-      </table>
+                      while ($row = $result->fetch_assoc()) {
 
-      <!-- DATA TABLE -->
-      <table id="myTable" class="table table-bordered">
-        <thead>
-          <tr>
-            <th>SR NO</th>
-            <th>Class</th>
-            <th>Division</th>
-            <th>Department</th>
-            <th>Specialization</th>
-            <th>Specialization Subject</th>
-            <th>Student Count</th>
-          </tr>
-        </thead>
-      </table>
+                        echo '<option value="' . $row['department_id'] . '">'
+                          . $row['department_name'] .
+                          '</option>';
+                      }
+                      ?>
+                    </select>
+                  </th>
 
-    </div>
+                <?php } ?>
+                <th>
+                <select class="form-control" id="select_specialization_subject">
+                  <option value="" hidden>Specialization Subject</option>
+                  <?php
+                  $result = $db_handle->query("SELECT * FROM st_specialization_subject_master");
+                  while ($row = $result->fetch_assoc()) {
+                    echo '<option value="' . $row['subject_id'] . '">' . $row['subject_name'] . '</option>';
+                  }
+                  ?>
+                </select>
+                </th>
+
+                <th>
+                  <button id="exportData" class="btn">Export data</button>
+                  <button id="resetFilters" class="btn">Reset</button>
+                </th>
+
+              </tr>
+            </thead>
+          </table>
+
+          <!-- DATA TABLE -->
+          <table id="myTable" class="table table-bordered">
+            <thead>
+              <tr>
+                <th>SR NO</th>
+                <th>Class</th>
+                <th>Division</th>
+                <th>Department</th>
+                <th>Specialization</th>
+                <th>Specialization Subject</th>
+                <th>Student Count</th>
+              </tr>
+            </thead>
+          </table>
+
+        </div>
   </section>
 </div>
 
@@ -328,15 +336,15 @@
           let json = JSON.parse(response);
           let csv = '';
 
-          // HEADER
+          
           csv += "SR NO,Class,Division,Department,Specialization,Subject,Student Count\n";
 
-          // DATA
+          
           json.data.forEach(row => {
             csv += row.join(",") + "\n";
           });
 
-          // DOWNLOAD
+          
           let blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
           let link = document.createElement("a");
 

@@ -4,6 +4,18 @@ require "../database/db_connect.php";
 
 $db_handle = new DBController();
 $requestData = $_REQUEST;
+$user_id = $_SESSION['user_id'] ?? 0;
+$role_id = $_SESSION['user_type'] ?? 0;
+
+// 🔥 GET USER DEPARTMENT
+$deptQuery = $db_handle->query("
+    SELECT department_id 
+    FROM st_user_master 
+    WHERE user_id = '" . intval($user_id) . "'
+");
+
+$deptRow = mysqli_fetch_assoc($deptQuery);
+$userDeptId = $deptRow['department_id'] ?? 0;
 $isExport = isset($_POST['export']) && $_POST['export'] == 'true';
 
 // FILTERS
@@ -43,8 +55,19 @@ if (!empty($select_section)) {
     $baseSql .= " AND sm.division_id = '" . mysqli_real_escape_string($db_handle->conn, $select_section) . "'";
 }
 
-if (!empty($select_department)) {
-    $baseSql .= " AND sm.department_id = '" . mysqli_real_escape_string($db_handle->conn, $select_department) . "'";
+if ($role_id == 3 || $role_id == 4) {
+
+    // coordinator / mentor
+    $baseSql .= " AND sm.department_id = '" . intval($userDeptId) . "'";
+
+} else {
+
+    // admin / super admin
+    if (!empty($select_department)) {
+
+        $baseSql .= " AND sm.department_id = '" .
+            mysqli_real_escape_string($db_handle->conn, $select_department) . "'";
+    }
 }
 
 if (!empty($select_specialization)) {
