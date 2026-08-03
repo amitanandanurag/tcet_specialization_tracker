@@ -117,6 +117,15 @@ if ($logged_user_id) {
 
 // Define is_scoped_user early so it's available for all queries
 $is_scoped_user = ($logged_user_role_id && ($logged_user_role_id === $student_role_id || in_array($logged_user_role_id, $coordinator_role_ids) || in_array($logged_user_role_id, $mentor_role_ids)));
+$is_mentor = ($logged_user_role_id == 4);
+
+$mentor_where = "";
+
+if ($is_mentor) {
+    $mentor_where = " INNER JOIN st_mentor_student_mapping msm
+                      ON msm.student_id = s.student_id
+                      AND msm.mentor_id = " . intval($logged_user_id);
+}
 
 // ========================
 // 1. FETCH HOD DATA FROM DATABASE
@@ -170,9 +179,6 @@ if ($hod_result) {
 // ========================
 // 2. FETCH TOP SUMMARY CARDS DATA (ROLE & DEPARTMENT AWARE)
 // ========================
-
-// STUDENT COUNT - department-filtered for role-scoped users
-// Check if user is coordinator, HOD, mentor, or student based on numeric role_id
 $student_count_sql = "SELECT COUNT(*) as total FROM st_student_master WHERE status = '0'";
 if ($is_scoped_user && $logged_dept_id) {
     $student_count_sql .= " AND department_id = " . intval($logged_dept_id);
@@ -385,7 +391,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_hod'])) {
     }
 }
 
-$result = $db_handle->conn->query("SELECT * FROM st_student_master where status='0'" . ($is_scoped_user && $logged_dept_id ? " AND department_id = " . intval($logged_dept_id) : ""));
+if ($usertype == 4) {
+    // Mentor - only allocated students
+    $sql = "SELECT s.*
+            FROM st_student_master s
+            INNER JOIN st_mentor_student_mapping m
+                ON s.student_id = m.student_id
+            WHERE s.status = '0'
+            AND m.mentor_id = '".intval($logged_user_id)."'";
+} else {
+    $sql = "SELECT * FROM st_student_master WHERE status='0'";
+
+    // HOD
+    if ($is_scoped_user && $logged_dept_id) {
+        $sql .= " AND department_id = '".intval($logged_dept_id)."'";
+    }
+}
+
+$result = $db_handle->conn->query($sql);
 $rowcount = mysqli_num_rows($result);
 
 $result1 = $db_handle->conn->query("SELECT * FROM st_user_master where 1=1" . ($is_scoped_user && $logged_dept_id ? " AND department_id = " . intval($logged_dept_id) : ""));
@@ -583,6 +606,7 @@ $rowcount_user = mysqli_num_rows($result1);
                     <a href="student-info.php" class="small-box-footer">More info <i class="fa fa-arrow-circle-right"></i></a>
                 </div>
             </div>
+            <?php if ($usertype != 4 && $usertype != 3) { ?>
             <div class="col-lg-3 col-xs-6">
                 <div class="small-box bg-green">
                     <div class="inner">
@@ -593,6 +617,7 @@ $rowcount_user = mysqli_num_rows($result1);
                     <a href="user-info.php?type=users" class="small-box-footer">More info <i class="fa fa-arrow-circle-right"></i></a>
                 </div>
             </div>
+           <?php } ?>
             <div class="col-lg-3 col-xs-6">
                 <div class="small-box bg-yellow">
                     <div class="inner">
@@ -608,6 +633,7 @@ $rowcount_user = mysqli_num_rows($result1);
                     <a href="<?php echo $current_branch_name !== '' ? 'branch_info.php?department_id=' . intval($logged_dept_id) : 'branch_info.php'; ?>" class="small-box-footer">More info <i class="fa fa-arrow-circle-right"></i></a>
                 </div>
             </div>
+            <?php if($usertype !== 4){ ?>
             <div class="col-lg-3 col-xs-6">
                 <div class="small-box bg-red">
                     <div class="inner">
@@ -618,8 +644,9 @@ $rowcount_user = mysqli_num_rows($result1);
                     <a href="mentor_info.php" class="small-box-footer">More info <i class="fa fa-arrow-circle-right"></i></a>
                 </div>
             </div>
+            <?php } ?>
         </div>
-
+        
         <!-- Specialization Overview & Application Status -->
         <div class="row">
             <div class="col-md-5">
@@ -637,7 +664,7 @@ $rowcount_user = mysqli_num_rows($result1);
             <div class="col-md-7">
                 <div class="box box-info">
                     <div class="box-header with-border">
-                        <h3 class="box-title"><i class="fa fa-list-alt"></i> Application Status Tracking</h3>
+                        <h3 class="box-title"><i class="fa fa-list-alt"></i>Application Status Tracking</h3>
                     </div>
                     <div class="box-body table-responsive no-padding">
                         <table class="table table-hover table-bordered text-center">
@@ -772,7 +799,7 @@ $rowcount_user = mysqli_num_rows($result1);
                     </div>
                 </section>
             </div>
-
+            <?php if($usertype !== 4){ ?>
             <div class="col-md-4">
                 <div class="box box-warning">
                     <div class="box-header with-border">
@@ -814,8 +841,9 @@ $rowcount_user = mysqli_num_rows($result1);
                     </div>
                 </div>
             </div>
+        <?php } ?>
         </div>
-
+      
         <!-- Branch-wise Student Distribution -->
         <div class="row">
             <div class="col-md-12">
@@ -831,7 +859,6 @@ $rowcount_user = mysqli_num_rows($result1);
                 </div>
             </div>
         </div>
-
         <!-- Department HOD Table -->
         <div class="row">
             <div class="col-xs-12">

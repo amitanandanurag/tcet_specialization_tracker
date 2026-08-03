@@ -29,3 +29,18 @@ if (!$row) {
 <div class="row">
   <div class="col-md-6"><p><strong>Role:</strong> <?php echo htmlspecialchars($row['role_name'] ?? ''); ?></p></div>
 </div>
+
+<?php if (intval($roleId) === 4) {
+  $subjRes = $db_handle->query("
+      SELECT ssm.subject_name 
+      FROM st_mentor_subject_mapping msm 
+      JOIN st_specialization_subject_master ssm ON ssm.subject_id = msm.subject_id 
+      WHERE msm.mentor_id = $userId 
+      LIMIT 1
+  ");
+  $subjName = ($subjRes && $subjRow = $subjRes->fetch_assoc()) ? $subjRow['subject_name'] : 'None';
+?>
+  <div class="row">
+    <div class="col-md-12"><p><strong>Specialization Subject:</strong> <?php echo htmlspecialchars($subjName); ?></p></div>
+  </div>
+<?php } ?>

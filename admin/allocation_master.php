@@ -311,9 +311,9 @@ $allocations_json = json_encode($allocations);
 </div><!-- /.wrapper -->
  
 <!-- ══ SCRIPTS ══ -->
-<script src="plugins/jQuery/jquery-2.2.3.min.js"></script>
+<!--<script src="plugins/jQuery/jquery-2.2.3.min.js"></script>
 <script src="bootstrap/js/bootstrap.min.js"></script>
-<script src="dist/js/app.min.js"></script>
+<script src="dist/js/app.min.js"></script>-->
 <!-- iCheck -->
 <script src="plugins/iCheck/icheck.min.js"></script>
  

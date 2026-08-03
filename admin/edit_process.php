@@ -140,6 +140,14 @@ if (isset($_POST['save'])) {
     $result = mysqli_query($conn, $sql);
     
     if ($result === TRUE) {
+        if (isset($specialization_subject_id) && $specialization_subject_id !== 'NULL') {
+            $clean_subject_id = intval(trim($specialization_subject_id, "'"));
+            $clean_semester_id = intval($current_semester_id);
+            if ($clean_subject_id > 0 && $clean_semester_id > 0) {
+                $database->autoAllocateMentor($student_id, $clean_subject_id, $clean_semester_id);
+            }
+        }
+        
         // Handle file uploads if needed
         if (!empty($_FILES)) {
             $upload_dir = "uploads/marklists/";

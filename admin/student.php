@@ -202,6 +202,13 @@ if (isset($_POST['save'])) {
 
   if ($result === TRUE) {
     $student_id = mysqli_insert_id($conn);
+    if (isset($specialization_subject_id) && $specialization_subject_id !== 'NULL') {
+      $clean_subject_id = intval(trim($specialization_subject_id, "'"));
+      $clean_semester_id = intval($current_semester_id);
+      if ($clean_subject_id > 0 && $clean_semester_id > 0) {
+        $database->autoAllocateMentor($student_id, $clean_subject_id, $clean_semester_id);
+      }
+    }
     echo '<script type="text/javascript">alert("Student registered successfully! Student ID: ' . $student_id . '");</script>';
     echo "<script>window.open('student-info.php','_self')</script>";
   } else {

@@ -264,5 +264,72 @@ class DBController
 
   } 
 
+  public function autoAllocateMentor($studentId, $subjectId, $semesterId)
+  {
+    if (!($this->conn instanceof mysqli)) {
+      return false;
+    }
+    
+    $studentId = intval($studentId);
+    $subjectId = intval($subjectId);
+    $semesterId = intval($semesterId);
+    
+    if ($studentId <= 0 || $subjectId <= 0 || $semesterId <= 0) {
+      return false;
+    }
+    
+    // Find mentors mapped to this subject, order by their student count in this semester (ascending)
+    $sql = "SELECT msm.mentor_id, COUNT(ms.mapping_id) as student_count 
+            FROM st_mentor_subject_mapping msm
+            LEFT JOIN st_mentor_student_mapping ms ON ms.mentor_id = msm.mentor_id AND ms.semester_id = ?
+            WHERE msm.subject_id = ?
+            GROUP BY msm.mentor_id
+            ORDER BY student_count ASC, msm.mentor_id ASC
+            LIMIT 1";
+            
+    $stmt = mysqli_prepare($this->conn, $sql);
+    if (!$stmt) {
+      return false;
+    }
+    
+    mysqli_stmt_bind_param($stmt, "ii", $semesterId, $subjectId);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+    
+    if ($result && $row = mysqli_fetch_assoc($result)) {
+      $mentorId = intval($row['mentor_id']);
+      mysqli_stmt_close($stmt);
+      
+      // Delete existing mapping for this student in this semester
+      $deleteSql = "DELETE FROM st_mentor_student_mapping WHERE student_id = ? AND semester_id = ?";
+      $delStmt = mysqli_prepare($this->conn, $deleteSql);
+      if ($delStmt) {
+        mysqli_stmt_bind_param($delStmt, "ii", $studentId, $semesterId);
+        mysqli_stmt_execute($delStmt);
+        mysqli_stmt_close($delStmt);
+      }
+      
+      // Insert new mapping
+      $insertSql = "INSERT INTO st_mentor_student_mapping (mentor_id, student_id, semester_id) VALUES (?, ?, ?)";
+      $insStmt = mysqli_prepare($this->conn, $insertSql);
+      if ($insStmt) {
+        mysqli_stmt_bind_param($insStmt, "iii", $mentorId, $studentId, $semesterId);
+        $res = mysqli_stmt_execute($insStmt);
+        mysqli_stmt_close($insStmt);
+        
+        if ($res) {
+          if (method_exists($this, 'writeAuditLog')) {
+            $this->writeAuditLog($studentId, 'AUTO_MENTOR_ALLOCATION', 'st_mentor_student_mapping', null, "Automatically assigned mentor ID {$mentorId} due to specialization subject selection");
+          }
+          return true;
+        }
+      }
+    } else {
+      mysqli_stmt_close($stmt);
+    }
+    
+    return false;
+  }
+
 }
 ?>

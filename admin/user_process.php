@@ -39,6 +39,12 @@ if ($checkResult && $checkResult->num_rows > 0) {
 
 $insertSql = "INSERT INTO st_user_master (user_name, email_id, phone_number, department_id, role_id, student_id) VALUES ('$userNameEsc', '$emailEsc', '$phoneEsc', $departmentId, $roleId, 0)";
 $db_handle->query($insertSql);
+$userId = mysqli_insert_id($db_handle->conn);
+
+$checkLogin = mysqli_query($db_handle->conn, "SELECT login_id FROM st_login WHERE username = '$emailEsc' LIMIT 1");
+if ($checkLogin && mysqli_num_rows($checkLogin) === 0) {
+    mysqli_query($db_handle->conn, "INSERT INTO st_login (username, password, user_id) VALUES ('$emailEsc', 'Amit@1234', $userId)");
+}
 
 header('Location: user-info.php?role=' . urlencode($roleKey));
 exit;

@@ -11,12 +11,22 @@ if (!isset($_SESSION['user_session'])) {
   exit();
 }
 
+$loginUserId = $_SESSION['user_session'];
+
+$userData = $db_handle->runQuery("
+    SELECT role_id, department_id
+    FROM st_user_master
+    WHERE user_id='$loginUserId'
+");
+
+$loginRole = $userData[0]['role_id'];
+$loginDepartment = $userData[0]['department_id'];
+
 function mentor_allocation_fetch_mentors($db_handle)
 {
   $sql = "SELECT
             u.user_id AS mentor_id,
-            COALESCE(NULLIF(TRIM(u.user_name), ''), l.username) AS mentor_name,
-            l.username,
+            COALESCE(NULLIF(TRIM(u.user_name), ''), l.username) AS mentor_name,l.username,
             COALESCE(d.department_name, '') AS department_name,
             COUNT(msm.mapping_id) AS assigned_students
           FROM st_user_master u
@@ -30,9 +40,13 @@ function mentor_allocation_fetch_mentors($db_handle)
   return $db_handle->runQuery($sql) ?? array();
 }
 
-function mentor_allocation_build_student_where($conn, $filters)
+function mentor_allocation_build_student_where($conn, $filters, $loginRole, $loginDepartment)
 {
   $where = " WHERE sm.status = '0' ";
+
+   if ($loginRole == 3) {          // change 3 to your Department role id
+        $where .= " AND sm.department_id = '".intval($loginDepartment)."' ";
+    }
 
   if (!empty($filters['class_id'])) {
     $classId = mysqli_real_escape_string($conn, $filters['class_id']);
@@ -49,7 +63,7 @@ function mentor_allocation_build_student_where($conn, $filters)
     $where .= " AND sm.academic_year_id = '{$session}' ";
   }
 
-  
+
   if (!empty($filters['mentor_id'])) {
     $mentorId = intval($filters['mentor_id']);
     if ($mentorId > 0) {
@@ -84,13 +98,17 @@ function mentor_allocation_build_student_where($conn, $filters)
 
 function mentor_allocation_fetch_student_ids($db_handle, $filters)
 {
-  $where = mentor_allocation_build_student_where($db_handle->conn, $filters);
+  global $loginRole, $loginDepartment;
+  $where = mentor_allocation_build_student_where($db_handle->conn, $filters,$loginRole,$loginDepartment);
+  
+  $semesterId = !empty($filters['semester_id']) ? intval($filters['semester_id']) : 'sm.current_semester_id';
+
   $sql = "SELECT sm.student_id
           FROM st_student_master sm
           LEFT JOIN st_class_master cl ON cl.class_id = sm.class_id
           LEFT JOIN st_section_master sec ON sec.id = sm.division_id
           LEFT JOIN st_department_master dep ON dep.department_id = sm.department_id
-          LEFT JOIN st_mentor_student_mapping msm ON msm.student_id = sm.student_id
+          LEFT JOIN st_mentor_student_mapping msm ON msm.student_id = sm.student_id AND msm.semester_id = {$semesterId}
           LEFT JOIN st_login ml ON ml.user_id = msm.mentor_id
           LEFT JOIN st_user_master mu ON mu.user_id = msm.mentor_id AND mu.role_id = 4
           {$where}
@@ -109,7 +127,7 @@ function mentor_allocation_fetch_student_ids($db_handle, $filters)
   return $ids;
 }
 
-function mentor_allocation_assign_students($db_handle, $mentorId, $studentIds)
+function mentor_allocation_assign_students($db_handle, $mentorId, $studentIds, $semesterId = '')
 {
   $mentorId = intval($mentorId);
   $cleanIds = array_values(array_unique(array_filter(array_map('intval', $studentIds))));
@@ -122,14 +140,34 @@ function mentor_allocation_assign_students($db_handle, $mentorId, $studentIds)
   mysqli_begin_transaction($db_handle->conn);
 
   try {
-    if (!mysqli_query($db_handle->conn, "DELETE FROM st_mentor_student_mapping WHERE student_id IN ({$idList})")) {
-      throw new Exception('Unable to clear existing mentor mapping.');
-    }
+    if ($semesterId !== '') {
+      $semId = intval($semesterId);
+      if (!mysqli_query($db_handle->conn, "DELETE FROM st_mentor_student_mapping WHERE student_id IN ({$idList}) AND semester_id = {$semId}")) {
+        throw new Exception('Unable to clear existing mentor mapping.');
+      }
 
-    foreach ($cleanIds as $studentId) {
-      $insertSql = "INSERT INTO st_mentor_student_mapping (mentor_id, student_id) VALUES ({$mentorId}, {$studentId})";
-      if (!mysqli_query($db_handle->conn, $insertSql)) {
-        throw new Exception('Unable to save mentor mapping.');
+      foreach ($cleanIds as $studentId) {
+        $insertSql = "INSERT INTO st_mentor_student_mapping (mentor_id, student_id, semester_id) VALUES ({$mentorId}, {$studentId}, {$semId})";
+        if (!mysqli_query($db_handle->conn, $insertSql)) {
+          throw new Exception('Unable to save mentor mapping.');
+        }
+      }
+    } else {
+      foreach ($cleanIds as $studentId) {
+        $studentRes = mysqli_query($db_handle->conn, "SELECT current_semester_id FROM st_student_master WHERE student_id = {$studentId}");
+        $semId = 1;
+        if ($studentRes && $studentRow = mysqli_fetch_assoc($studentRes)) {
+          $semId = intval($studentRow['current_semester_id'] ?? 1);
+        }
+        
+        if (!mysqli_query($db_handle->conn, "DELETE FROM st_mentor_student_mapping WHERE student_id = {$studentId} AND semester_id = {$semId}")) {
+          throw new Exception('Unable to clear existing mentor mapping.');
+        }
+        
+        $insertSql = "INSERT INTO st_mentor_student_mapping (mentor_id, student_id, semester_id) VALUES ({$mentorId}, {$studentId}, {$semId})";
+        if (!mysqli_query($db_handle->conn, $insertSql)) {
+          throw new Exception('Unable to save mentor mapping.');
+        }
       }
     }
 
@@ -151,15 +189,19 @@ if (isset($_GET['action']) && $_GET['action'] === 'load_students') {
     'session' => $_POST['session'] ?? '',
     'mentor_id' => $_POST['mentor_filter'] ?? '',
     'assignment_status' => $_POST['assignment_status'] ?? '',
+    'semester_id' => $_POST['semester_id'] ?? '',
     'search' => $requestData['search']['value'] ?? ''
   );
 
-  $where = mentor_allocation_build_student_where($db_handle->conn, $filters);
+  $where = mentor_allocation_build_student_where($db_handle->conn, $filters,$loginRole,$loginDepartment);
+  
+  $semesterId = !empty($filters['semester_id']) ? intval($filters['semester_id']) : 'sm.current_semester_id';
+  
   $baseSql = "FROM st_student_master sm
               LEFT JOIN st_class_master cl ON cl.class_id = sm.class_id
               LEFT JOIN st_section_master sec ON sec.id = sm.division_id
               LEFT JOIN st_department_master dep ON dep.department_id = sm.department_id
-              LEFT JOIN st_mentor_student_mapping msm ON msm.student_id = sm.student_id
+              LEFT JOIN st_mentor_student_mapping msm ON msm.student_id = sm.student_id AND msm.semester_id = {$semesterId}
               LEFT JOIN st_login ml ON ml.user_id = msm.mentor_id
               LEFT JOIN st_user_master mu ON mu.user_id = msm.mentor_id AND mu.role_id = 4
               {$where}";
@@ -233,11 +275,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
   $mentorId = intval($_POST['mentor_id'] ?? 0);
   $studentIds = $_POST['student_ids'] ?? array();
-  $success = mentor_allocation_assign_students($db_handle, $mentorId, is_array($studentIds) ? $studentIds : array());
+  $semesterId = $_POST['semester_id'] ?? '';
+  $success = mentor_allocation_assign_students($db_handle, $mentorId, is_array($studentIds) ? $studentIds : array(), $semesterId);
 
   if ($success) {
     if (method_exists($db_handle, 'writeAuditLog')) {
-      $db_handle->writeAuditLog($_SESSION['user_session'] ?? 0, 'MENTOR_ALLOCATION_UPDATED', 'st_mentor_student_mapping', null, 'Assigned selected students to mentor ID ' . $mentorId);
+      $db_handle->writeAuditLog($_SESSION['user_session'] ?? 0, 'MENTOR_ALLOCATION_UPDATED', 'st_mentor_student_mapping', null, 'Assigned selected students to mentor ID ' . $mentorId . ' for Semester ID ' . $semesterId);
     }
     echo json_encode(array('success' => true, 'message' => 'Selected students allocated successfully.'));
   } else {
@@ -256,6 +299,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     'session' => $_POST['session'] ?? '',
     'mentor_id' => $_POST['mentor_filter'] ?? '',
     'assignment_status' => $_POST['assignment_status'] ?? '',
+    'semester_id' => $_POST['semester_id'] ?? '',
     'search' => $_POST['search_value'] ?? ''
   );
 
@@ -265,11 +309,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     exit();
   }
 
-  $success = mentor_allocation_assign_students($db_handle, $mentorId, $studentIds);
+  $success = mentor_allocation_assign_students($db_handle, $mentorId, $studentIds, $filters['semester_id']);
 
   if ($success) {
     if (method_exists($db_handle, 'writeAuditLog')) {
-      $db_handle->writeAuditLog($_SESSION['user_session'] ?? 0, 'MENTOR_ALLOCATION_UPDATED', 'st_mentor_student_mapping', null, 'Assigned filtered students to mentor ID ' . $mentorId . '. Total students: ' . count($studentIds));
+      $db_handle->writeAuditLog($_SESSION['user_session'] ?? 0, 'MENTOR_ALLOCATION_UPDATED', 'st_mentor_student_mapping', null, 'Assigned filtered students to mentor ID ' . $mentorId . ' for Semester ID ' . $filters['semester_id'] . '. Total students: ' . count($studentIds));
     }
     echo json_encode(array('success' => true, 'message' => 'Filtered students allocated successfully.', 'count' => count($studentIds)));
   } else {
@@ -319,7 +363,10 @@ include "header/header.php";
                 <select class="form-control" id="class_id">
                   <option value="">All Classes</option>
                   <?php foreach ($classRows as $classRow) { ?>
-                    <option value="<?php echo (int) $classRow['class_id']; ?>"><?php echo htmlspecialchars($classRow['class_name']); ?></option>
+                    <option value="<?php echo (int) $classRow['class_id']; ?>">
+
+                      <?php echo htmlspecialchars($classRow['class_name']); ?>
+                    </option>
                   <?php } ?>
                 </select>
               </div>
@@ -328,7 +375,10 @@ include "header/header.php";
                 <select class="form-control" id="section_id">
                   <option value="">All Divisions</option>
                   <?php foreach ($sectionRows as $sectionRow) { ?>
-                    <option value="<?php echo (int) $sectionRow['id']; ?>"><?php echo htmlspecialchars($sectionRow['sections']); ?></option>
+
+                    <option value="<?php echo (int) $sectionRow['id']; ?>">
+                      <?php echo htmlspecialchars($sectionRow['sections']); ?>
+                    </option>
                   <?php } ?>
                 </select>
               </div>
@@ -336,8 +386,11 @@ include "header/header.php";
                 <label>Session</label>
                 <select class="form-control" id="session">
                   <option value="">All Sessions</option>
+
                   <?php foreach ($sessionRows as $sessionRow) { ?>
-                    <option value="<?php echo htmlspecialchars($sessionRow['academic_year_id']); ?>"><?php echo htmlspecialchars($sessionRow['academic_year_id']); ?></option>
+                    <option value="<?php echo htmlspecialchars($sessionRow['academic_year_id']); ?>">
+                      <?php echo htmlspecialchars($sessionRow['academic_year_id']); ?>
+                    </option>
                   <?php } ?>
                 </select>
               </div>
@@ -357,15 +410,35 @@ include "header/header.php";
                 <select class="form-control" id="mentor_filter">
                   <option value="">All Mentors</option>
                   <?php foreach ($mentors as $mentor) { ?>
-                    <option value="<?php echo (int) $mentor['mentor_id']; ?>"><?php echo htmlspecialchars($mentor['mentor_name'] ?? ''); ?></option>
+                    <option value="<?php echo (int) $mentor['mentor_id']; ?>">
+                      <?php echo htmlspecialchars($mentor['mentor_name'] ?? ''); ?>
+                    </option>
                   <?php } ?>
                 </select>
               </div>
-              <div class="col-md-9" style="padding-top: 25px;">
-                <button type="button" class="btn btn-primary" id="apply_filters"><i class="fa fa-filter"></i> Apply Filters</button>
-                <button type="button" class="btn btn-default" id="reset_filters"><i class="fa fa-refresh"></i> Reset</button>
-                <button type="button" class="btn btn-success" id="assign_selected_btn"><i class="fa fa-check-square-o"></i> Assign Selected</button>
-                <button type="button" class="btn btn-warning" id="assign_filtered_btn"><i class="fa fa-random"></i> Assign All Filtered</button>
+              <div class="col-md-3">
+                <label>Allocation Semester</label>
+                <select class="form-control" id="semester_id">
+                  <option value="">Use Current Semester</option>
+                  <?php
+                  $semesters = $db_handle->runQuery("SELECT semester_id, semester_name FROM st_semester_master ORDER BY semester_id ASC") ?? [];
+                  foreach ($semesters as $sem) {
+                  ?>
+                    <option value="<?php echo intval($sem['semester_id']); ?>">
+                      <?php echo htmlspecialchars($sem['semester_name']); ?>
+                    </option>
+                  <?php } ?>
+                </select>
+              </div>
+              <div class="col-md-6" style="padding-top: 25px;">
+                <button type="button" class="btn btn-primary" id="apply_filters"><i class="fa fa-filter"></i> Apply
+                  Filters</button>
+                <button type="button" class="btn btn-default" id="reset_filters"><i class="fa fa-refresh"></i>
+                  Reset</button>
+                <button type="button" class="btn btn-success" id="assign_selected_btn"><i
+                    class="fa fa-check-square-o"></i> Assign Selected</button>
+                <button type="button" class="btn btn-warning" id="assign_filtered_btn"><i class="fa fa-random"></i>
+                  Assign All Filtered</button>
               </div>
             </div>
 
@@ -396,128 +469,131 @@ include "header/header.php";
 <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.19/css/jquery.dataTables.css">
 <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.10.19/js/jquery.dataTables.js"></script>
 <script>
-$(document).ready(function() {
-  var mentorTable = $('#mentorAllocationTable').DataTable({
-    processing: true,
-    serverSide: true,
-    pageLength: 15,
-    order: [[3, 'asc']],
-    ajax: {
-      url: 'mentor_allocation.php?action=load_students',
-      type: 'POST',
-      data: function(d) {
-        d.class_id = $('#class_id').val();
-        d.section_id = $('#section_id').val();
-        d.session = $('#session').val();
-        d.mentor_filter = $('#mentor_filter').val();
-        d.assignment_status = $('#assignment_status').val();
-      }
-    },
-    columnDefs: [
-      { orderable: false, targets: [0] }
-    ]
-  });
-
-  function selectedStudentIds() {
-    var ids = [];
-    $('.student-checkbox:checked').each(function() {
-      ids.push($(this).val());
-    });
-    return ids;
-  }
-
-  function ensureMentorSelected() {
-    if (!$('#mentor_id').val()) {
-      alert('Please select a mentor first.');
-      return false;
-    }
-    return true;
-  }
-
-  $('#apply_filters').on('click', function() {
-    mentorTable.ajax.reload();
-  });
-
-  $('#reset_filters').on('click', function() {
-    $('#class_id, #section_id, #session, #mentor_filter, #assignment_status, #mentor_id').val('');
-    $('div.dataTables_filter input').val('');
-    mentorTable.search('').draw();
-  });
-
-  $('#select_all_students').on('change', function() {
-    $('.student-checkbox').prop('checked', this.checked);
-  });
-
-  $(document).on('change', '.student-checkbox', function() {
-    if (!this.checked) {
-      $('#select_all_students').prop('checked', false);
-    }
-  });
-
-  $('#assign_selected_btn').on('click', function() {
-    if (!ensureMentorSelected()) {
-      return;
-    }
-
-    var studentIds = selectedStudentIds();
-    if (!studentIds.length) {
-      alert('Please select at least one student.');
-      return;
-    }
-
-    $.ajax({
-      url: 'mentor_allocation.php',
-      type: 'POST',
-      dataType: 'json',
-      data: {
-        action: 'assign_selected',
-        mentor_id: $('#mentor_id').val(),
-        student_ids: studentIds
+  $(document).ready(function () {
+    var mentorTable = $('#mentorAllocationTable').DataTable({
+      processing: true,
+      serverSide: true,
+      pageLength: 15,
+      order: [[3, 'asc']],
+      ajax: {
+        url: 'mentor_allocation.php?action=load_students',
+        type: 'POST',
+        data: function (d) {
+          d.class_id = $('#class_id').val();
+          d.section_id = $('#section_id').val();
+          d.session = $('#session').val();
+          d.mentor_filter = $('#mentor_filter').val();
+          d.assignment_status = $('#assignment_status').val();
+          d.semester_id = $('#semester_id').val();
+        }
       },
-      success: function(resp) {
-        alert((resp && resp.message) ? resp.message : 'Assignment completed.');
+      columnDefs: [
+        { orderable: false, targets: [0] }
+      ]
+    });
+
+    function selectedStudentIds() {
+      var ids = [];
+      $('.student-checkbox:checked').each(function () {
+        ids.push($(this).val());
+      });
+      return ids;
+    }
+
+    function ensureMentorSelected() {
+      if (!$('#mentor_id').val()) {
+        alert('Please select a mentor first.');
+        return false;
+      }
+      return true;
+    }
+
+    $('#apply_filters').on('click', function () {
+      mentorTable.ajax.reload();
+    });
+
+    $('#reset_filters').on('click', function () {
+      $('#class_id, #section_id, #session, #mentor_filter, #assignment_status, #mentor_id, #semester_id').val('');
+      $('div.dataTables_filter input').val('');
+      mentorTable.search('').draw();
+    });
+
+    $('#select_all_students').on('change', function () {
+      $('.student-checkbox').prop('checked', this.checked);
+    });
+
+    $(document).on('change', '.student-checkbox', function () {
+      if (!this.checked) {
         $('#select_all_students').prop('checked', false);
-        mentorTable.ajax.reload(null, false);
-      },
-      error: function() {
-        alert('Unable to assign selected students right now.');
       }
     });
-  });
 
-  $('#assign_filtered_btn').on('click', function() {
-    if (!ensureMentorSelected()) {
-      return;
-    }
-
-    if (!confirm('Assign the selected mentor to all students matching the current filters?')) {
-      return;
-    }
-
-    $.ajax({
-      url: 'mentor_allocation.php',
-      type: 'POST',
-      dataType: 'json',
-      data: {
-        action: 'assign_filtered',
-        mentor_id: $('#mentor_id').val(),
-        class_id: $('#class_id').val(),
-        section_id: $('#section_id').val(),
-        session: $('#session').val(),
-        mentor_filter: $('#mentor_filter').val(),
-        assignment_status: $('#assignment_status').val(),
-        search_value: $('div.dataTables_filter input').val()
-      },
-      success: function(resp) {
-        alert((resp && resp.message) ? resp.message : 'Filtered allocation completed.');
-        $('#select_all_students').prop('checked', false);
-        mentorTable.ajax.reload(null, false);
-      },
-      error: function() {
-        alert('Unable to assign filtered students right now.');
+    $('#assign_selected_btn').on('click', function () {
+      if (!ensureMentorSelected()) {
+        return;
       }
+
+      var studentIds = selectedStudentIds();
+      if (!studentIds.length) {
+        alert('Please select at least one student.');
+        return;
+      }
+
+      $.ajax({
+        url: 'mentor_allocation.php',
+        type: 'POST',
+        dataType: 'json',
+        data: {
+          action: 'assign_selected',
+          mentor_id: $('#mentor_id').val(),
+          student_ids: studentIds,
+          semester_id: $('#semester_id').val()
+        },
+        success: function (resp) {
+          alert((resp && resp.message) ? resp.message : 'Assignment completed.');
+          $('#select_all_students').prop('checked', false);
+          mentorTable.ajax.reload(null, false);
+        },
+        error: function () {
+          alert('Unable to assign selected students right now.');
+        }
+      });
+    });
+
+    $('#assign_filtered_btn').on('click', function () {
+      if (!ensureMentorSelected()) {
+        return;
+      }
+
+      if (!confirm('Assign the selected mentor to all students matching the current filters?')) {
+        return;
+      }
+
+      $.ajax({
+        url: 'mentor_allocation.php',
+        type: 'POST',
+        dataType: 'json',
+        data: {
+          action: 'assign_filtered',
+          mentor_id: $('#mentor_id').val(),
+          class_id: $('#class_id').val(),
+          section_id: $('#section_id').val(),
+          session: $('#session').val(),
+          mentor_filter: $('#mentor_filter').val(),
+          assignment_status: $('#assignment_status').val(),
+          semester_id: $('#semester_id').val(),
+          search_value: $('div.dataTables_filter input').val()
+        },
+        success: function (resp) {
+          alert((resp && resp.message) ? resp.message : 'Filtered allocation completed.');
+          $('#select_all_students').prop('checked', false);
+          mentorTable.ajax.reload(null, false);
+        },
+        error: function () {
+          alert('Unable to assign filtered students right now.');
+        }
+      });
     });
   });
-});
 </script>
 <?php include "header/footer.php"; ?>

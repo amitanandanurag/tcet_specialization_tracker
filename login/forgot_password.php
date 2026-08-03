@@ -302,7 +302,7 @@ if (isset($_POST['reset_btn'])) {
 
             <div class="register-body">
                 <div style="text-align:center; margin-bottom: 18px;">
-                    <img src="images/school_logo.jpg" alt="logo" width="110" height="110" style="border-radius:50%;">
+                    <img src="images/school_logo.jpg" alt="logo" width="110" height="110" style="border-radius:50%; object-fit: contain; background: #ffffff; padding: 5px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
                 </div>
 
                 <div class="helper-text">The default password will be set to <strong>Tcet@1234</strong>.</div>

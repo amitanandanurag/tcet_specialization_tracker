@@ -242,8 +242,8 @@ if (($isEditMode || empty($admissionForm)) && !empty($userid)) {
           console.log("Subjects received:", data);
           $('#minor_subject_select').empty().append('<option value="">Select Minor Subject</option>');
 
-          if (data && data.length > 0) {
-            $.each(data, function(key, value) {
+          if (data && data.success && data.data && data.data.length > 0) {
+            $.each(data.data, function(key, value) {
               $('#minor_subject_select').append('<option value="' + value.subject_id + '">' + value.subject_name + '</option>');
             });
             $('#minor_subject_section').show();
@@ -294,13 +294,15 @@ if (($isEditMode || empty($admissionForm)) && !empty($userid)) {
     }
   }
 
-  function handleSpecializationSelection() {
+  function handleSpecializationSelection(shouldReset) {
     var specializationText = $('#specialization_select option:selected').text().toLowerCase();
     var isMinorMultidisciplinary = specializationText.indexOf("minor multidisciplinary") !== -1;
     var isMinorDegree = specializationText.indexOf("minor") !== -1 && !isMinorMultidisciplinary;
     var isHonours = specializationText.indexOf('honours') !== -1 || specializationText.indexOf('honors') !== -1;
 
-    resetSpecializationConditionalUI();
+    if (shouldReset) {
+      resetSpecializationConditionalUI();
+    }
 
     if (isMinorDegree) {
       $('#cgpa_section').show();
@@ -346,10 +348,10 @@ if (($isEditMode || empty($admissionForm)) && !empty($userid)) {
       // Keep sections visible when class changes - don't reset UI visibility
     });
 
-    handleSpecializationSelection();
+    handleSpecializationSelection(false);
 
     $('#specialization_select').on('change', function() {
-      handleSpecializationSelection();
+      handleSpecializationSelection(true);
     });
 
     $('#cgpa').on('input keyup change blur', function() {
@@ -612,11 +614,19 @@ if (($isEditMode || empty($admissionForm)) && !empty($userid)) {
                   <label>Minor Subject <span style="color: red;">*</span></label>
                   <select class="form-control select" name="minor_subject_id" id="minor_subject_select" style="width: 100%;">
                     <option value="">Select Minor Subject</option>
-                    <?php if (!empty($admissionForm['minor_subject_id'])) { ?>
-                      <option value="<?php echo htmlspecialchars($admissionForm['minor_subject_id']); ?>" selected>
-                        <?php echo htmlspecialchars($admissionForm['minor_subject_id']); ?>
-                      </option>
-                    <?php } ?>
+                     <?php
+                     // Load subjects for the selected course in edit mode
+                     if (!empty($admissionForm['minor_course_id'])) {
+                       $course_id = intval($admissionForm['minor_course_id']);
+                       $subjectResult = $db_handle->conn->query("SELECT subject_id, subject_name FROM st_minorsubject WHERE course_id = '$course_id' ORDER BY subject_name");
+                       if ($subjectResult && $subjectResult->num_rows > 0) {
+                         while ($subjectRow = $subjectResult->fetch_assoc()) {
+                           $selected = (!empty($admissionForm['minor_subject_id']) && $admissionForm['minor_subject_id'] == $subjectRow['subject_id']) ? 'selected' : '';
+                           echo '<option value="' . $subjectRow['subject_id'] . '" ' . $selected . '>' . htmlspecialchars($subjectRow['subject_name']) . '</option>';
+                         }
+                       }
+                     }
+                     ?>
                   </select>
                 </div>
               </div>

@@ -26,6 +26,14 @@ if (!$row) {
 	echo "<div class='alert alert-danger'>Record not found.</div>";
 	exit;
 }
+
+$currentSubjectId = 0;
+if ($roleId === 4) {
+	$subjRes = $db_handle->query("SELECT subject_id FROM st_mentor_subject_mapping WHERE mentor_id = $userId LIMIT 1");
+	if ($subjRes && $subjRow = $subjRes->fetch_assoc()) {
+		$currentSubjectId = intval($subjMappingRow['subject_id'] ?? $subjRow['subject_id']);
+	}
+}
 ?>
 
 <form method="post" action="<?php echo htmlspecialchars($processFile); ?>" autocomplete="off">
@@ -81,6 +89,25 @@ if (!$row) {
 			<?php } ?>
 		</select>
 	</div>
+
+	<?php if ($roleId === 4) { ?>
+		<div class="form-group">
+			<label>Specialization Subject <span style="color:red;">*</span></label>
+			<select name="subject_id" class="form-control" required>
+				<option value="">Select Specialization Subject</option>
+				<?php
+				$subSql = "SELECT subject_id, subject_name FROM st_specialization_subject_master ORDER BY subject_name ASC";
+				$subResult = $db_handle->query($subSql);
+				while ($sub = $subResult->fetch_assoc()) {
+					$subSelected = (intval($sub['subject_id']) === $currentSubjectId) ? 'selected' : '';
+				?>
+					<option value="<?php echo intval($sub['subject_id']); ?>" <?php echo $subSelected; ?>>
+						<?php echo htmlspecialchars($sub['subject_name']); ?>
+					</option>
+				<?php } ?>
+			</select>
+		</div>
+	<?php } ?>
 
 	<div style="margin-top: 12px;">
 		<button

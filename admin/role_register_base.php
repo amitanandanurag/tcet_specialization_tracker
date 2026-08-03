@@ -67,6 +67,22 @@
                   <?php } ?>
                 </select>
               </div>
+
+              <?php if (intval($roleId) === 4) { ?>
+                <div class="form-group">
+                  <label>Specialization Subject <span style="color:red;">*</span></label>
+                  <select name="subject_id" class="form-control" required>
+                    <option value="">Select Specialization Subject</option>
+                    <?php
+                    $subSql = "SELECT subject_id, subject_name FROM st_specialization_subject_master ORDER BY subject_name ASC";
+                    $subResult = $db_handle->query($subSql);
+                    while ($sub = $subResult->fetch_assoc()) {
+                    ?>
+                      <option value="<?php echo intval($sub['subject_id']); ?>"><?php echo htmlspecialchars($sub['subject_name']); ?></option>
+                    <?php } ?>
+                  </select>
+                </div>
+              <?php } ?>
             </div>
             <div class="box-footer role-form-actions">
               <button type="submit" class="btn btn-submit"><i class="fa fa-save"></i> SAVE</button>

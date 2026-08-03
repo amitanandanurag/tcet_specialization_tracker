@@ -217,6 +217,74 @@ function sidebar_seed_coordinator_allocation_menu($db_handle)
 	}
 }
 
+function sidebar_seed_student_monitor_menu($db_handle)
+{
+	$menuId = 0;
+	$menuResult = mysqli_query($db_handle->conn, "SELECT menu_id FROM st_menu_master WHERE LOWER(TRIM(menu_name)) = 'students' ORDER BY menu_id ASC LIMIT 1");
+	if ($menuResult && mysqli_num_rows($menuResult) > 0) {
+		$menuRow = mysqli_fetch_assoc($menuResult);
+		$menuId = (int) ($menuRow['menu_id'] ?? 0);
+	}
+
+	if ($menuId <= 0) {
+		$menuId = 1;
+	}
+
+	$name = mysqli_real_escape_string($db_handle->conn, 'Monitor');
+	$icon = mysqli_real_escape_string($db_handle->conn, 'fa fa-desktop');
+	$route = mysqli_real_escape_string($db_handle->conn, 'student_monitor.php');
+
+	$subSql = "SELECT sub_menu_id FROM st_sub_menu_master WHERE menu_id = {$menuId} AND (sub_menu_route = '$route' OR sub_menu_name = '$name') LIMIT 1";
+	$subResult = mysqli_query($db_handle->conn, $subSql);
+	$subMenuId = 0;
+
+	if ($subResult && mysqli_num_rows($subResult) > 0) {
+		$subRow = mysqli_fetch_assoc($subResult);
+		$subMenuId = (int) ($subRow['sub_menu_id'] ?? 0);
+	} else {
+		$orderSql = "SELECT COALESCE(MAX(sort_order), 0) + 1 AS next_order FROM st_sub_menu_master WHERE menu_id = {$menuId}";
+		$orderResult = mysqli_query($db_handle->conn, $orderSql);
+		$nextOrder = 1;
+		if ($orderResult && mysqli_num_rows($orderResult) > 0) {
+			$orderRow = mysqli_fetch_assoc($orderResult);
+			$nextOrder = (int) ($orderRow['next_order'] ?? 1);
+		}
+
+		$insertSql = "INSERT INTO st_sub_menu_master (menu_id, sort_order, sub_menu_name, sub_menu_icon, sub_menu_route) VALUES ({$menuId}, {$nextOrder}, '$name', '$icon', '$route')";
+		if (mysqli_query($db_handle->conn, $insertSql)) {
+			$subMenuId = (int) mysqli_insert_id($db_handle->conn);
+		}
+	}
+
+	if ($subMenuId <= 0) {
+		return;
+	}
+
+	$parentSql = "SELECT 1 FROM st_menu_allocation_master WHERE user_id = 0 AND role_id = 1 AND menu_id = {$menuId} AND sub_menu_id IS NULL LIMIT 1";
+	$parentResult = mysqli_query($db_handle->conn, $parentSql);
+	if (!$parentResult || mysqli_num_rows($parentResult) === 0) {
+		mysqli_query($db_handle->conn, "INSERT INTO st_menu_allocation_master (user_id, role_id, menu_id, sub_menu_id) VALUES (0, 1, {$menuId}, NULL)");
+	}
+
+	$allocSql = "SELECT 1 FROM st_menu_allocation_master WHERE user_id = 0 AND role_id = 1 AND menu_id = {$menuId} AND sub_menu_id = {$subMenuId} LIMIT 1";
+	$allocResult = mysqli_query($db_handle->conn, $allocSql);
+	if (!$allocResult || mysqli_num_rows($allocResult) === 0) {
+		mysqli_query($db_handle->conn, "INSERT INTO st_menu_allocation_master (user_id, role_id, menu_id, sub_menu_id) VALUES (0, 1, {$menuId}, {$subMenuId})");
+	}
+
+	$parentSql2 = "SELECT 1 FROM st_menu_allocation_master WHERE user_id = 0 AND role_id = 2 AND menu_id = {$menuId} AND sub_menu_id IS NULL LIMIT 1";
+	$parentResult2 = mysqli_query($db_handle->conn, $parentSql2);
+	if (!$parentResult2 || mysqli_num_rows($parentResult2) === 0) {
+		mysqli_query($db_handle->conn, "INSERT INTO st_menu_allocation_master (user_id, role_id, menu_id, sub_menu_id) VALUES (0, 2, {$menuId}, NULL)");
+	}
+
+	$allocSql2 = "SELECT 1 FROM st_menu_allocation_master WHERE user_id = 0 AND role_id = 2 AND menu_id = {$menuId} AND sub_menu_id = {$subMenuId} LIMIT 1";
+	$allocResult2 = mysqli_query($db_handle->conn, $allocSql2);
+	if (!$allocResult2 || mysqli_num_rows($allocResult2) === 0) {
+		mysqli_query($db_handle->conn, "INSERT INTO st_menu_allocation_master (user_id, role_id, menu_id, sub_menu_id) VALUES (0, 2, {$menuId}, {$subMenuId})");
+	}
+}
+
 function sidebar_resolve_system_menu_id($conn)
 {
 	$menuSql = "SELECT menu_id FROM st_menu_master WHERE LOWER(TRIM(menu_name)) IN ('settings', 'admin') ORDER BY CASE WHEN LOWER(TRIM(menu_name)) = 'settings' THEN 0 ELSE 1 END, menu_id ASC LIMIT 1";
@@ -236,10 +304,86 @@ function sidebar_resolve_system_menu_id($conn)
 	return 0;
 }
 
+function sidebar_seed_mentor_subject_menu($db_handle)
+{
+	$menuId = 0;
+	$menuResult = mysqli_query($db_handle->conn, "SELECT menu_id FROM st_menu_master WHERE LOWER(TRIM(menu_name)) = 'coordinator' ORDER BY menu_id ASC LIMIT 1");
+	if ($menuResult && mysqli_num_rows($menuResult) > 0) {
+		$menuRow = mysqli_fetch_assoc($menuResult);
+		$menuId = (int) ($menuRow['menu_id'] ?? 0);
+	}
+
+	if ($menuId <= 0) {
+		return;
+	}
+
+	$name = mysqli_real_escape_string($db_handle->conn, 'Mentor Subject');
+	$icon = mysqli_real_escape_string($db_handle->conn, 'fa fa-book');
+	$route = mysqli_real_escape_string($db_handle->conn, 'mentor_subject.php');
+
+	$subSql = "SELECT sub_menu_id FROM st_sub_menu_master WHERE menu_id = {$menuId} AND (sub_menu_route = '$route' OR sub_menu_name = '$name') LIMIT 1";
+	$subResult = mysqli_query($db_handle->conn, $subSql);
+	$subMenuId = 0;
+
+	if ($subResult && mysqli_num_rows($subResult) > 0) {
+		$subRow = mysqli_fetch_assoc($subResult);
+		$subMenuId = (int) ($subRow['sub_menu_id'] ?? 0);
+	} else {
+		$orderSql = "SELECT COALESCE(MAX(sort_order), 0) + 1 AS next_order FROM st_sub_menu_master WHERE menu_id = {$menuId}";
+		$orderResult = mysqli_query($db_handle->conn, $orderSql);
+		$nextOrder = 1;
+		if ($orderResult && mysqli_num_rows($orderResult) > 0) {
+			$orderRow = mysqli_fetch_assoc($orderResult);
+			$nextOrder = (int) ($orderRow['next_order'] ?? 1);
+		}
+
+		$insertSql = "INSERT INTO st_sub_menu_master (menu_id, sort_order, sub_menu_name, sub_menu_icon, sub_menu_route) VALUES ({$menuId}, {$nextOrder}, '$name', '$icon', '$route')";
+		if (mysqli_query($db_handle->conn, $insertSql)) {
+			$subMenuId = (int) mysqli_insert_id($db_handle->conn);
+		}
+	}
+
+	if ($subMenuId <= 0) {
+		return;
+	}
+
+	// Allocate to role 1 (Super Admin)
+	$parentSql1 = "SELECT 1 FROM st_menu_allocation_master WHERE user_id = 0 AND role_id = 1 AND menu_id = {$menuId} AND sub_menu_id IS NULL LIMIT 1";
+	if (mysqli_num_rows(mysqli_query($db_handle->conn, $parentSql1)) === 0) {
+		mysqli_query($db_handle->conn, "INSERT INTO st_menu_allocation_master (user_id, role_id, menu_id, sub_menu_id) VALUES (0, 1, {$menuId}, NULL)");
+	}
+	$allocSql1 = "SELECT 1 FROM st_menu_allocation_master WHERE user_id = 0 AND role_id = 1 AND menu_id = {$menuId} AND sub_menu_id = {$subMenuId} LIMIT 1";
+	if (mysqli_num_rows(mysqli_query($db_handle->conn, $allocSql1)) === 0) {
+		mysqli_query($db_handle->conn, "INSERT INTO st_menu_allocation_master (user_id, role_id, menu_id, sub_menu_id) VALUES (0, 1, {$menuId}, {$subMenuId})");
+	}
+
+	// Allocate to role 2 (Admin)
+	$parentSql2 = "SELECT 1 FROM st_menu_allocation_master WHERE user_id = 0 AND role_id = 2 AND menu_id = {$menuId} AND sub_menu_id IS NULL LIMIT 1";
+	if (mysqli_num_rows(mysqli_query($db_handle->conn, $parentSql2)) === 0) {
+		mysqli_query($db_handle->conn, "INSERT INTO st_menu_allocation_master (user_id, role_id, menu_id, sub_menu_id) VALUES (0, 2, {$menuId}, NULL)");
+	}
+	$allocSql2 = "SELECT 1 FROM st_menu_allocation_master WHERE user_id = 0 AND role_id = 2 AND menu_id = {$menuId} AND sub_menu_id = {$subMenuId} LIMIT 1";
+	if (mysqli_num_rows(mysqli_query($db_handle->conn, $allocSql2)) === 0) {
+		mysqli_query($db_handle->conn, "INSERT INTO st_menu_allocation_master (user_id, role_id, menu_id, sub_menu_id) VALUES (0, 2, {$menuId}, {$subMenuId})");
+	}
+
+	// Allocate to role 3 (Coordinator)
+	$parentSql3 = "SELECT 1 FROM st_menu_allocation_master WHERE user_id = 0 AND role_id = 3 AND menu_id = {$menuId} AND sub_menu_id IS NULL LIMIT 1";
+	if (mysqli_num_rows(mysqli_query($db_handle->conn, $parentSql3)) === 0) {
+		mysqli_query($db_handle->conn, "INSERT INTO st_menu_allocation_master (user_id, role_id, menu_id, sub_menu_id) VALUES (0, 3, {$menuId}, NULL)");
+	}
+	$allocSql3 = "SELECT 1 FROM st_menu_allocation_master WHERE user_id = 0 AND role_id = 3 AND menu_id = {$menuId} AND sub_menu_id = {$subMenuId} LIMIT 1";
+	if (mysqli_num_rows(mysqli_query($db_handle->conn, $allocSql3)) === 0) {
+		mysqli_query($db_handle->conn, "INSERT INTO st_menu_allocation_master (user_id, role_id, menu_id, sub_menu_id) VALUES (0, 3, {$menuId}, {$subMenuId})");
+	}
+}
+
 if ((int) $usertype === 1) {
 	sidebar_seed_super_admin_settings($db_handle);
 	sidebar_seed_mentor_allocation_menu($db_handle);
 	sidebar_seed_coordinator_allocation_menu($db_handle);
+	sidebar_seed_student_monitor_menu($db_handle);
+	sidebar_seed_mentor_subject_menu($db_handle);
 }
 
 $menuSql = "SELECT m.menu_id, m.menu_name, $menuIconSelect
