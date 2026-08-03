@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: May 01, 2026 at 11:19 AM
+-- Generation Time: Aug 03, 2026 at 10:10 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -47,35 +47,10 @@ CREATE TABLE `st_audit_log` (
 --
 
 INSERT INTO `st_audit_log` (`audit_id`, `user_id`, `action_type`, `affected_table`, `affected_record`, `description`, `username`, `ip_address`, `browser_user_agent`, `session_duration_seconds`, `logout_at`, `performed_at`) VALUES
-(34, 1, 'LOGIN_SUCCESS', 'st_login', 1, 'User \'superadmin@tcetmumbai.in\' logged in successfully with role  from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', 'superadmin@tcetmumbai.in', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', NULL, NULL, '2026-04-30 08:45:32'),
-(35, 1, 'LOGIN_SUCCESS', 'st_login', 1, 'User \'superadmin@tcetmumbai.in\' logged in successfully with role 1 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', 'superadmin@tcetmumbai.in', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', NULL, NULL, '2026-04-30 08:48:59'),
-(36, 1, 'LOGIN_SUCCESS', 'st_login', 1, 'User \'superadmin@tcetmumbai.in\' logged in successfully with role  from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', 'superadmin@tcetmumbai.in', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', NULL, NULL, '2026-04-30 09:14:55'),
-(37, 1, 'LOGIN_SUCCESS', 'st_login', 1, 'User \'superadmin@tcetmumbai.in\' logged in successfully with role  from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', 'superadmin@tcetmumbai.in', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', NULL, NULL, '2026-04-30 09:16:19'),
-(38, 1, 'LOGIN_SUCCESS', 'st_login', 1, 'User \'superadmin@tcetmumbai.in\' logged in successfully with role  from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', 'superadmin@tcetmumbai.in', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', NULL, NULL, '2026-04-30 09:16:23'),
-(39, 1, 'LOGIN_SUCCESS', 'st_login', 1, 'User \'superadmin@tcetmumbai.in\' logged in successfully with role 1 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', 'superadmin@tcetmumbai.in', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', NULL, NULL, '2026-04-30 09:25:12'),
-(40, 1, 'LOGIN_SUCCESS', 'st_login', 1, 'User \'superadmin@tcetmumbai.in\' logged in successfully with role 1 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', 'superadmin@tcetmumbai.in', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', NULL, NULL, '2026-04-30 09:25:14'),
-(41, 1, 'LOGIN_SUCCESS', 'st_login', 1, 'User \'superadmin@tcetmumbai.in\' logged in successfully with role 1 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', 'superadmin@tcetmumbai.in', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', NULL, NULL, '2026-04-30 09:26:45'),
-(42, 1, 'LOGIN_SUCCESS', 'st_login', 1, 'User \'superadmin@tcetmumbai.in\' logged in successfully with role 1 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', 'superadmin@tcetmumbai.in', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', NULL, NULL, '2026-04-30 09:28:49'),
-(43, 1, 'LOGIN_SUCCESS', 'st_login', 1, 'User \'superadmin@tcetmumbai.in\' logged in successfully with role 1 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', 'superadmin@tcetmumbai.in', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', NULL, NULL, '2026-04-30 09:28:52'),
-(44, 2, 'LOGIN_SUCCESS', 'st_login', 2, 'User \'admin@tcetmumbai.in\' logged in successfully with role 2 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', 'admin@tcetmumbai.in', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', NULL, NULL, '2026-04-30 09:29:00'),
-(45, 1, 'LOGIN_SUCCESS', 'st_login', 1, 'User \'superadmin@tcetmumbai.in\' logged in successfully with role 1 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', 'superadmin@tcetmumbai.in', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', NULL, NULL, '2026-04-30 09:30:27'),
-(46, 1, 'LOGIN_SUCCESS', 'st_login', 1, 'User \'superadmin@tcetmumbai.in\' logged in successfully with role 1 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', 'superadmin@tcetmumbai.in', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', NULL, NULL, '2026-04-30 09:30:30'),
-(47, 1, 'LOGIN_SUCCESS', 'st_login', 1, 'User \'superadmin@tcetmumbai.in\' logged in successfully with role 1 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', 'superadmin@tcetmumbai.in', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', NULL, NULL, '2026-04-30 09:30:48'),
-(48, 1, 'LOGIN_SUCCESS', 'st_login', 1, 'User \'superadmin@tcetmumbai.in\' logged in successfully with role 1 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', 'superadmin@tcetmumbai.in', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', NULL, NULL, '2026-04-30 09:31:33'),
-(49, 1, 'LOGIN_SUCCESS', 'st_login', 1, 'User \'superadmin@tcetmumbai.in\' logged in successfully with role 1 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', 'superadmin@tcetmumbai.in', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', NULL, NULL, '2026-04-30 09:31:36'),
-(50, 1, 'LOGIN_SUCCESS', 'st_login', 1, 'User \'superadmin@tcetmumbai.in\' logged in successfully with role 1 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', 'superadmin@tcetmumbai.in', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', NULL, NULL, '2026-04-30 09:34:14'),
-(51, 1, 'LOGIN_SUCCESS', 'st_login', 1, 'User \'superadmin@tcetmumbai.in\' logged in successfully with role 1 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', 'superadmin@tcetmumbai.in', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', NULL, NULL, '2026-04-30 09:34:17'),
-(52, 1, 'LOGIN_SUCCESS', 'st_login', 1, 'User \'superadmin@tcetmumbai.in\' logged in successfully with role 1 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', 'superadmin@tcetmumbai.in', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', NULL, NULL, '2026-04-30 09:34:22'),
-(53, 1, 'LOGIN_SUCCESS', 'st_login', 1, 'User \'superadmin@tcetmumbai.in\' logged in successfully with role 1 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', 'superadmin@tcetmumbai.in', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', NULL, NULL, '2026-04-30 09:34:53'),
-(54, 1, 'LOGIN_SUCCESS', 'st_login', 1, 'User \'superadmin@tcetmumbai.in\' logged in successfully with role 1 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', 'superadmin@tcetmumbai.in', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', NULL, NULL, '2026-04-30 09:39:42'),
-(55, 1, 'LOGIN_SUCCESS', 'st_login', 1, 'User \'superadmin@tcetmumbai.in\' logged in successfully with role 1 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', 'superadmin@tcetmumbai.in', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', NULL, NULL, '2026-04-30 09:40:29'),
-(56, 1, 'LOGIN_SUCCESS', 'st_login', 1, 'User \'superadmin@tcetmumbai.in\' logged in successfully with role 1 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', 'superadmin@tcetmumbai.in', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', NULL, NULL, '2026-04-30 09:42:05'),
-(57, 1, 'LOGIN_SUCCESS', 'st_login', 1, 'User \'superadmin@tcetmumbai.in\' logged in successfully with role  from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', 'superadmin@tcetmumbai.in', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', NULL, NULL, '2026-04-30 09:42:28'),
-(58, 1, 'LOGIN_SUCCESS', 'st_login', 1, 'User \'superadmin@tcetmumbai.in\' logged in successfully with role 1 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36\nLogout: User \'superadmin@tcetmumbai.in\' logged out from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', 'superadmin@tcetmumbai.in', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', 176, '2026-04-30 10:09:08', '2026-04-30 10:06:12'),
-(59, 1, 'LOGIN_SUCCESS', 'st_login', 1, 'User \'superadmin@tcetmumbai.in\' logged in successfully with role 1 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36\nLogout: User \'superadmin@tcetmumbai.in\' logged out from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', 'superadmin@tcetmumbai.in', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', 669, '2026-04-30 10:20:22', '2026-04-30 10:09:13'),
-(60, 3, 'LOGIN_SUCCESS', 'st_login', 3, 'User \'coordinator@tcetmumbai.in\' logged in successfully with role 2 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36\nLogout: User \'coordinator@tcetmumbai.in\' logged out from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', 'coordinator@tcetmumbai.in', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', 998, '2026-04-30 10:37:14', '2026-04-30 10:20:36'),
-(61, 0, 'LOGIN_SUCCESS', 'st_login', 0, 'User \'ashutosh3276s16@tcetmumbai.in\' logged in successfully with role 5 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', 'ashutosh3276s16@tcetmumbai.in', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', NULL, NULL, '2026-04-30 10:39:34'),
-(63, 1, 'LOGIN_SUCCESS', 'st_login', 1, 'User \'superadmin@tcetmumbai.in\' logged in successfully with role 1 from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36\nLogout: User \'superadmin@tcetmumbai.in\' logged out from IP ::1. Browser: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', 'superadmin@tcetmumbai.in', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', 96, '2026-04-30 10:44:35', '2026-04-30 10:42:59');
+(1, 3, 'MENTOR_ALLOCATION_UPDATED', 'st_mentor_student_mapping', NULL, 'Assigned selected students to mentor ID 4', NULL, NULL, NULL, NULL, NULL, '2026-07-03 09:46:38'),
+(2, 3, 'MENTOR_ALLOCATION_UPDATED', 'st_mentor_student_mapping', NULL, 'Assigned selected students to mentor ID 4', NULL, NULL, NULL, NULL, NULL, '2026-07-03 09:49:12'),
+(3, 1, 'MENTOR_SUBJECT_MAPPED', 'st_mentor_subject_mapping', 6, 'Assigned subject ID 2 to mentor ID 6', NULL, NULL, NULL, NULL, NULL, '2026-07-29 11:33:56'),
+(4, 1, 'MENTOR_SUBJECT_MAPPED', 'st_mentor_subject_mapping', 6, 'Assigned subject ID 14 to mentor ID 6', NULL, NULL, NULL, NULL, NULL, '2026-07-29 11:34:07');
 
 -- --------------------------------------------------------
 
@@ -151,7 +126,7 @@ CREATE TABLE `st_coordinator` (
 --
 
 INSERT INTO `st_coordinator` (`coordinator_id`, `login_id`, `created_at`) VALUES
-(0, 7, '2026-04-30 08:40:19');
+(1, 3, '2026-07-02 07:24:48');
 
 -- --------------------------------------------------------
 
@@ -287,12 +262,12 @@ CREATE TABLE `st_login` (
 --
 
 INSERT INTO `st_login` (`login_id`, `username`, `password`, `user_id`, `created_at`) VALUES
-(1, 'superadmin@tcetmumbai.in', 'Amit@1234', 1, '0000-00-00 00:00:00'),
-(2, 'admin@tcetmumbai.in', 'Amit@1234', 2, '0000-00-00 00:00:00'),
-(3, 'coordinator@tcetmumbai.in', 'Amit@1234', 3, '0000-00-00 00:00:00'),
-(4, 'mentor@tcetmumbai.in', 'Amit@1234', 4, '0000-00-00 00:00:00'),
-(5, 'student@tcetmumbai.in', 'Amit@1234', 5, '0000-00-00 00:00:00'),
-(6, 'aakash@tcetmumbai.in', 'Amit@1234', 6, '0000-00-00 00:00:00');
+(1, 'anuragmishra', 'Amit@1234', 1, '2026-07-02 05:51:05'),
+(2, 'amitanand', 'Amit@1234', 2, '2026-07-02 05:59:18'),
+(3, 'alok@tcetmumbai.in', '123456', 3, '2026-07-02 07:24:48'),
+(4, 'ashok@tcetmumbai.in', '123456', 4, '2026-07-02 07:27:44'),
+(5, 'atrim@tcetmumbai.in', 'Amit@1378', 5, '2026-07-03 11:35:16'),
+(6, 'ashutosh3276s16@gmail.com', 'Amit@1234', 7, '2026-07-29 11:35:09');
 
 -- --------------------------------------------------------
 
@@ -304,8 +279,139 @@ CREATE TABLE `st_mentor_student_mapping` (
   `mapping_id` int(11) NOT NULL,
   `mentor_id` int(11) NOT NULL,
   `student_id` int(11) NOT NULL,
-  `assigned_at` timestamp NOT NULL DEFAULT current_timestamp()
+  `assigned_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `semester_id` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `st_mentor_student_mapping`
+--
+
+INSERT INTO `st_mentor_student_mapping` (`mapping_id`, `mentor_id`, `student_id`, `assigned_at`, `semester_id`) VALUES
+(1, 4, 459, '2026-07-03 09:46:38', 1),
+(2, 4, 460, '2026-07-03 09:49:12', 1),
+(3, 4, 461, '2026-07-03 09:49:12', 1),
+(4, 6, 1, '2026-07-29 11:24:52', 1),
+(5, 6, 126, '2026-07-29 11:24:52', 1),
+(6, 6, 127, '2026-07-29 11:24:52', 1),
+(7, 6, 128, '2026-07-29 11:24:52', 1),
+(8, 6, 129, '2026-07-29 11:24:52', 1),
+(9, 6, 130, '2026-07-29 11:24:52', 1),
+(10, 6, 131, '2026-07-29 11:24:52', 1),
+(11, 6, 132, '2026-07-29 11:24:52', 1),
+(12, 6, 133, '2026-07-29 11:24:52', 1),
+(13, 6, 134, '2026-07-29 11:24:52', 1),
+(14, 6, 135, '2026-07-29 11:24:52', 1),
+(15, 6, 136, '2026-07-29 11:24:52', 1),
+(16, 6, 137, '2026-07-29 11:24:52', 1),
+(17, 6, 138, '2026-07-29 11:24:52', 1),
+(18, 6, 139, '2026-07-29 11:24:52', 1),
+(19, 6, 140, '2026-07-29 11:24:52', 1),
+(20, 6, 141, '2026-07-29 11:24:52', 1),
+(21, 6, 142, '2026-07-29 11:24:52', 1),
+(22, 6, 143, '2026-07-29 11:24:52', 1),
+(23, 6, 144, '2026-07-29 11:24:52', 1),
+(24, 6, 145, '2026-07-29 11:24:52', 1),
+(25, 6, 146, '2026-07-29 11:24:52', 1),
+(26, 6, 147, '2026-07-29 11:24:52', 1),
+(27, 6, 148, '2026-07-29 11:24:52', 1),
+(28, 6, 149, '2026-07-29 11:24:52', 1),
+(29, 6, 150, '2026-07-29 11:24:52', 1),
+(30, 6, 151, '2026-07-29 11:24:52', 1),
+(31, 6, 152, '2026-07-29 11:24:52', 1),
+(32, 6, 153, '2026-07-29 11:24:52', 1),
+(33, 6, 154, '2026-07-29 11:24:52', 1),
+(34, 6, 155, '2026-07-29 11:24:52', 1),
+(35, 6, 156, '2026-07-29 11:24:52', 1),
+(36, 6, 269, '2026-07-29 11:24:52', 1),
+(37, 6, 270, '2026-07-29 11:24:52', 1),
+(38, 6, 271, '2026-07-29 11:24:52', 1),
+(39, 6, 272, '2026-07-29 11:24:52', 1),
+(40, 6, 273, '2026-07-29 11:24:52', 1),
+(41, 6, 274, '2026-07-29 11:24:52', 1),
+(42, 6, 275, '2026-07-29 11:24:52', 1),
+(43, 6, 276, '2026-07-29 11:24:52', 1),
+(44, 6, 277, '2026-07-29 11:24:52', 1),
+(45, 6, 278, '2026-07-29 11:24:52', 1),
+(46, 6, 279, '2026-07-29 11:24:52', 1),
+(47, 6, 280, '2026-07-29 11:24:52', 1),
+(48, 6, 281, '2026-07-29 11:24:52', 1),
+(49, 6, 282, '2026-07-29 11:24:52', 1),
+(50, 6, 283, '2026-07-29 11:24:52', 1),
+(51, 6, 284, '2026-07-29 11:24:52', 1),
+(52, 6, 285, '2026-07-29 11:24:52', 1),
+(53, 6, 286, '2026-07-29 11:24:52', 1),
+(54, 6, 287, '2026-07-29 11:24:52', 1),
+(55, 6, 288, '2026-07-29 11:24:52', 1),
+(56, 6, 289, '2026-07-29 11:24:52', 1),
+(57, 6, 290, '2026-07-29 11:24:52', 1),
+(58, 6, 291, '2026-07-29 11:24:52', 1),
+(59, 6, 292, '2026-07-29 11:24:52', 1),
+(60, 6, 293, '2026-07-29 11:24:52', 1),
+(61, 6, 294, '2026-07-29 11:24:52', 1),
+(62, 6, 298, '2026-07-29 11:24:52', 1),
+(63, 6, 302, '2026-07-29 11:24:52', 1),
+(64, 6, 305, '2026-07-29 11:24:52', 1),
+(65, 6, 306, '2026-07-29 11:24:52', 1),
+(66, 6, 307, '2026-07-29 11:24:52', 1),
+(67, 6, 308, '2026-07-29 11:24:52', 1),
+(68, 6, 314, '2026-07-29 11:24:52', 1),
+(69, 6, 316, '2026-07-29 11:24:52', 1),
+(70, 6, 317, '2026-07-29 11:24:52', 1),
+(71, 6, 319, '2026-07-29 11:24:52', 1),
+(72, 6, 320, '2026-07-29 11:24:52', 1),
+(73, 6, 321, '2026-07-29 11:24:52', 1),
+(74, 6, 324, '2026-07-29 11:24:52', 1),
+(75, 6, 347, '2026-07-29 11:24:52', 1),
+(76, 6, 351, '2026-07-29 11:24:52', 1),
+(77, 6, 369, '2026-07-29 11:24:52', 1),
+(78, 6, 370, '2026-07-29 11:24:52', 1),
+(79, 6, 371, '2026-07-29 11:24:52', 1),
+(80, 6, 372, '2026-07-29 11:24:52', 1),
+(81, 6, 373, '2026-07-29 11:24:52', 1),
+(82, 6, 374, '2026-07-29 11:24:52', 1),
+(83, 6, 375, '2026-07-29 11:24:52', 1),
+(84, 6, 376, '2026-07-29 11:24:52', 1),
+(85, 6, 377, '2026-07-29 11:24:52', 1),
+(86, 6, 384, '2026-07-29 11:24:52', 1),
+(87, 6, 407, '2026-07-29 11:24:52', 1),
+(88, 6, 430, '2026-07-29 11:24:52', 1),
+(89, 6, 586, '2026-07-29 11:24:52', 1),
+(90, 6, 587, '2026-07-29 11:24:52', 1),
+(91, 6, 588, '2026-07-29 11:24:52', 1),
+(92, 6, 589, '2026-07-29 11:24:52', 1),
+(93, 6, 590, '2026-07-29 11:24:52', 1),
+(94, 6, 591, '2026-07-29 11:24:52', 1),
+(95, 6, 592, '2026-07-29 11:24:52', 1),
+(96, 6, 636, '2026-07-29 11:24:52', 3),
+(97, 6, 318, '2026-07-29 11:34:07', 1),
+(98, 6, 322, '2026-07-29 11:34:07', 1),
+(99, 6, 354, '2026-07-29 11:34:07', 1),
+(100, 6, 356, '2026-07-29 11:34:07', 1),
+(101, 6, 513, '2026-07-29 11:34:07', 1),
+(102, 6, 514, '2026-07-29 11:34:07', 1),
+(103, 6, 515, '2026-07-29 11:34:07', 1);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `st_mentor_subject_mapping`
+--
+
+CREATE TABLE `st_mentor_subject_mapping` (
+  `mapping_id` int(11) NOT NULL,
+  `mentor_id` int(11) NOT NULL,
+  `subject_id` int(11) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `st_mentor_subject_mapping`
+--
+
+INSERT INTO `st_mentor_subject_mapping` (`mapping_id`, `mentor_id`, `subject_id`, `created_at`) VALUES
+(3, 6, 14, '2026-07-29 11:34:07'),
+(4, 7, 2, '2026-07-29 11:35:09');
 
 -- --------------------------------------------------------
 
@@ -329,91 +435,67 @@ INSERT INTO `st_menu_allocation_master` (`menu_allocation_id`, `user_id`, `role_
 (1, 0, 1, 1, NULL),
 (2, 0, 1, 1, 1),
 (3, 0, 1, 1, 2),
-(6, 0, 1, 1, 5),
-(7, 0, 1, 2, NULL),
-(22, 0, 4, 1, NULL),
-(23, 0, 4, 1, 2),
-(24, 0, 4, 1, 5),
-(25, 0, 1, 3, NULL),
-(28, 0, 4, 3, NULL),
-(32, 0, 1, 3, 7),
-(35, 0, 4, 3, 7),
-(36, 0, 1, 3, 8),
-(39, 0, 4, 3, 8),
-(47, 0, 1, 4, NULL),
-(50, 0, 4, 4, NULL),
-(54, 0, 1, 4, 9),
-(57, 0, 4, 4, 9),
-(58, 0, 1, 4, 10),
-(61, 0, 4, 4, 10),
-(69, 0, 1, 5, NULL),
-(72, 0, 4, 5, NULL),
-(76, 0, 1, 5, 11),
-(79, 0, 4, 5, 11),
-(80, 0, 1, 5, 12),
-(83, 0, 4, 5, 12),
-(91, 0, 4, 2, NULL),
-(93, 0, 1, 2, 13),
-(96, 0, 4, 2, 13),
-(147, 0, 1, 2, 20),
-(148, 0, 1, 2, 21),
-(149, 0, 1, 2, 22),
-(150, 0, 1, 2, 23),
-(151, 0, 1, 2, 24),
-(152, 0, 1, 2, 25),
-(153, 0, 1, 5, 13),
-(154, 0, 1, 5, 20),
-(155, 0, 1, 5, 21),
-(156, 0, 1, 5, 23),
-(157, 0, 1, 5, 24),
-(158, 0, 1, 5, 25),
-(159, 0, 1, 5, 46),
-(240, 0, 1, 5, 47),
-(241, 0, 1, 4, 48),
-(247, 0, 5, 1, 1),
-(248, 0, 5, 1, NULL),
-(249, 0, 5, 5, 20),
-(250, 0, 5, 5, NULL),
-(251, 0, 5, 5, 21),
-(252, 0, 2, 1, 1),
-(253, 0, 2, 1, NULL),
-(254, 0, 2, 1, 2),
-(255, 0, 2, 2, 7),
-(256, 0, 2, 2, NULL),
-(257, 0, 2, 2, 8),
-(258, 0, 2, 3, 9),
-(259, 0, 2, 3, NULL),
-(260, 0, 2, 3, 10),
-(261, 0, 2, 4, 11),
-(262, 0, 2, 4, NULL),
-(263, 0, 2, 4, 12),
-(264, 0, 2, 4, 48),
-(265, 0, 2, 5, 13),
-(266, 0, 2, 5, NULL),
-(267, 0, 2, 5, 20),
-(268, 0, 2, 5, 21),
-(269, 0, 2, 5, 47),
-(270, 0, 3, 1, 1),
-(271, 0, 3, 1, NULL),
-(272, 0, 3, 1, 2),
-(273, 0, 3, 1, 5),
-(274, 0, 3, 2, 7),
-(275, 0, 3, 2, NULL),
-(276, 0, 3, 2, 8),
-(277, 0, 3, 3, 9),
-(278, 0, 3, 3, NULL),
-(279, 0, 3, 3, 10),
-(280, 0, 3, 4, 11),
-(281, 0, 3, 4, NULL),
-(282, 0, 3, 4, 12),
-(283, 0, 3, 5, 13),
-(284, 0, 3, 5, NULL),
-(285, 0, 3, 5, 20),
-(286, 0, 3, 5, 21),
-(287, 0, 3, 5, 47),
-(288, 0, 4, 1, 1),
-(289, 0, 1, 5, 49),
-(290, 0, 1, 3, 50);
+(4, 0, 1, 1, 5),
+(5, 0, 1, 2, NULL),
+(6, 0, 1, 3, NULL),
+(7, 0, 1, 3, 7),
+(8, 0, 1, 3, 8),
+(9, 0, 1, 4, NULL),
+(10, 0, 1, 4, 9),
+(11, 0, 1, 4, 10),
+(12, 0, 1, 5, NULL),
+(13, 0, 1, 5, 11),
+(14, 0, 1, 5, 12),
+(15, 0, 1, 2, 13),
+(16, 0, 1, 2, 20),
+(17, 0, 1, 2, 21),
+(18, 0, 1, 2, 22),
+(19, 0, 1, 2, 25),
+(20, 0, 1, 5, 13),
+(21, 0, 1, 5, 20),
+(22, 0, 1, 5, 21),
+(23, 0, 1, 5, 25),
+(24, 0, 1, 5, 47),
+(25, 0, 1, 4, 48),
+(26, 0, 1, 5, 49),
+(27, 0, 1, 3, 50),
+(45, 0, 3, 1, 1),
+(46, 0, 3, 1, 2),
+(47, 0, 3, 1, 5),
+(48, 0, 3, 4, 11),
+(49, 0, 3, 4, 12),
+(50, 0, 3, 4, 48),
+(51, 0, 3, 5, 20),
+(52, 0, 3, 5, 21),
+(53, 0, 4, 1, 2),
+(54, 0, 4, 5, 20),
+(55, 0, 4, 5, 21),
+(56, 0, 5, 5, 20),
+(57, 0, 5, 5, 21),
+(90, 0, 1, 5, 51),
+(91, 0, 1, 5, 52),
+(92, 0, 1, 5, 53),
+(93, 0, 2, 1, 1),
+(94, 0, 2, 1, 2),
+(95, 0, 2, 1, 5),
+(96, 0, 2, 3, 9),
+(97, 0, 2, 3, 10),
+(98, 0, 2, 3, 50),
+(99, 0, 2, 4, 11),
+(100, 0, 2, 4, 12),
+(101, 0, 2, 4, 48),
+(102, 0, 2, 5, 20),
+(103, 0, 2, 5, 21),
+(104, 0, 2, 5, 47),
+(105, 0, 2, 5, 49),
+(106, 0, 1, 1, 54),
+(107, 0, 2, 1, NULL),
+(108, 0, 2, 1, 54),
+(109, 0, 1, 3, 55),
+(110, 0, 2, 3, NULL),
+(111, 0, 2, 3, 55),
+(112, 0, 3, 3, NULL),
+(113, 0, 3, 3, 55);
 
 -- --------------------------------------------------------
 
@@ -875,6 +957,7 @@ CREATE TABLE `st_student_master` (
 --
 
 INSERT INTO `st_student_master` (`student_id`, `registration_no`, `class_id`, `division_id`, `grad_year`, `roll_no`, `department_id`, `specialization_id`, `specialization_subject_id`, `minor_course_id`, `minor_subject_id`, `cgpa`, `fname`, `mobile`, `email`, `mark_list`, `status`, `m_sem1`, `m_sem2`, `m_sem3`, `created_at`, `academic_year_id`, `current_semester_id`) VALUES
+(1, '934', 1, 1, 2027, '8228', 8, 1, 2, NULL, NULL, 7.50, 'MR. BRIJESH YADAV', '8898740687', 'amit@tcetmumbai.in', NULL, 1, '[]', '[]', '[]', '2026-05-01 10:10:10', 1, 1),
 (12, 'S1032241059', 5, 1, 0, '32', 3, 1, 1, NULL, NULL, 9.09, 'Purva Dinkar Gade', '', '', '', 0, '', '', '', '0000-00-00 00:00:00', 1, 1),
 (13, 'S1032241051', 5, 1, 0, '24', 3, 1, 1, NULL, NULL, 9.86, 'Sanjana Dhopte', '', '', '', 0, '', '', '', '0000-00-00 00:00:00', 1, 1),
 (14, 'S1032241060', 5, 1, 0, '33', 3, 1, 1, NULL, NULL, 6.75, 'Ishan Ranj4 Gadecha', '', '', '', 0, '', '', '', '0000-00-00 00:00:00', 1, 1),
@@ -1234,9 +1317,9 @@ INSERT INTO `st_student_master` (`student_id`, `registration_no`, `class_id`, `d
 (368, 'S1032240319', 5, 0, 0, '4', 6, 1, 9, NULL, NULL, 8.00, 'Ad4ya Chaudhari', '', '', '', 0, '', '', '', '0000-00-00 00:00:00', 1, 1),
 (369, 'S1032240323', 5, 0, 0, '8', 6, 1, 2, NULL, NULL, 8.63, 'Parthsarthi Choudhary', '', '', '', 0, '', '', '', '0000-00-00 00:00:00', 1, 1),
 (370, 'S1032240331', 5, 0, 0, '16', 6, 1, 2, NULL, NULL, 8.33, 'Rajshree Gouda', '', '', '', 0, '', '', '', '0000-00-00 00:00:00', 1, 1),
-(371, 'S1032240334', 5, 0, 0, '19', 6, 1, 2, NULL, NULL, 9.64, 'Tanvi Prakash Jabare', '', '', '', 0, '', '', '', '0000-00-00 00:00:00', 1, 1),
-(372, 'S1032250131', 5, 0, 0, '65', 6, 1, 2, NULL, NULL, 8.41, 'Sakshi Bari', '', '', '', 0, '', '', '', '0000-00-00 00:00:00', 1, 1);
+(371, 'S1032240334', 5, 0, 0, '19', 6, 1, 2, NULL, NULL, 9.64, 'Tanvi Prakash Jabare', '', '', '', 0, '', '', '', '0000-00-00 00:00:00', 1, 1);
 INSERT INTO `st_student_master` (`student_id`, `registration_no`, `class_id`, `division_id`, `grad_year`, `roll_no`, `department_id`, `specialization_id`, `specialization_subject_id`, `minor_course_id`, `minor_subject_id`, `cgpa`, `fname`, `mobile`, `email`, `mark_list`, `status`, `m_sem1`, `m_sem2`, `m_sem3`, `created_at`, `academic_year_id`, `current_semester_id`) VALUES
+(372, 'S1032250131', 5, 0, 0, '65', 6, 1, 2, NULL, NULL, 8.41, 'Sakshi Bari', '', '', '', 0, '', '', '', '0000-00-00 00:00:00', 1, 1),
 (373, 'S1032250134', 5, 0, 0, '66', 6, 1, 2, NULL, NULL, 8.18, 'Divyesh Dhananjay Desale', '', '', '', 0, '', '', '', '0000-00-00 00:00:00', 1, 1),
 (374, 'S1032250132', 5, 0, 0, '67', 6, 1, 2, NULL, NULL, 8.09, 'Yasir Irshad Khan', '', '', '', 0, '', '', '', '0000-00-00 00:00:00', 1, 1),
 (375, 'S1032250133', 5, 0, 0, '68', 6, 1, 2, NULL, NULL, 8.55, 'Arya Prasad Raverkar', '', '', '', 0, '', '', '', '0000-00-00 00:00:00', 1, 1),
@@ -1471,64 +1554,10 @@ INSERT INTO `st_student_master` (`student_id`, `registration_no`, `class_id`, `d
 (629, '098761237', 3, 3, NULL, '8', 4, 4, NULL, 9, 48, 8.00, 'uuui', '7898787878', 'u@tcetmumbai.in', NULL, 1, '[]', '[]', '[]', '2026-04-29 13:04:08', 2, 6),
 (631, '437874387473', 1, 4, NULL, '9', 4, 3, NULL, NULL, NULL, 7.00, 'iufrfuf', '3883298933', 'ui@tcetmumbai.in', NULL, 1, '[]', '[]', '[]', '2026-04-29 13:11:01', 1, 3),
 (634, '09876123450', 6, 4, 2028, '8', 3, 4, NULL, 8, 45, 9.00, 'uqwuiwq', '9210219210', 'u@tcetmumbai.in', NULL, 1, '[]', '[]', '[]', '2026-04-29 13:39:12', 1, 2),
-(635, '7878787', 3, 3, 2028, 'u', 3, 1, 17, NULL, NULL, 9.00, 'jjkas', '2192902102', 'ui@tcetmumbai.in', NULL, 1, '[]', '[]', '[]', '2026-04-29 13:40:33', 1, 5);
-
--- --------------------------------------------------------
-
---
--- Table structure for table `st_student_master_old`
---
-
-CREATE TABLE `st_student_master_old` (
-  `student_id` int(11) NOT NULL,
-  `academic_year` varchar(100) NOT NULL,
-  `registration_no` varchar(200) NOT NULL,
-  `joining_date` varchar(100) NOT NULL,
-  `class_id` int(11) NOT NULL,
-  `division_id` int(11) NOT NULL,
-  `batch_id` int(11) DEFAULT NULL,
-  `roll_no` varchar(50) DEFAULT NULL,
-  `department_id` int(11) DEFAULT NULL,
-  `specialization_id` int(11) DEFAULT NULL,
-  `specialization_subject_id` int(11) DEFAULT NULL,
-  `cgpa` decimal(4,2) DEFAULT NULL,
-  `fname` varchar(100) NOT NULL,
-  `mname` varchar(100) DEFAULT NULL,
-  `lname` varchar(100) DEFAULT NULL,
-  `dob` varchar(100) DEFAULT NULL,
-  `gender` varchar(50) DEFAULT NULL,
-  `nationality` varchar(100) DEFAULT NULL,
-  `apaar_id` varchar(100) DEFAULT NULL,
-  `uan` varchar(100) DEFAULT NULL,
-  `pan` varchar(100) DEFAULT NULL,
-  `permanent_address` text DEFAULT NULL,
-  `present_address` text DEFAULT NULL,
-  `city` varchar(100) DEFAULT NULL,
-  `pincode` varchar(20) DEFAULT NULL,
-  `country` varchar(100) DEFAULT NULL,
-  `state` varchar(100) DEFAULT NULL,
-  `phone` varchar(20) DEFAULT NULL,
-  `mobile` varchar(20) DEFAULT NULL,
-  `email` varchar(150) DEFAULT NULL,
-  `photo` varchar(255) DEFAULT NULL,
-  `mark_list` varchar(255) DEFAULT NULL,
-  `birth_certificate` varchar(255) DEFAULT NULL,
-  `transfer_certificate` varchar(255) DEFAULT NULL,
-  `caste_certificate` varchar(255) DEFAULT NULL,
-  `migration_certificate` varchar(255) DEFAULT NULL,
-  `affidavit` varchar(255) DEFAULT NULL,
-  `status` tinyint(1) NOT NULL DEFAULT 1,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `st_student_master_old`
---
-
-INSERT INTO `st_student_master_old` (`student_id`, `academic_year`, `registration_no`, `joining_date`, `class_id`, `division_id`, `batch_id`, `roll_no`, `department_id`, `specialization_id`, `specialization_subject_id`, `cgpa`, `fname`, `mname`, `lname`, `dob`, `gender`, `nationality`, `apaar_id`, `uan`, `pan`, `permanent_address`, `present_address`, `city`, `pincode`, `country`, `state`, `phone`, `mobile`, `email`, `photo`, `mark_list`, `birth_certificate`, `transfer_certificate`, `caste_certificate`, `migration_certificate`, `affidavit`, `status`, `created_at`) VALUES
-(1, '2026 - 2027', '55', '2004-01-02', 2, 1, 1, '51', 1, 1, 1, 8.00, '', '', '', '', 'Male', 'INDIAN', '', '', '', '                ', '                ', '', '', 'India', 'Maharashtra', '', '', '', '', '', '', '', '', '', '', 0, '2026-04-16 13:44:07'),
-(2, '2026 - 2027', '555', '2026-04-23', 2, 2, 1, '21', 1, 1, 1, 8.00, 'Ashutosh', '', 'Pandey', '', 'Male', 'INDIAN', '', '', '', 'A/102 Krishna Vihar Apt, Opp Firebigade Office, Vasai East', '                ', 'Vasai', '401209', 'India', 'Maharashtra', '9702420582', '', 'ashutosh3276s16@gmail.com', '', '', '', '', '', '', '', 1, '2026-04-17 06:27:11'),
-(3, '2026 - 2027', '', '', 0, 0, 0, '', 0, 2, 0, NULL, '', '', '', '', 'Male', 'INDIAN', '', '', '', '                ', '                ', '', '', 'India', 'Maharashtra', '', '', '', '', '', '', '', '', '', '', 1, '2026-04-17 06:37:47');
+(635, '7878787', 3, 3, 2028, 'u', 3, 1, 17, NULL, NULL, 9.00, 'jjkas', '2192902102', 'ui@tcetmumbai.in', NULL, 1, '[]', '[]', '[]', '2026-04-29 13:40:33', 1, 5),
+(636, '8503876544', 2, 1, 2027, '9001', 12, 1, 2, NULL, NULL, 8.00, 'Anurag Mishra', '8080590516', 'mishra@tcetmumbai.in', '1777791970_8503876544_mark-list1.pdf,1777791970_8503876544_mark-list2.pdf', 1, '[]', '[]', '[]', '2026-05-03 03:23:28', 1, 3),
+(637, '2328', 1, 1, 2027, '8227', 1, 1, 1, NULL, NULL, 7.50, 'Apoorv Mishra', '9702421280', 'amitkumar@tcetmumbai.in', NULL, 1, '[]', '[]', '[]', '2026-07-01 04:11:48', 1, 1),
+(638, '', 0, 0, NULL, '', 2, NULL, NULL, NULL, NULL, NULL, 'Atrim Yasha', '8080590516', 'atrim@tcetmumbai.in', '', 1, '', '', '', '2026-07-03 08:05:16', NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -1562,14 +1591,16 @@ INSERT INTO `st_sub_menu_master` (`sub_menu_id`, `menu_id`, `sort_order`, `sub_m
 (13, 5, 1, 'Masters', 'fa fa-cog', 'class_crud_new.php#section-list'),
 (20, 5, 2, 'Profile', 'fa fa-user', 'profile.php'),
 (21, 5, 3, 'Update Password', 'fa fa-folder', 'change_password.php'),
-(23, 5, 5, 'Menu', 'fa fa-folder', 'class_crud_new.php?tab=menu-list'),
-(24, 5, 6, 'Sub Menu', 'fa fa-folder', 'class_crud_new.php?tab=sub-menu-list'),
-(25, 5, 7, 'Side Menu Allocation', 'fa fa-check-square-o', 'allocation_master.php'),
-(46, 5, 4, 'Manage Section', 'fa fa-list-alt', 'class_crud_new.php?tab=section-list'),
-(47, 5, 8, 'Offline Marks Entry', 'fa fa-pencil-square-o', 'offline_marks_entry.php'),
+(25, 5, 4, 'Side Menu Allocation', 'fa fa-check-square-o', 'allocation_master.php'),
+(47, 5, 5, 'Offline Marks Entry', 'fa fa-pencil-square-o', 'offline_marks_entry.php'),
 (48, 4, 3, 'Mentor Allocation', 'fa fa-exchange', 'mentor_allocation.php'),
-(49, 5, 9, 'Audit Log', 'fa fa-history', 'audit_log.php'),
-(50, 3, 3, 'Coordinator Allocation', 'fa fa-exchange', 'coordinator_allocation.php');
+(49, 5, 6, 'Audit Log', 'fa fa-history', 'audit_log.php'),
+(50, 3, 3, 'Coordinator Allocation', 'fa fa-exchange', 'coordinator_allocation.php'),
+(51, 5, 10, 'Manage Section', 'fa fa-list-alt', 'class_crud_new.php?tab=section-list'),
+(52, 5, 11, 'Menu Master', 'fa fa-folder-open', 'class_crud_new.php?tab=menu-list'),
+(53, 5, 12, 'Sub Menu Master', 'fa fa-sitemap', 'class_crud_new.php?tab=sub-menu-list'),
+(54, 1, 4, 'Monitor', 'fa fa-desktop', 'student_monitor.php'),
+(55, 3, 4, 'Mentor Subject', 'fa fa-book', 'mentor_subject.php');
 
 -- --------------------------------------------------------
 
@@ -1605,23 +1636,13 @@ CREATE TABLE `st_user_master` (
 --
 
 INSERT INTO `st_user_master` (`user_id`, `user_name`, `email_id`, `phone_number`, `department_id`, `role_id`, `student_id`, `is_first_login`) VALUES
-(1, 'Anurag Mishra', 'amit@tcetmumbai.in', '8080590516', 1, 1, 0, 1),
-(2, 'Amit Kumar', 'anurag@tcetmumbai.in', '8080590516', 1, 2, 0, 1),
-(3, 'Ashutosh Pandey', 'asdf@tcetmumbai.in', '234', 2, 2, 0, 1),
-(4, 'Ashutosh', '1032251400@tcetmumbai.in', '9702420582', 1, 4, 0, 1),
-(5, 'Preet Prajapati', 'preet@tcetmumbai.in', '8080590516', 3, 5, 0, 1),
-(6, 'Akash Pandey', 'aakash@tcetmumbai.in', '8080590516', 3, 3, 0, 1),
-(7, 'pallavi', '654576568@tcetmumbai.in', '546789765', 13, 5, 0, 1),
-(8, 'john doe', '126785432@tcetmumbai.in', '8977743214', 8, 5, 0, 1),
-(9, 'Pallavi', '1324567@tcetmumbai.in', '978655435', 13, 5, 0, 0),
-(10, 'john', '5977783@tcetmumbai.in', '9875432356', 10, 5, 0, 0),
-(11, 'pallavi', '545667789@tcetmumbai.in', '553443267', 12, 5, 0, 1),
-(12, 'pallavi', '788954@tcetmumbai.in', '9864267892', 12, 5, 0, 0),
-(13, 'amit', '356789064@tcetmumbai.in', '9856341245', 9, 5, 0, 0),
-(14, 'ashutosh', '1235679@tcetmumbai.in', '9876543121', 10, 5, 0, 0),
-(15, 'amit', '13245678@tcetmumbai.in', '6878934567', 7, 5, 0, 0),
-(16, 'rita', '14525376@tcetmumbai.in', '8967453423', 10, 5, 0, 1),
-
+(1, 'anuragmishra', 'amit@tcetmumbai.in', '8080590516', 1, 1, 0, 1),
+(2, 'amitanand', 'amitanandanurag@tcetmumbai.in', '8080590516', 1, 2, 0, 1),
+(3, 'Alok Kumar', 'alok@tcetmumbai.in', '8080590516', 2, 3, 0, 1),
+(4, 'Ashok Mishra', 'ashok@tcetmumbai.in', '8080590516', 2, 4, 0, 1),
+(5, 'Atrim Yasha', 'atrim@tcetmumbai.in', '8080590516', 2, 5, 638, 1),
+(6, 'Aakash Pandey', 'aakash@tcetmumbai.in', '9874563214', 10, 4, 0, 1),
+(7, 'Ashutosh Pandey', 'ashutosh3276s16@gmail.com', '7896541325', 1, 4, 0, 1);
 
 -- --------------------------------------------------------
 
@@ -1681,6 +1702,12 @@ ALTER TABLE `st_coordinator`
   ADD PRIMARY KEY (`coordinator_id`);
 
 --
+-- Indexes for table `st_coordinator_mentor`
+--
+ALTER TABLE `st_coordinator_mentor`
+  ADD PRIMARY KEY (`id`);
+
+--
 -- Indexes for table `st_credit_ledger`
 --
 ALTER TABLE `st_credit_ledger`
@@ -1721,6 +1748,14 @@ ALTER TABLE `st_login`
 --
 ALTER TABLE `st_mentor_student_mapping`
   ADD PRIMARY KEY (`mapping_id`);
+
+--
+-- Indexes for table `st_mentor_subject_mapping`
+--
+ALTER TABLE `st_mentor_subject_mapping`
+  ADD PRIMARY KEY (`mapping_id`),
+  ADD KEY `mentor_id` (`mentor_id`),
+  ADD KEY `subject_id` (`subject_id`);
 
 --
 -- Indexes for table `st_menu_allocation_master`
@@ -1780,14 +1815,104 @@ ALTER TABLE `st_role_master`
   ADD PRIMARY KEY (`role_id`);
 
 --
+-- Indexes for table `st_student_master`
+--
+ALTER TABLE `st_student_master`
+  ADD PRIMARY KEY (`student_id`);
+
+--
+-- Indexes for table `st_sub_menu_master`
+--
+ALTER TABLE `st_sub_menu_master`
+  ADD PRIMARY KEY (`sub_menu_id`);
+
+--
+-- Indexes for table `st_user_master`
+--
+ALTER TABLE `st_user_master`
+  ADD PRIMARY KEY (`user_id`);
+
+--
 -- AUTO_INCREMENT for dumped tables
 --
+
+--
+-- AUTO_INCREMENT for table `st_audit_log`
+--
+ALTER TABLE `st_audit_log`
+  MODIFY `audit_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+
+--
+-- AUTO_INCREMENT for table `st_batch_master`
+--
+ALTER TABLE `st_batch_master`
+  MODIFY `batch_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+
+--
+-- AUTO_INCREMENT for table `st_cgpa_master`
+--
+ALTER TABLE `st_cgpa_master`
+  MODIFY `cgpa_id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `st_class_master`
+--
+ALTER TABLE `st_class_master`
+  MODIFY `class_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+
+--
+-- AUTO_INCREMENT for table `st_coordinator`
+--
+ALTER TABLE `st_coordinator`
+  MODIFY `coordinator_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT for table `st_coordinator_mentor`
+--
+ALTER TABLE `st_coordinator_mentor`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `st_login`
 --
 ALTER TABLE `st_login`
   MODIFY `login_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+
+--
+-- AUTO_INCREMENT for table `st_mentor_student_mapping`
+--
+ALTER TABLE `st_mentor_student_mapping`
+  MODIFY `mapping_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=104;
+
+--
+-- AUTO_INCREMENT for table `st_mentor_subject_mapping`
+--
+ALTER TABLE `st_mentor_subject_mapping`
+  MODIFY `mapping_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+
+--
+-- AUTO_INCREMENT for table `st_menu_allocation_master`
+--
+ALTER TABLE `st_menu_allocation_master`
+  MODIFY `menu_allocation_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=114;
+
+--
+-- AUTO_INCREMENT for table `st_student_master`
+--
+ALTER TABLE `st_student_master`
+  MODIFY `student_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=639;
+
+--
+-- AUTO_INCREMENT for table `st_sub_menu_master`
+--
+ALTER TABLE `st_sub_menu_master`
+  MODIFY `sub_menu_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=56;
+
+--
+-- AUTO_INCREMENT for table `st_user_master`
+--
+ALTER TABLE `st_user_master`
+  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
