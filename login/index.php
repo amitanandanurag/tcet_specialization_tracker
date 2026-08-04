@@ -14,7 +14,7 @@ include_once("../database/db_connect.php");
         body {
             height: 100%;
             margin: 0;
-            overflow-x: hidden;
+            overflow: hidden;
         }
 
         body {
@@ -40,7 +40,6 @@ include_once("../database/db_connect.php");
             width: 40%;
 
             display: flex;
-            flex-direction: column;
             justify-content: center;
             align-items: center;
 
@@ -62,10 +61,6 @@ include_once("../database/db_connect.php");
         .main-icon img {
             border-radius: 50%;
             margin-bottom: 10px;
-            object-fit: contain;
-            background: #ffffff;
-            padding: 5px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         }
 
         .school-name {
@@ -73,7 +68,7 @@ include_once("../database/db_connect.php");
             font-weight: bold;
             margin-bottom: 20px;
             font-family: 'Lucida Sans Unicode', sans-serif;
-            color: #ffffff;
+            color: #ffffff; 
         }
 
         .header-left-bottom {
@@ -155,7 +150,7 @@ include_once("../database/db_connect.php");
             justify-content: center;
             align-items: center;
 
-            background: rgba(15, 23, 42, 0.72);
+            background: transparent;
             z-index: 1000;
         }
 
@@ -263,69 +258,11 @@ include_once("../database/db_connect.php");
             border: none;
         }
 
-        @media (max-width: 991px) {
-            body {
-                justify-content: center;
-                align-items: stretch;
-            }
-
-            .w3layouts-main {
-                justify-content: center;
-                align-items: stretch;
-            }
-
-            .bg-layer {
-                width: 100%;
-                padding: 30px 20px;
-            }
-
-            .header-main {
-                width: 100%;
-                max-width: 540px;
-            }
-
-            .popup {
-                width: min(92vw, 620px);
-                height: min(88vh, 700px);
-            }
-        }
-
-        @media (max-width: 600px) {
-
-            body,
-            .w3layouts-main {
-                align-items: flex-start;
-            }
-
-            .bg-layer {
-                padding: 16px 12px;
-            }
-
-            .header-main {
-                border-radius: 10px;
-                padding: 24px 16px;
-            }
-
-            .school-name {
-                font-size: 17px;
-                margin-bottom: 14px;
-            }
-
-            .popup {
-                width: 96vw;
-                height: 92vh;
-                border-radius: 12px;
-            }
-
-            .popup span {
-                top: 10px;
-                right: 12px;
-            }
-        }
+        /
     </style>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="script/validation.min.js"></script>
-    <script src="script/login.js"></script>
+<script src="script/validation.min.js"></script>
+<script src="script/login.js"></script>
     <script>
         addEventListener("load", function () {
             setTimeout(hideURLbar, 0);
@@ -392,7 +329,7 @@ include_once("../database/db_connect.php");
                 }
             }
         });
-
+        
 
     </script>
 </head>
@@ -400,28 +337,25 @@ include_once("../database/db_connect.php");
 <body>
 
     <div class="w3layouts-main">
-        <div class="bg-layer">
+        <div class="bg-layer"><br /><br /><br /><br /><br />
             <div class="header-main">
                 <div class="main-icon">
-                    <br /><br /><br /><img src="images/school_logo.jpg" alt="logo" width="150" height="130">
+                    <img src="images/school_logo.jpg" alt="logo" width='150px' height='150px'>
                 </div>
                 <div class="school-name"> SPECIALIZATION TRACKER </div>
                 <div class="header-left-bottom">
                     <form id="login-form">
                         <div class="login-field">
                             <div class="login-field-icon"><i class="fa fa-user"></i></div>
-                            <input type="text" class="login-field-input" placeholder="Enter username" name="username"
-                                id="username" required="" />
+                            <input type="text" class="login-field-input" placeholder="Enter username" name="username" id="username" required="" />
                         </div>
                         <div class="login-field">
                             <div class="login-field-icon"><i class="fa fa-lock"></i></div>
-                            <input type="password" class="login-field-input" placeholder="Enter password"
-                                name="password" id="password" required="" />
-                            <button type="button" class="password-toggle" id="passwordToggle" aria-label="Show password"
-                                onclick="togglePasswordVisibility()">
+                            <input type="password" class="login-field-input" placeholder="Enter password" name="password" id="password" required="" />
+                            <button type="button" class="password-toggle" id="passwordToggle" aria-label="Show password" onclick="togglePasswordVisibility()">
                                 <i id="passwordToggleIcon" class="fa fa-eye"></i>
                             </button>
-                        </div>
+                        </div> 
                         <div class="login-check">
                             <label class="checkbox">
                                 <input type="checkbox" name="checkbox" checked="">
@@ -458,14 +392,12 @@ include_once("../database/db_connect.php");
 
                 </div>
             </div>
-            <div style="text-align:center; margin-top:10px;">
-                <button type="button" class="btn" onclick="openForgotPassword()"
-                    style="color:white; background-color:transparent; border:1px solid white; padding:8px 16px; border-radius:4px; cursor:pointer;">Forgot
-                    Password?</button>
+                <div style="text-align:center; margin-top:10px;">
+                <button type="button" class="btn" onclick="openForgotPassword()" style="color:white; background-color:transparent; border:1px solid white; padding:8px 16px; border-radius:4px; cursor:pointer;">Forgot Password?</button>
             </div>
             <div class="copyright">
-                <p>© 2019. All rights reserved | Designed by <br /><a href="https://tcetmumbai.in/" target="_blank">MCA,
-                        TCET Mumbai</a></p>
+                <p>© 2019. All rights reserved | Designed by <a href="https://dignityitsolution.com/"
+                        target="_blank">Dignity IT Solution</a></p>
             </div>
         </div>
     </div>
@@ -473,3 +405,4 @@ include_once("../database/db_connect.php");
 </body>
 
 </html>
+
