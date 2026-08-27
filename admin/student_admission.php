@@ -98,13 +98,16 @@ if (($isEditMode || empty($admissionForm)) && !empty($userid)) {
         alert("Please enter valid numeric CGPA.");
         return false;
       }
-      if (parseFloat(cgpaValue) <= 7) {
-        alert("Not eligible for Honours. CGPA must be above 7.");
+      if (parseFloat(cgpaValue) < 7.5) {
+        alert("Not eligible for Honours. Minimum CGPA Eligibility: 7.5");
         return false;
       }
-      if ($('#specialization_subject_select').prop('selectedIndex') <= 0) {
-        alert("Please select Specialization Subject for Honours.");
-        return false;
+      var classText = $("#class4 option:selected").text().toUpperCase();
+      if (classText !== 'BE') {
+        if ($('#specialization_subject_select').prop('selectedIndex') <= 0) {
+          alert("Please select Specialization Subject for Honours.");
+          return false;
+        }
       }
     } else if (isMinorMultidisciplinary) {
       var minorCourse = $('#minor_course_select').val();
@@ -128,6 +131,26 @@ if (($isEditMode || empty($admissionForm)) && !empty($userid)) {
       var minorCgpa = parseFloat(minorCgpaValue);
       if (minorCgpa < 0 || minorCgpa > 10) {
         alert("CGPA must be between 0 and 10.");
+        return false;
+      }
+    }
+
+    var isResearch = specializationText.indexOf("research") !== -1;
+    if (isResearch) {
+      if ($('#research_component_i_id').val() == "") {
+        alert("Please select Research Component I.");
+        return false;
+      }
+      if ($('#research_core_vii').val().trim() == "") {
+        alert("Please enter Research Core Component VII.");
+        return false;
+      }
+      if ($('#research_component_ii_id').val() == "") {
+        alert("Please select Research Component II.");
+        return false;
+      }
+      if ($('#research_core_viii').val().trim() == "") {
+        alert("Please enter Research Core Component VIII.");
         return false;
       }
     }
@@ -221,6 +244,11 @@ if (($isEditMode || empty($admissionForm)) && !empty($userid)) {
     $('#minor_course_select').val('');
     $('#minor_subject_section').hide();
     $('#minor_subject_select').empty().append('<option value="">Select Minor Subject</option>');
+    $('#research_sections_wrapper').hide();
+    $('#research_component_i_id').val('');
+    $('#research_core_vii').val('');
+    $('#research_component_ii_id').val('');
+    $('#research_core_viii').val('');
     setAdmissionDetailSectionsVisible(false);
   }
 
@@ -270,6 +298,7 @@ if (($isEditMode || empty($admissionForm)) && !empty($userid)) {
     var cgpaRaw = $('#cgpa').val();
     var cgpa = parseFloat(cgpaRaw);
     var isHonours = specializationText.indexOf('honours') !== -1 || specializationText.indexOf('honors') !== -1;
+    var classText = $("#class4 option:selected").text().toUpperCase();
 
     if (!isHonours) {
       $('#specialization_subject_wrapper').hide();
@@ -278,8 +307,12 @@ if (($isEditMode || empty($admissionForm)) && !empty($userid)) {
       return;
     }
 
-    if (cgpaRaw !== '' && !isNaN(cgpa) && cgpa > 7) {
-      $('#specialization_subject_wrapper').show();
+    if (cgpaRaw !== '' && !isNaN(cgpa) && cgpa >= 7.5) {
+      if (classText === 'BE') {
+        $('#specialization_subject_wrapper').hide();
+      } else {
+        $('#specialization_subject_wrapper').show();
+      }
       $('#honours_not_eligible').hide();
       setAdmissionDetailSectionsVisible(true);
     } else if (cgpaRaw !== '') {
@@ -294,6 +327,17 @@ if (($isEditMode || empty($admissionForm)) && !empty($userid)) {
     }
   }
 
+  function updateResearchEligibility() {
+    var specializationText = $('#specialization_select option:selected').text().toLowerCase();
+    var isResearch = specializationText.indexOf("research") !== -1;
+    
+    if (isResearch) {
+      $('#research_sections_wrapper').show();
+    } else {
+      $('#research_sections_wrapper').hide();
+    }
+  }
+
   function handleSpecializationSelection(shouldReset) {
     var specializationText = $('#specialization_select option:selected').text().toLowerCase();
     var isMinorMultidisciplinary = specializationText.indexOf("minor multidisciplinary") !== -1;
@@ -303,6 +347,8 @@ if (($isEditMode || empty($admissionForm)) && !empty($userid)) {
     if (shouldReset) {
       resetSpecializationConditionalUI();
     }
+
+    updateResearchEligibility();
 
     if (isMinorDegree) {
       $('#cgpa_section').show();
@@ -326,26 +372,135 @@ if (($isEditMode || empty($admissionForm)) && !empty($userid)) {
     setAdmissionDetailSectionsVisible(true);
   }
 
+  function updateSemestersByClass() {
+    var classVal = $("#class4").val();
+    var selectedClassText = $("#class4 option:selected").text().toUpperCase();
+    var semesterSelect = $('#semester_select');
+    var currentVal = semesterSelect.val();
+
+    if (!semesterSelect.data('original-options')) {
+      var options = [];
+      semesterSelect.find('option').each(function() {
+        options.push({
+          value: $(this).val(),
+          text: $(this).text()
+        });
+      });
+      semesterSelect.data('original-options', options);
+    }
+
+    var originalOptions = semesterSelect.data('original-options');
+    semesterSelect.empty().append('<option value="">Select Semester</option>');
+
+    if (!classVal || classVal === "") {
+      return;
+    }
+
+    var allowedSems = [];
+    if (selectedClassText === 'FY' || selectedClassText === 'FE') {
+      allowedSems = ['1', '2'];
+    } else if (selectedClassText === 'SY' || selectedClassText === 'SE') {
+      allowedSems = ['3', '4'];
+    } else if (selectedClassText === 'TY' || selectedClassText === 'TE') {
+      allowedSems = ['5', '6'];
+    } else if (selectedClassText === 'BE') {
+      allowedSems = ['7', '8'];
+    }
+
+    $.each(originalOptions, function(index, opt) {
+      if (opt.value === "") return;
+      if (allowedSems.length === 0 || allowedSems.indexOf(opt.value) !== -1) {
+        var selectedAttr = (opt.value === currentVal) ? 'selected' : '';
+        semesterSelect.append('<option value="' + opt.value + '" ' + selectedAttr + '>' + opt.text + '</option>');
+      }
+    });
+  }
+
+  function updateDivisionsByClass() {
+    var classVal = $("#class4").val();
+    var divisionSelect = $('#batch4');
+    var currentVal = divisionSelect.val();
+
+    if (!divisionSelect.data('original-options')) {
+      var options = [];
+      divisionSelect.find('option').each(function() {
+        options.push({
+          value: $(this).val(),
+          text: $(this).text()
+        });
+      });
+      divisionSelect.data('original-options', options);
+    }
+
+    var originalOptions = divisionSelect.data('original-options');
+    divisionSelect.empty().append('<option value="">Select Division</option>');
+
+    if (!classVal || classVal === "") {
+      return;
+    }
+
+    $.each(originalOptions, function(index, opt) {
+      if (opt.value === "") return;
+      var selectedAttr = (opt.value === currentVal) ? 'selected' : '';
+      divisionSelect.append('<option value="' + opt.value + '" ' + selectedAttr + '>' + opt.text + '</option>');
+    });
+  }
+
+  function updateSpecializationsByClass() {
+    var classVal = $("#class4").val();
+    var selectedClassText = $("#class4 option:selected").text().toUpperCase();
+    var specSelect = $('#specialization_select');
+    var currentVal = specSelect.val();
+
+    if (!specSelect.data('original-options')) {
+      var options = [];
+      specSelect.find('option').each(function() {
+        options.push({
+          value: $(this).val(),
+          text: $(this).text()
+        });
+      });
+      specSelect.data('original-options', options);
+    }
+
+    var originalOptions = specSelect.data('original-options');
+    specSelect.empty().append('<option value="">Select Specialization</option>');
+
+    if (!classVal || classVal === "") {
+      return;
+    }
+
+    var isBE = (selectedClassText === 'BE');
+
+    $.each(originalOptions, function(index, opt) {
+      if (opt.value === "") return;
+      var textLower = opt.text.toLowerCase();
+      var isResearch = (textLower.indexOf('research') !== -1);
+
+      if (isBE) {
+        if (isResearch) {
+          var selectedAttr = (opt.value === currentVal) ? 'selected' : '';
+          specSelect.append('<option value="' + opt.value + '" ' + selectedAttr + '>' + opt.text + '</option>');
+        }
+      } else {
+        if (!isResearch) {
+          var selectedAttr = (opt.value === currentVal) ? 'selected' : '';
+          specSelect.append('<option value="' + opt.value + '" ' + selectedAttr + '>' + opt.text + '</option>');
+        }
+      }
+    });
+  }
+
   $(document).ready(function() {
-    var originalOptions = $('#specialization_select').html();
+    updateSemestersByClass();
+    updateDivisionsByClass();
+    updateSpecializationsByClass();
 
     $('#class4').on('change', function() {
-      var selectedClassText = $("#class4 option:selected").text().toLowerCase();
-      $('#specialization_select').html('<option value="">Select Specialization</option>');
-
-      if (selectedClassText.indexOf('sy') !== -1) {
-        $(originalOptions).filter('option').each(function() {
-          var val = $(this).val();
-          if (val == "1" || val == "3" || val == "4") {
-            $('#specialization_select').append($(this).clone());
-          }
-        });
-      } else {
-        $('#specialization_select').html(originalOptions);
-      }
-
-      $('#specialization_select').val("");
-      // Keep sections visible when class changes - don't reset UI visibility
+      updateSemestersByClass();
+      updateDivisionsByClass();
+      updateSpecializationsByClass();
+      updateHonoursEligibility();
     });
 
     handleSpecializationSelection(false);
@@ -660,7 +815,62 @@ if (($isEditMode || empty($admissionForm)) && !empty($userid)) {
               </div>
 
               <div class="col-md-8" id="honours_not_eligible" style="display: none; margin-top: 30px; color: #d9534f; font-weight: 600;">
-                Not eligible to register in Honours. CGPA must be above 7.
+                Not eligible to register in Honours. Minimum CGPA Eligibility: 7.5
+              </div>
+            </div>
+
+            <!-- Conditional Research Components Section for Honors with Research -->
+            <div class="col-md-12" id="research_sections_wrapper" style="display: none; margin-top: 15px; border: 1px solid #1abc9c; padding: 15px; border-radius: 5px;">
+              <h4 style="color: #1abc9c; border-bottom: 1px solid #1abc9c; padding-bottom: 5px; margin-top: 0;"><i class="fa fa-flask"></i> Research Components (Honors with Research)</h4>
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label>Research Component I (Open Elective II) <span style="color: red;">*</span></label>
+                    <select class="form-control" name="research_component_i_id" id="research_component_i_id">
+                      <option value="">Select Research Component I</option>
+                      <?php
+                      $resSub1 = $db_handle->conn->query("SELECT subject_id, subject_name FROM st_specialization_subject_master WHERE is_research_component = 1");
+                      if ($resSub1) {
+                        while ($srow1 = $resSub1->fetch_assoc()) {
+                          $selected = (!empty($admissionForm['research_component_i_id']) && (string)$admissionForm['research_component_i_id'] === (string)$srow1['subject_id']) ? 'selected' : '';
+                          echo "<option value='{$srow1['subject_id']}' {$selected}>" . htmlspecialchars($srow1['subject_name']) . "</option>";
+                        }
+                      }
+                      ?>
+                    </select>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label>Research Core Component - VII Sem (Text) <span style="color: red;">*</span></label>
+                    <input type="text" name="research_core_vii" id="research_core_vii" class="form-control" value="<?php echo htmlspecialchars($admissionForm['research_core_vii'] ?? ''); ?>" placeholder="Enter VII Sem Research Core Component">
+                  </div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label>Research Component II (Open Elective III) <span style="color: red;">*</span></label>
+                    <select class="form-control" name="research_component_ii_id" id="research_component_ii_id">
+                      <option value="">Select Research Component II</option>
+                      <?php
+                      $resSub2 = $db_handle->conn->query("SELECT subject_id, subject_name FROM st_specialization_subject_master WHERE is_research_component = 1");
+                      if ($resSub2) {
+                        while ($srow2 = $resSub2->fetch_assoc()) {
+                          $selected = (!empty($admissionForm['research_component_ii_id']) && (string)$admissionForm['research_component_ii_id'] === (string)$srow2['subject_id']) ? 'selected' : '';
+                          echo "<option value='{$srow2['subject_id']}' {$selected}>" . htmlspecialchars($srow2['subject_name']) . "</option>";
+                        }
+                      }
+                      ?>
+                    </select>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label>Research Core Component - VIII Sem (Text) <span style="color: red;">*</span></label>
+                    <input type="text" name="research_core_viii" id="research_core_viii" class="form-control" value="<?php echo htmlspecialchars($admissionForm['research_core_viii'] ?? ''); ?>" placeholder="Enter VIII Sem Research Core Component">
+                  </div>
+                </div>
               </div>
             </div>
           </div>

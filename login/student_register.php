@@ -507,7 +507,7 @@ window.addEventListener('load', function () {
 <div class="register-wrap">
     <div class="register-card">
         <div class="register-header">
-            <h2>Student Registration</h2>
+            <h2>Portal Registration</h2>
             <p>Use your institute email and active phone number to create the account.</p>
         </div>
 
@@ -518,7 +518,7 @@ window.addEventListener('load', function () {
 
             <?php if (isset($_SESSION['show_credentials']) && $_SESSION['show_credentials']) { ?>
             <div id="credentialsBox">
-                <div class="credentials-title">Registration Successful!</div>
+                <div class="credentials-title">Portal Registration Successful</div>
                 <p style="color: #059669; margin: 14px 0; font-size: 14px;">Your account has been created. Please save your login credentials below.</p>
                 <div id="credText">
                     <strong>Username:</strong>

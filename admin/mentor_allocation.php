@@ -101,14 +101,12 @@ function mentor_allocation_fetch_student_ids($db_handle, $filters)
   global $loginRole, $loginDepartment;
   $where = mentor_allocation_build_student_where($db_handle->conn, $filters,$loginRole,$loginDepartment);
   
-  $semesterId = !empty($filters['semester_id']) ? intval($filters['semester_id']) : 'sm.current_semester_id';
-
   $sql = "SELECT sm.student_id
           FROM st_student_master sm
           LEFT JOIN st_class_master cl ON cl.class_id = sm.class_id
           LEFT JOIN st_section_master sec ON sec.id = sm.division_id
           LEFT JOIN st_department_master dep ON dep.department_id = sm.department_id
-          LEFT JOIN st_mentor_student_mapping msm ON msm.student_id = sm.student_id AND msm.semester_id = {$semesterId}
+          LEFT JOIN st_mentor_student_mapping msm ON msm.student_id = sm.student_id AND msm.academic_year_id = sm.academic_year_id
           LEFT JOIN st_login ml ON ml.user_id = msm.mentor_id
           LEFT JOIN st_user_master mu ON mu.user_id = msm.mentor_id AND mu.role_id = 4
           {$where}
@@ -136,38 +134,29 @@ function mentor_allocation_assign_students($db_handle, $mentorId, $studentIds, $
     return false;
   }
 
-  $idList = implode(',', $cleanIds);
   mysqli_begin_transaction($db_handle->conn);
 
   try {
-    if ($semesterId !== '') {
-      $semId = intval($semesterId);
-      if (!mysqli_query($db_handle->conn, "DELETE FROM st_mentor_student_mapping WHERE student_id IN ({$idList}) AND semester_id = {$semId}")) {
+    foreach ($cleanIds as $studentId) {
+      $studentRes = mysqli_query($db_handle->conn, "SELECT current_semester_id, academic_year_id FROM st_student_master WHERE student_id = {$studentId}");
+      $semId = 1;
+      $ayId = 1;
+      if ($studentRes && $studentRow = mysqli_fetch_assoc($studentRes)) {
+        $semId = intval($studentRow['current_semester_id'] ?? 1);
+        $ayId = intval($studentRow['academic_year_id'] ?? 1);
+      }
+      
+      if ($semesterId !== '') {
+        $semId = intval($semesterId);
+      }
+
+      if (!mysqli_query($db_handle->conn, "DELETE FROM st_mentor_student_mapping WHERE student_id = {$studentId} AND academic_year_id = {$ayId}")) {
         throw new Exception('Unable to clear existing mentor mapping.');
       }
 
-      foreach ($cleanIds as $studentId) {
-        $insertSql = "INSERT INTO st_mentor_student_mapping (mentor_id, student_id, semester_id) VALUES ({$mentorId}, {$studentId}, {$semId})";
-        if (!mysqli_query($db_handle->conn, $insertSql)) {
-          throw new Exception('Unable to save mentor mapping.');
-        }
-      }
-    } else {
-      foreach ($cleanIds as $studentId) {
-        $studentRes = mysqli_query($db_handle->conn, "SELECT current_semester_id FROM st_student_master WHERE student_id = {$studentId}");
-        $semId = 1;
-        if ($studentRes && $studentRow = mysqli_fetch_assoc($studentRes)) {
-          $semId = intval($studentRow['current_semester_id'] ?? 1);
-        }
-        
-        if (!mysqli_query($db_handle->conn, "DELETE FROM st_mentor_student_mapping WHERE student_id = {$studentId} AND semester_id = {$semId}")) {
-          throw new Exception('Unable to clear existing mentor mapping.');
-        }
-        
-        $insertSql = "INSERT INTO st_mentor_student_mapping (mentor_id, student_id, semester_id) VALUES ({$mentorId}, {$studentId}, {$semId})";
-        if (!mysqli_query($db_handle->conn, $insertSql)) {
-          throw new Exception('Unable to save mentor mapping.');
-        }
+      $insertSql = "INSERT INTO st_mentor_student_mapping (mentor_id, student_id, semester_id, academic_year_id) VALUES ({$mentorId}, {$studentId}, {$semId}, {$ayId})";
+      if (!mysqli_query($db_handle->conn, $insertSql)) {
+        throw new Exception('Unable to save mentor mapping.');
       }
     }
 
@@ -195,13 +184,11 @@ if (isset($_GET['action']) && $_GET['action'] === 'load_students') {
 
   $where = mentor_allocation_build_student_where($db_handle->conn, $filters,$loginRole,$loginDepartment);
   
-  $semesterId = !empty($filters['semester_id']) ? intval($filters['semester_id']) : 'sm.current_semester_id';
-  
   $baseSql = "FROM st_student_master sm
               LEFT JOIN st_class_master cl ON cl.class_id = sm.class_id
               LEFT JOIN st_section_master sec ON sec.id = sm.division_id
               LEFT JOIN st_department_master dep ON dep.department_id = sm.department_id
-              LEFT JOIN st_mentor_student_mapping msm ON msm.student_id = sm.student_id AND msm.semester_id = {$semesterId}
+              LEFT JOIN st_mentor_student_mapping msm ON msm.student_id = sm.student_id AND msm.academic_year_id = sm.academic_year_id
               LEFT JOIN st_login ml ON ml.user_id = msm.mentor_id
               LEFT JOIN st_user_master mu ON mu.user_id = msm.mentor_id AND mu.role_id = 4
               {$where}";

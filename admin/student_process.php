@@ -109,6 +109,11 @@ if (isset($_POST['save'])) {
                 }
                 if (!empty($_POST['cgpa']) && is_numeric($_POST['cgpa'])) {
                     $cgpa_val = floatval($_POST['cgpa']);
+                    if ($cgpa_val < 7.5) {
+                        echo '<script type="text/javascript">alert("Error: Student is not eligible for Honors. Minimum CGPA must be 7.5.");</script>';
+                        echo "<script>window.open('student_admission.php','_self')</script>";
+                        exit;
+                    }
                     $cgpa = "'" . number_format($cgpa_val, 2) . "'";
                 }
             }
@@ -133,6 +138,27 @@ if (isset($_POST['save'])) {
                 }
             }
         }
+    }
+
+    // Handle research components
+    $research_component_i_id = 'NULL';
+    if (!empty($_POST['research_component_i_id']) && is_numeric($_POST['research_component_i_id'])) {
+        $research_component_i_id = intval($_POST['research_component_i_id']);
+    }
+    
+    $research_core_vii = 'NULL';
+    if (!empty($_POST['research_core_vii'])) {
+        $research_core_vii = "'" . mysqli_real_escape_string($conn, $_POST['research_core_vii']) . "'";
+    }
+    
+    $research_component_ii_id = 'NULL';
+    if (!empty($_POST['research_component_ii_id']) && is_numeric($_POST['research_component_ii_id'])) {
+        $research_component_ii_id = intval($_POST['research_component_ii_id']);
+    }
+    
+    $research_core_viii = 'NULL';
+    if (!empty($_POST['research_core_viii'])) {
+        $research_core_viii = "'" . mysqli_real_escape_string($conn, $_POST['research_core_viii']) . "'";
     }
     
     // Handle mobile
@@ -231,7 +257,11 @@ if (isset($_POST['save'])) {
             `m_sem1` = $m_sem1,
             `m_sem2` = $m_sem2,
             `m_sem3` = $m_sem3,
-            `current_semester_id` = '$current_semester_id'
+            `current_semester_id` = '$current_semester_id',
+            `research_component_i_id` = $research_component_i_id,
+            `research_core_vii` = $research_core_vii,
+            `research_component_ii_id` = $research_component_ii_id,
+            `research_core_viii` = $research_core_viii
             WHERE `student_id` = $existingStudentId";
         
         $result = mysqli_query($conn, $sql);
@@ -260,7 +290,11 @@ if (isset($_POST['save'])) {
             `m_sem2`,
             `m_sem3`,
             `created_at`,
-            `current_semester_id`
+            `current_semester_id`,
+            `research_component_i_id`,
+            `research_core_vii`,
+            `research_component_ii_id`,
+            `research_core_viii`
         ) VALUES (
             '$academic_year_id',
             '$registration_no',
@@ -283,7 +317,11 @@ if (isset($_POST['save'])) {
             $m_sem2,
             $m_sem3,
             NOW(),
-            '$current_semester_id'
+            '$current_semester_id',
+            $research_component_i_id,
+            $research_core_vii,
+            $research_component_ii_id,
+            $research_core_viii
         )";
         
         $result = mysqli_query($conn, $sql);
@@ -291,6 +329,7 @@ if (isset($_POST['save'])) {
     }
     
     if ($result === TRUE) {
+        $database->syncStudentSemesterHistory($student_id, $current_semester_id);
         if (isset($specialization_subject_id) && $specialization_subject_id !== 'NULL') {
             $clean_subject_id = intval(trim($specialization_subject_id, "'"));
             $clean_semester_id = intval($current_semester_id);

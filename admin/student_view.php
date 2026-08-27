@@ -34,6 +34,12 @@ $sql = "SELECT
     sm.created_at,
     sm.academic_year_id,
     sm.current_semester_id,
+    sm.research_component_i_id,
+    sm.research_core_vii,
+    sm.research_component_ii_id,
+    sm.research_core_viii,
+    IFNULL(rsi.subject_name, '') AS research_component_i_name,
+    IFNULL(rsii.subject_name, '') AS research_component_ii_name,
     IFNULL(cl.class_name, '') AS class_name,
     IFNULL(sec.sections, '') AS section_name,
     IFNULL(dep.department_name, '') AS department_name,
@@ -53,6 +59,8 @@ LEFT JOIN st_minorcourse mc ON mc.course_id = sm.minor_course_id
 LEFT JOIN st_minorsubject ms ON ms.subject_id = sm.minor_subject_id
 LEFT JOIN st_session_master sess ON sess.session_id = sm.academic_year_id
 LEFT JOIN st_semester_master sem ON sem.semester_id = sm.current_semester_id
+LEFT JOIN st_specialization_subject_master rsi ON rsi.subject_id = sm.research_component_i_id
+LEFT JOIN st_specialization_subject_master rsii ON rsii.subject_id = sm.research_component_ii_id
 WHERE sm.student_id = $student_id";
 
 $result = $db_handle->query($sql);
@@ -67,6 +75,7 @@ if (!$row) {
 $specialization_name = strtolower($row['specialization_name'] ?? '');
 $is_minor_multidisciplinary = strpos($specialization_name, 'minor multidisciplinary') !== false;
 $is_honours = strpos($specialization_name, 'honour') !== false || strpos($specialization_name, 'honor') !== false;
+$is_research = strpos($specialization_name, 'research') !== false;
 ?>
 <style>
     .view-section {
@@ -292,9 +301,17 @@ $is_honours = strpos($specialization_name, 'honour') !== false || strpos($specia
             </div>
         </div>
     </div>
+    <div class="row" style="padding: 15px;">
+        <div class="col-md-4">
+            <div class="view-field">
+                <div class="view-label">CGPA (Aggregate):</div>
+                <div class="view-value"><?php echo !empty($row['cgpa']) ? number_format($row['cgpa'], 2) : 'N/A'; ?></div>
+            </div>
+        </div>
+    </div>
     <?php endif; ?>
     
-    <!-- For Honours: Show Specialization Subject -->
+    <!-- For Honours: Show Specialization Subject and CGPA -->
     <?php if ($is_honours && !$is_minor_multidisciplinary): ?>
     <div class="row" style="padding: 15px;">
         <div class="col-md-6">
@@ -310,8 +327,42 @@ $is_honours = strpos($specialization_name, 'honour') !== false || strpos($specia
             </div>
         </div>
     </div>
-    <?php else: ?>
-    <!-- For Regular and Minor: Show CGPA -->
+    <?php endif; ?>
+
+    <!-- For Research: Show Research Components -->
+    <?php if ($is_research): ?>
+    <div class="row" style="padding: 15px; border-top: 1px dashed #ddd; margin-top: 10px;">
+        <div class="col-md-6">
+            <div class="view-field">
+                <div class="view-label">Research Component I (Open Elective II):</div>
+                <div class="view-value"><?php echo htmlspecialchars($row['research_component_i_name'] ?? 'N/A'); ?></div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="view-field">
+                <div class="view-label">Research Core Component - VII Sem:</div>
+                <div class="view-value"><?php echo htmlspecialchars($row['research_core_vii'] ?? 'N/A'); ?></div>
+            </div>
+        </div>
+    </div>
+    <div class="row" style="padding: 15px;">
+        <div class="col-md-6">
+            <div class="view-field">
+                <div class="view-label">Research Component II (Open Elective III):</div>
+                <div class="view-value"><?php echo htmlspecialchars($row['research_component_ii_name'] ?? 'N/A'); ?></div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="view-field">
+                <div class="view-label">Research Core Component - VIII Sem:</div>
+                <div class="view-value"><?php echo htmlspecialchars($row['research_core_viii'] ?? 'N/A'); ?></div>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <!-- For Regular / Other: Show CGPA if not already shown -->
+    <?php if (!$is_honours && !$is_minor_multidisciplinary): ?>
     <div class="row" style="padding: 15px;">
         <div class="col-md-4">
             <div class="view-field">
@@ -388,6 +439,107 @@ $is_honours = strpos($specialization_name, 'honour') !== false || strpos($specia
     </div>
 </div>
 <?php endif; ?>
+
+<!-- SEMESTER REGISTRATION & COURSE HISTORY -->
+<div class="view-section">
+    <div class="view-section-header">
+        <i class="fa fa-history"></i> SEMESTER & SPECIALIZATION HISTORY
+    </div>
+    <div class="row" style="padding: 15px;">
+        <div class="col-md-12">
+            <div class="table-responsive">
+                <table class="table table-bordered table-striped">
+                    <thead>
+                        <tr style="background-color: #f4f4f4;">
+                            <th>Semester</th>
+                            <th>Academic Year</th>
+                            <th>Class</th>
+                            <th>Division</th>
+                            <th>Specialization</th>
+                            <th>Course / Subject</th>
+                            <th>CGPA</th>
+                            <th>Research Components</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php
+                        $histSql = "SELECT
+                            sh.semester_id,
+                            sh.cgpa,
+                            sh.research_core_vii,
+                            sh.research_core_viii,
+                            IFNULL(cl.class_name, 'N/A') AS class_name,
+                            IFNULL(sec.sections, 'N/A') AS section_name,
+                            IFNULL(sp.specialization_name, 'N/A') AS specialization_name,
+                            IFNULL(ssb.subject_name, '') AS specialization_subject_name,
+                            IFNULL(mc.course_name, '') AS minor_course_name,
+                            IFNULL(ms.subject_name, '') AS minor_subject_name,
+                            IFNULL(sess.session_name, 'N/A') AS academic_year_name,
+                            IFNULL(sem.semester_name, 'N/A') AS semester_name,
+                            IFNULL(rsi.subject_name, '') AS research_component_i_name,
+                            IFNULL(rsii.subject_name, '') AS research_component_ii_name
+                        FROM st_student_semester_history sh
+                        LEFT JOIN st_class_master cl ON cl.class_id = sh.class_id
+                        LEFT JOIN st_section_master sec ON sec.id = sh.division_id
+                        LEFT JOIN st_specialization_master sp ON sp.specialization_id = sh.specialization_id
+                        LEFT JOIN st_specialization_subject_master ssb ON ssb.subject_id = sh.specialization_subject_id
+                        LEFT JOIN st_minorcourse mc ON mc.course_id = sh.minor_course_id
+                        LEFT JOIN st_minorsubject ms ON ms.subject_id = sh.minor_subject_id
+                        LEFT JOIN st_session_master sess ON sess.session_id = sh.academic_year_id
+                        LEFT JOIN st_semester_master sem ON sem.semester_id = sh.semester_id
+                        LEFT JOIN st_specialization_subject_master rsi ON rsi.subject_id = sh.research_component_i_id
+                        LEFT JOIN st_specialization_subject_master rsii ON rsii.subject_id = sh.research_component_ii_id
+                        WHERE sh.student_id = $student_id
+                        ORDER BY sem.semester_name ASC, sh.semester_id ASC";
+                        
+                        $histRes = $db_handle->query($histSql);
+                        if ($histRes && $histRes->num_rows > 0) {
+                            while ($hrow = $histRes->fetch_assoc()) {
+                                $h_spec = strtolower($hrow['specialization_name']);
+                                $h_is_minor = strpos($h_spec, 'minor multidisciplinary') !== false;
+                                $h_is_research = strpos($h_spec, 'research') !== false;
+                                
+                                // Format Course/Subject details
+                                $course_details = 'N/A';
+                                if ($h_is_minor) {
+                                    $course_details = "<strong>Course:</strong> " . htmlspecialchars($hrow['minor_course_name'] ?: 'N/A') . "<br><strong>Subject:</strong> " . htmlspecialchars($hrow['minor_subject_name'] ?: 'N/A');
+                                } else if (!empty($hrow['specialization_subject_name'])) {
+                                    $course_details = htmlspecialchars($hrow['specialization_subject_name']);
+                                }
+                                
+                                // Format Research Details
+                                $research_details = 'N/A';
+                                if ($h_is_research) {
+                                    $research_details = "<strong>Comp I (OE II):</strong> " . htmlspecialchars($hrow['research_component_i_name'] ?: 'N/A') . "<br>"
+                                                      . "<strong>Core VII:</strong> " . htmlspecialchars($hrow['research_core_vii'] ?: 'N/A') . "<br>"
+                                                      . "<strong>Comp II (OE III):</strong> " . htmlspecialchars($hrow['research_component_ii_name'] ?: 'N/A') . "<br>"
+                                                      . "<strong>Core VIII:</strong> " . htmlspecialchars($hrow['research_core_viii'] ?: 'N/A');
+                                }
+                        ?>
+                            <tr>
+                                <td><strong><?php echo htmlspecialchars($hrow['semester_name']); ?></strong></td>
+                                <td><?php echo htmlspecialchars($hrow['academic_year_name']); ?></td>
+                                <td><?php echo htmlspecialchars($hrow['class_name']); ?></td>
+                                <td><?php echo htmlspecialchars($hrow['section_name']); ?></td>
+                                <td><?php echo htmlspecialchars($hrow['specialization_name']); ?></td>
+                                <td><?php echo $course_details; ?></td>
+                                <td><strong><?php echo htmlspecialchars($hrow['cgpa'] ?? 'N/A'); ?></strong></td>
+                                <td><?php echo $research_details; ?></td>
+                            </tr>
+                        <?php
+                            }
+                        } else {
+                        ?>
+                            <tr>
+                                <td colspan="8" class="text-center text-muted">No historical semester registrations recorded for this student.</td>
+                            </tr>
+                        <?php } ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
 
 <!-- MARK LIST DOCUMENT -->
 <?php if (!empty($row['mark_list'])): ?>

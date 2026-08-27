@@ -53,10 +53,6 @@ function sidebar_seed_super_admin_settings($db_handle)
 	$defaultSettings = array(
 		array('Profile', 'fa fa-user', 'profile.php'),
 		array('Update Password', 'fa fa-lock', 'change_password.php'),
-		array('Offline Marks Entry', 'fa fa-pencil-square-o', 'offline_marks_entry.php'),
-		array('Manage Section', 'fa fa-list-alt', 'class_crud_new.php?tab=section-list'),
-		array('Menu Master', 'fa fa-folder-open', 'class_crud_new.php?tab=menu-list'),
-		array('Sub Menu Master', 'fa fa-sitemap', 'class_crud_new.php?tab=sub-menu-list'),
 		array('Side Menu Allocation', 'fa fa-check-square-o', 'allocation_master.php')
 	);
 
@@ -99,65 +95,105 @@ function sidebar_seed_super_admin_settings($db_handle)
 			}
 		}
 	}
+
+	// Allocate Profile, Update Password to role 5 (Student)
+	$studentRoutes = array('profile.php', 'change_password.php');
+	foreach ($studentRoutes as $route) {
+		$studentSubSql = "SELECT sub_menu_id FROM st_sub_menu_master WHERE menu_id = {$menuId} AND sub_menu_route = '$route' LIMIT 1";
+		$studentSubRes = mysqli_query($db_handle->conn, $studentSubSql);
+		if ($studentSubRes && mysqli_num_rows($studentSubRes) > 0) {
+			$studentSubRow = mysqli_fetch_assoc($studentSubRes);
+			$studentSubMenuId = intval($studentSubRow['sub_menu_id']);
+			
+			$parentSql = "SELECT 1 FROM st_menu_allocation_master WHERE user_id = 0 AND role_id = 5 AND menu_id = {$menuId} AND sub_menu_id IS NULL LIMIT 1";
+			if (mysqli_num_rows(mysqli_query($db_handle->conn, $parentSql)) === 0) {
+				mysqli_query($db_handle->conn, "INSERT INTO st_menu_allocation_master (user_id, role_id, menu_id, sub_menu_id) VALUES (0, 5, {$menuId}, NULL)");
+			}
+			
+			$allocSql = "SELECT 1 FROM st_menu_allocation_master WHERE user_id = 0 AND role_id = 5 AND menu_id = {$menuId} AND sub_menu_id = {$studentSubMenuId} LIMIT 1";
+			if (mysqli_num_rows(mysqli_query($db_handle->conn, $allocSql)) === 0) {
+				mysqli_query($db_handle->conn, "INSERT INTO st_menu_allocation_master (user_id, role_id, menu_id, sub_menu_id) VALUES (0, 5, {$menuId}, {$studentSubMenuId})");
+			}
+		}
+	}
 }
 
-function sidebar_seed_mentor_allocation_menu($db_handle)
+function sidebar_seed_mentor_menu($db_handle)
 {
-	$mentorMenuId = 0;
-	$mentorMenuResult = mysqli_query($db_handle->conn, "SELECT menu_id FROM st_menu_master WHERE LOWER(TRIM(menu_name)) = 'mentor' ORDER BY menu_id ASC LIMIT 1");
-	if ($mentorMenuResult && mysqli_num_rows($mentorMenuResult) > 0) {
-		$mentorMenuRow = mysqli_fetch_assoc($mentorMenuResult);
-		$mentorMenuId = (int) ($mentorMenuRow['menu_id'] ?? 0);
+	$menuId = 0;
+	$menuResult = mysqli_query($db_handle->conn, "SELECT menu_id FROM st_menu_master WHERE LOWER(TRIM(menu_name)) = 'mentor' ORDER BY menu_id ASC LIMIT 1");
+	if ($menuResult && mysqli_num_rows($menuResult) > 0) {
+		$menuRow = mysqli_fetch_assoc($menuResult);
+		$menuId = (int) ($menuRow['menu_id'] ?? 0);
 	}
 
-	if ($mentorMenuId <= 0) {
-		$mentorMenuId = sidebar_resolve_system_menu_id($db_handle->conn);
-	}
-
-	if ($mentorMenuId <= 0) {
+	if ($menuId <= 0) {
 		return;
 	}
 
-	$name = mysqli_real_escape_string($db_handle->conn, 'Mentor Allocation');
-	$icon = mysqli_real_escape_string($db_handle->conn, 'fa fa-exchange');
-	$route = mysqli_real_escape_string($db_handle->conn, 'mentor_allocation.php');
-
-	$subSql = "SELECT sub_menu_id FROM st_sub_menu_master WHERE menu_id = {$mentorMenuId} AND (sub_menu_route = '$route' OR sub_menu_name = '$name') LIMIT 1";
-	$subResult = mysqli_query($db_handle->conn, $subSql);
-	$subMenuId = 0;
-
-	if ($subResult && mysqli_num_rows($subResult) > 0) {
-		$subRow = mysqli_fetch_assoc($subResult);
-		$subMenuId = (int) ($subRow['sub_menu_id'] ?? 0);
-	} else {
-		$orderSql = "SELECT COALESCE(MAX(sort_order), 0) + 1 AS next_order FROM st_sub_menu_master WHERE menu_id = {$mentorMenuId}";
-		$orderResult = mysqli_query($db_handle->conn, $orderSql);
-		$nextOrder = 1;
-		if ($orderResult && mysqli_num_rows($orderResult) > 0) {
-			$orderRow = mysqli_fetch_assoc($orderResult);
-			$nextOrder = (int) ($orderRow['next_order'] ?? 1);
-		}
-
-		$insertSql = "INSERT INTO st_sub_menu_master (menu_id, sort_order, sub_menu_name, sub_menu_icon, sub_menu_route) VALUES ({$mentorMenuId}, {$nextOrder}, '$name', '$icon', '$route')";
-		if (mysqli_query($db_handle->conn, $insertSql)) {
-			$subMenuId = (int) mysqli_insert_id($db_handle->conn);
+	// First, remove Offline Marks Entry from Settings menu (menu ID 5)
+	$settingsMenuId = sidebar_resolve_system_menu_id($db_handle->conn);
+	if ($settingsMenuId > 0) {
+		$oldSubRes = mysqli_query($db_handle->conn, "SELECT sub_menu_id FROM st_sub_menu_master WHERE menu_id = {$settingsMenuId} AND sub_menu_route = 'offline_marks_entry.php' LIMIT 1");
+		if ($oldSubRes && mysqli_num_rows($oldSubRes) > 0) {
+			$oldSubRow = mysqli_fetch_assoc($oldSubRes);
+			$oldSubId = intval($oldSubRow['sub_menu_id']);
+			mysqli_query($db_handle->conn, "DELETE FROM st_menu_allocation_master WHERE menu_id = {$settingsMenuId} AND sub_menu_id = {$oldSubId}");
+			mysqli_query($db_handle->conn, "DELETE FROM st_sub_menu_master WHERE sub_menu_id = {$oldSubId}");
 		}
 	}
 
-	if ($subMenuId <= 0) {
-		return;
-	}
+	// Submenus to seed under MENTOR category
+	$submenus = array(
+		array('Register Mentor', 'fa fa-plus', 'mentor_register.php', array(1, 2)),
+		array('Mentor Info', 'fa fa-info-circle', 'mentor_info.php', array(1, 2)),
+		array('Mentor Allocation', 'fa fa-exchange', 'mentor_allocation.php', array(1, 2, 3)),
+		array('Offline Marks Entry', 'fa fa-pencil-square-o', 'offline_marks_entry.php', array(1, 2, 3, 4))
+	);
 
-	$parentSql = "SELECT 1 FROM st_menu_allocation_master WHERE user_id = 0 AND role_id = 1 AND menu_id = {$mentorMenuId} AND sub_menu_id IS NULL LIMIT 1";
-	$parentResult = mysqli_query($db_handle->conn, $parentSql);
-	if (!$parentResult || mysqli_num_rows($parentResult) === 0) {
-		mysqli_query($db_handle->conn, "INSERT INTO st_menu_allocation_master (user_id, role_id, menu_id, sub_menu_id) VALUES (0, 1, {$mentorMenuId}, NULL)");
-	}
+	foreach ($submenus as $item) {
+		$name = mysqli_real_escape_string($db_handle->conn, $item[0]);
+		$icon = mysqli_real_escape_string($db_handle->conn, $item[1]);
+		$route = mysqli_real_escape_string($db_handle->conn, $item[2]);
+		$roles = $item[3];
 
-	$allocSql = "SELECT 1 FROM st_menu_allocation_master WHERE user_id = 0 AND role_id = 1 AND menu_id = {$mentorMenuId} AND sub_menu_id = {$subMenuId} LIMIT 1";
-	$allocResult = mysqli_query($db_handle->conn, $allocSql);
-	if (!$allocResult || mysqli_num_rows($allocResult) === 0) {
-		mysqli_query($db_handle->conn, "INSERT INTO st_menu_allocation_master (user_id, role_id, menu_id, sub_menu_id) VALUES (0, 1, {$mentorMenuId}, {$subMenuId})");
+		$subSql = "SELECT sub_menu_id FROM st_sub_menu_master WHERE menu_id = {$menuId} AND (sub_menu_route = '$route' OR sub_menu_name = '$name') LIMIT 1";
+		$subResult = mysqli_query($db_handle->conn, $subSql);
+		$subMenuId = 0;
+
+		if ($subResult && mysqli_num_rows($subResult) > 0) {
+			$subRow = mysqli_fetch_assoc($subResult);
+			$subMenuId = (int) ($subRow['sub_menu_id'] ?? 0);
+			mysqli_query($db_handle->conn, "UPDATE st_sub_menu_master SET menu_id = {$menuId}, sub_menu_name = '$name', sub_menu_icon = '$icon', sub_menu_route = '$route' WHERE sub_menu_id = {$subMenuId}");
+		} else {
+			$orderSql = "SELECT COALESCE(MAX(sort_order), 0) + 1 AS next_order FROM st_sub_menu_master WHERE menu_id = {$menuId}";
+			$orderResult = mysqli_query($db_handle->conn, $orderSql);
+			$nextOrder = 1;
+			if ($orderResult && mysqli_num_rows($orderResult) > 0) {
+				$orderRow = mysqli_fetch_assoc($orderResult);
+				$nextOrder = (int) ($orderRow['next_order'] ?? 1);
+			}
+
+			$insertSql = "INSERT INTO st_sub_menu_master (menu_id, sort_order, sub_menu_name, sub_menu_icon, sub_menu_route) VALUES ({$menuId}, {$nextOrder}, '$name', '$icon', '$route')";
+			if (mysqli_query($db_handle->conn, $insertSql)) {
+				$subMenuId = (int) mysqli_insert_id($db_handle->conn);
+			}
+		}
+
+		if ($subMenuId > 0) {
+			foreach ($roles as $roleId) {
+				$parentSql = "SELECT 1 FROM st_menu_allocation_master WHERE user_id = 0 AND role_id = {$roleId} AND menu_id = {$menuId} AND sub_menu_id IS NULL LIMIT 1";
+				if (mysqli_num_rows(mysqli_query($db_handle->conn, $parentSql)) === 0) {
+					mysqli_query($db_handle->conn, "INSERT INTO st_menu_allocation_master (user_id, role_id, menu_id, sub_menu_id) VALUES (0, {$roleId}, {$menuId}, NULL)");
+				}
+				$allocSql = "SELECT 1 FROM st_menu_allocation_master WHERE user_id = 0 AND role_id = {$roleId} AND menu_id = {$menuId} AND sub_menu_id = {$subMenuId} LIMIT 1";
+				if (mysqli_num_rows(mysqli_query($db_handle->conn, $allocSql)) === 0) {
+					mysqli_query($db_handle->conn, "INSERT INTO st_menu_allocation_master (user_id, role_id, menu_id, sub_menu_id) VALUES (0, {$roleId}, {$menuId}, {$subMenuId})");
+				}
+			}
+			$rolesStr = implode(',', $roles);
+			mysqli_query($db_handle->conn, "DELETE FROM st_menu_allocation_master WHERE sub_menu_id = {$subMenuId} AND role_id NOT IN ($rolesStr)");
+		}
 	}
 }
 
@@ -378,11 +414,119 @@ function sidebar_seed_mentor_subject_menu($db_handle)
 	}
 }
 
+function sidebar_seed_student_nptel_menu($db_handle)
+{
+	$menuId = 0;
+	$menuResult = mysqli_query($db_handle->conn, "SELECT menu_id FROM st_menu_master WHERE LOWER(TRIM(menu_name)) = 'students' ORDER BY menu_id ASC LIMIT 1");
+	if ($menuResult && mysqli_num_rows($menuResult) > 0) {
+		$menuRow = mysqli_fetch_assoc($menuResult);
+		$menuId = (int) ($menuRow['menu_id'] ?? 0);
+	}
+
+	if ($menuId <= 0) {
+		$menuId = 1;
+	}
+
+	$name = mysqli_real_escape_string($db_handle->conn, 'NPTEL Pass or Fail');
+	$icon = mysqli_real_escape_string($db_handle->conn, 'fa fa-certificate');
+	$route = mysqli_real_escape_string($db_handle->conn, 'nptel_certificate.php');
+
+	$subSql = "SELECT sub_menu_id FROM st_sub_menu_master WHERE menu_id = {$menuId} AND (sub_menu_route = '$route' OR sub_menu_name = '$name') LIMIT 1";
+	$subResult = mysqli_query($db_handle->conn, $subSql);
+	$subMenuId = 0;
+
+	if ($subResult && mysqli_num_rows($subResult) > 0) {
+		$subRow = mysqli_fetch_assoc($subResult);
+		$subMenuId = (int) ($subRow['sub_menu_id'] ?? 0);
+	} else {
+		// Clean up any old duplicate settings menu entry first (just in case)
+		$settingsMenuId = sidebar_resolve_system_menu_id($db_handle->conn);
+		if ($settingsMenuId > 0) {
+			mysqli_query($db_handle->conn, "DELETE FROM st_sub_menu_master WHERE menu_id = {$settingsMenuId} AND sub_menu_route = 'nptel_certificate.php'");
+		}
+
+		$orderSql = "SELECT COALESCE(MAX(sort_order), 0) + 1 AS next_order FROM st_sub_menu_master WHERE menu_id = {$menuId}";
+		$orderResult = mysqli_query($db_handle->conn, $orderSql);
+		$nextOrder = 1;
+		if ($orderResult && mysqli_num_rows($orderResult) > 0) {
+			$orderRow = mysqli_fetch_assoc($orderResult);
+			$nextOrder = (int) ($orderRow['next_order'] ?? 1);
+		}
+
+		$insertSql = "INSERT INTO st_sub_menu_master (menu_id, sort_order, sub_menu_name, sub_menu_icon, sub_menu_route) VALUES ({$menuId}, {$nextOrder}, '$name', '$icon', '$route')";
+		if (mysqli_query($db_handle->conn, $insertSql)) {
+			$subMenuId = (int) mysqli_insert_id($db_handle->conn);
+		}
+	}
+
+	if ($subMenuId <= 0) {
+		return;
+	}
+
+	// Clean up old allocations of this submenu to role 5 under settings menu
+	$settingsMenuId = sidebar_resolve_system_menu_id($db_handle->conn);
+	if ($settingsMenuId > 0) {
+		mysqli_query($db_handle->conn, "DELETE FROM st_menu_allocation_master WHERE menu_id = {$settingsMenuId} AND role_id = 5 AND sub_menu_id = {$subMenuId}");
+	}
+
+	// Allocate to role 1 (Super Admin)
+	$parentSql1 = "SELECT 1 FROM st_menu_allocation_master WHERE user_id = 0 AND role_id = 1 AND menu_id = {$menuId} AND sub_menu_id IS NULL LIMIT 1";
+	if (mysqli_num_rows(mysqli_query($db_handle->conn, $parentSql1)) === 0) {
+		mysqli_query($db_handle->conn, "INSERT INTO st_menu_allocation_master (user_id, role_id, menu_id, sub_menu_id) VALUES (0, 1, {$menuId}, NULL)");
+	}
+	$allocSql1 = "SELECT 1 FROM st_menu_allocation_master WHERE user_id = 0 AND role_id = 1 AND menu_id = {$menuId} AND sub_menu_id = {$subMenuId} LIMIT 1";
+	if (mysqli_num_rows(mysqli_query($db_handle->conn, $allocSql1)) === 0) {
+		mysqli_query($db_handle->conn, "INSERT INTO st_menu_allocation_master (user_id, role_id, menu_id, sub_menu_id) VALUES (0, 1, {$menuId}, {$subMenuId})");
+	}
+
+	// Allocate to role 2 (Admin)
+	$parentSql2 = "SELECT 1 FROM st_menu_allocation_master WHERE user_id = 0 AND role_id = 2 AND menu_id = {$menuId} AND sub_menu_id IS NULL LIMIT 1";
+	if (mysqli_num_rows(mysqli_query($db_handle->conn, $parentSql2)) === 0) {
+		mysqli_query($db_handle->conn, "INSERT INTO st_menu_allocation_master (user_id, role_id, menu_id, sub_menu_id) VALUES (0, 2, {$menuId}, NULL)");
+	}
+	$allocSql2 = "SELECT 1 FROM st_menu_allocation_master WHERE user_id = 0 AND role_id = 2 AND menu_id = {$menuId} AND sub_menu_id = {$subMenuId} LIMIT 1";
+	if (mysqli_num_rows(mysqli_query($db_handle->conn, $allocSql2)) === 0) {
+		mysqli_query($db_handle->conn, "INSERT INTO st_menu_allocation_master (user_id, role_id, menu_id, sub_menu_id) VALUES (0, 2, {$menuId}, {$subMenuId})");
+	}
+
+	// Allocate to role 3 (Coordinator)
+	$parentSql3 = "SELECT 1 FROM st_menu_allocation_master WHERE user_id = 0 AND role_id = 3 AND menu_id = {$menuId} AND sub_menu_id IS NULL LIMIT 1";
+	if (mysqli_num_rows(mysqli_query($db_handle->conn, $parentSql3)) === 0) {
+		mysqli_query($db_handle->conn, "INSERT INTO st_menu_allocation_master (user_id, role_id, menu_id, sub_menu_id) VALUES (0, 3, {$menuId}, NULL)");
+	}
+	$allocSql3 = "SELECT 1 FROM st_menu_allocation_master WHERE user_id = 0 AND role_id = 3 AND menu_id = {$menuId} AND sub_menu_id = {$subMenuId} LIMIT 1";
+	if (mysqli_num_rows(mysqli_query($db_handle->conn, $allocSql3)) === 0) {
+		mysqli_query($db_handle->conn, "INSERT INTO st_menu_allocation_master (user_id, role_id, menu_id, sub_menu_id) VALUES (0, 3, {$menuId}, {$subMenuId})");
+	}
+
+	// Allocate to role 5 (Student)
+	$parentSql5 = "SELECT 1 FROM st_menu_allocation_master WHERE user_id = 0 AND role_id = 5 AND menu_id = {$menuId} AND sub_menu_id IS NULL LIMIT 1";
+	if (mysqli_num_rows(mysqli_query($db_handle->conn, $parentSql5)) === 0) {
+		mysqli_query($db_handle->conn, "INSERT INTO st_menu_allocation_master (user_id, role_id, menu_id, sub_menu_id) VALUES (0, 5, {$menuId}, NULL)");
+	}
+	$allocSql5 = "SELECT 1 FROM st_menu_allocation_master WHERE user_id = 0 AND role_id = 5 AND menu_id = {$menuId} AND sub_menu_id = {$subMenuId} LIMIT 1";
+	if (mysqli_num_rows(mysqli_query($db_handle->conn, $allocSql5)) === 0) {
+		mysqli_query($db_handle->conn, "INSERT INTO st_menu_allocation_master (user_id, role_id, menu_id, sub_menu_id) VALUES (0, 5, {$menuId}, {$subMenuId})");
+	}
+
+	// Also allocate student_admission.php (Enroll) submenu to role 5
+	$admRes = mysqli_query($db_handle->conn, "SELECT sub_menu_id FROM st_sub_menu_master WHERE sub_menu_route = 'student_admission.php' LIMIT 1");
+	if ($admRes && mysqli_num_rows($admRes) > 0) {
+		$admRow = mysqli_fetch_assoc($admRes);
+		$admSubId = intval($admRow['sub_menu_id']);
+		$allocSqlAdm = "SELECT 1 FROM st_menu_allocation_master WHERE user_id = 0 AND role_id = 5 AND menu_id = {$menuId} AND sub_menu_id = {$admSubId} LIMIT 1";
+		if (mysqli_num_rows(mysqli_query($db_handle->conn, $allocSqlAdm)) === 0) {
+			mysqli_query($db_handle->conn, "INSERT INTO st_menu_allocation_master (user_id, role_id, menu_id, sub_menu_id) VALUES (0, 5, {$menuId}, {$admSubId})");
+		}
+	}
+}
+
 if ((int) $usertype === 1) {
 	sidebar_seed_super_admin_settings($db_handle);
-	sidebar_seed_mentor_allocation_menu($db_handle);
+	sidebar_seed_mentor_menu($db_handle);
 	sidebar_seed_coordinator_allocation_menu($db_handle);
 	sidebar_seed_student_monitor_menu($db_handle);
+	sidebar_seed_student_nptel_menu($db_handle);
 	sidebar_seed_mentor_subject_menu($db_handle);
 }
 

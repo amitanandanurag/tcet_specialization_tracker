@@ -245,6 +245,12 @@ $dashboardRoute = ($usertype === 5) ? 'student_dashboard.php' : 'index.php';
 
 				<div class="navbar-custom-menu">
 					<ul class="nav navbar-nav">
+						<!-- Reload Page Button -->
+						<li>
+							<a href="javascript:void(0);" onclick="window.location.reload();" title="Reload Page" style="font-weight: bold; cursor: pointer;">
+								<i class="fa fa-refresh"></i> <span class="hidden-xs">Reload Page</span>
+							</a>
+						</li>
 
 						<li class="dropdown user user-menu">
 							<a href="#" class="dropdown-toggle" data-toggle="dropdown">

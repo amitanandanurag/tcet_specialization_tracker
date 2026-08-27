@@ -73,6 +73,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_offline_marks'])
     if ($semesterId <= 0) {
         $validationErrors[] = 'Please select a semester.';
     }
+
+    // Enforce semester lock
+    $studentCurrentSemester = 0;
+    if ($studentId > 0) {
+        $csRes = mysqli_query($db_handle->conn, "SELECT current_semester_id FROM st_student_master WHERE student_id = $studentId");
+        if ($csRes && $csRow = mysqli_fetch_assoc($csRes)) {
+            $studentCurrentSemester = intval($csRow['current_semester_id'] ?? 0);
+        }
+    }
+    if ($studentCurrentSemester > 0 && $semesterId < $studentCurrentSemester) {
+        $validationErrors[] = "Semester is locked. Cannot enter/modify marks for a previous semester (Student current semester: " . $studentCurrentSemester . ").";
+    }
     if ($courseName === '') {
         $validationErrors[] = 'Please enter NPTEL course name.';
     }
@@ -387,7 +399,7 @@ if ($recentResult) {
                                 </div>
                                 <div class="col-md-6">
                                     <div class="form-group">
-                                        <label>NPTEL Course Name</label>
+                                        <label>NPTEL Course Name <span id="cert_link_wrapper" style="display:none; margin-left:15px;"><a id="cert_link" href="#" target="_blank" class="btn btn-xs btn-info" style="color: #fff;"><i class="fa fa-eye"></i> View Student Certificate</a></span></label>
                                         <input type="text" class="form-control" name="course_name" id="course_name" placeholder="e.g. Introduction to AI" required>
                                     </div>
                                 </div>
@@ -567,6 +579,7 @@ if ($recentResult) {
     var suggestionBox = document.getElementById('student_suggestions');
     var activeSuggestionIndex = -1;
     var currentMatches = [];
+    var studentCurrentSemester = 0;
 
     function normalizeText(value) {
         return String(value || '').toLowerCase().trim();
@@ -597,6 +610,7 @@ if ($recentResult) {
     }
 
     function clearStudentAutofill() {
+        studentCurrentSemester = 0;
         setValue('department_name', '');
         setValue('semester_id', '');
         setValue('course_name', '');
@@ -609,7 +623,12 @@ if ($recentResult) {
         if (remarks) {
             remarks.value = '';
         }
+        var certWrapper = document.getElementById('cert_link_wrapper');
+        if (certWrapper) {
+            certWrapper.style.display = 'none';
+        }
         updateFailCalculations();
+        enforceSemesterLock();
     }
 
     function loadStudentDetails(studentId) {
@@ -624,6 +643,7 @@ if ($recentResult) {
                 }
 
                 var data = payload.data;
+                studentCurrentSemester = parseInt(data.current_semester_id || '0', 10);
                 setValue('department_name', data.department_name);
                 setValue('semester_id', data.semester_id);
                 setValue('course_name', data.course_name);
@@ -639,8 +659,25 @@ if ($recentResult) {
                     remarks.value = data.remarks || '';
                 }
 
+                if (data.certificate_file_path && data.certificate_file_path !== '') {
+                    var certLink = document.getElementById('cert_link');
+                    if (certLink) {
+                        certLink.setAttribute('href', data.certificate_file_path);
+                    }
+                    var certWrapper = document.getElementById('cert_link_wrapper');
+                    if (certWrapper) {
+                        certWrapper.style.display = 'inline-block';
+                    }
+                } else {
+                    var certWrapper = document.getElementById('cert_link_wrapper');
+                    if (certWrapper) {
+                        certWrapper.style.display = 'none';
+                    }
+                }
+
                 toggleFieldsByStatus();
                 updateFailCalculations();
+                enforceSemesterLock();
             })
             .catch(function() {
                 setValue('department_name', '');
@@ -774,6 +811,60 @@ if ($recentResult) {
         updateFailCalculations();
     }
 
+    function enforceSemesterLock() {
+        var selectedSem = parseInt(document.getElementById('semester_id').value || '0', 10);
+        var isLocked = (studentCurrentSemester > 0 && selectedSem > 0 && selectedSem < studentCurrentSemester);
+        
+        var lockBanner = document.getElementById('semester_lock_warning');
+        if (isLocked) {
+            if (!lockBanner) {
+                lockBanner = document.createElement('div');
+                lockBanner.id = 'semester_lock_warning';
+                lockBanner.className = 'alert alert-danger alert-dismissible';
+                lockBanner.style.marginTop = '15px';
+                lockBanner.innerHTML = '<i class="fa fa-lock"></i> <strong>Semester Locked (Read-Only)</strong>: Cannot modify marks for a previous semester.';
+                var formBox = document.getElementById('semester_id').closest('.box-body');
+                if (formBox) {
+                    formBox.insertBefore(lockBanner, formBox.firstChild);
+                }
+            } else {
+                lockBanner.style.display = 'block';
+            }
+        } else {
+            if (lockBanner) {
+                lockBanner.style.display = 'none';
+            }
+        }
+
+        var inputsToLock = [
+            'course_name', 'nptel_status', 'nptel_exam_score',
+            'nptel_assignment_raw', 'ise1_marks', 'ise2_marks', 'ese_written_marks'
+        ];
+        inputsToLock.forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) {
+                el.disabled = isLocked;
+            }
+        });
+        
+        var remarks = document.querySelector('textarea[name="remarks"]');
+        if (remarks) {
+            remarks.disabled = isLocked;
+        }
+
+        var saveBtn = document.querySelector('button[name="save_offline_marks"]');
+        if (saveBtn) {
+            saveBtn.disabled = isLocked;
+            if (isLocked) {
+                saveBtn.classList.add('disabled');
+            } else {
+                saveBtn.classList.remove('disabled');
+            }
+        }
+    }
+
+    document.getElementById('semester_id').addEventListener('change', enforceSemesterLock);
+
     document.getElementById('nptel_status').addEventListener('change', toggleFieldsByStatus);
 
     var triggers = document.querySelectorAll('.calc-trigger');
@@ -782,6 +873,7 @@ if ($recentResult) {
     }
 
     toggleFieldsByStatus();
+    enforceSemesterLock();
 })();
 </script>
 

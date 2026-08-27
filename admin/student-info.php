@@ -62,7 +62,7 @@ include "header/header.php";
 
               <div class="col-md-2">
                 <select class="form-control" id="select_session" name="select_session">
-                  <option value="">Select Session</option>
+                  <option value="">Select Academic Year</option>
                   <?php
                   $result = $db_handle->query("SELECT * FROM `st_session_master`");
                   while ($row = $result->fetch_assoc()) {
@@ -83,13 +83,12 @@ include "header/header.php";
             <!-- Additional Filters -->
             <div class="row" style="margin-bottom: 20px;">
               <div class="col-md-3">
-                <select class="form-control" id="select_academic_year" name="select_academic_year">
-                  <option value="">Select Academic Year</option>
+                <select class="form-control" id="select_batch" name="select_batch">
+                  <option value="">Select Batch</option>
                   <?php
-                  $batch_result = $db_handle->query("SELECT session_id, session_name FROM `st_session_master` ORDER BY session_id DESC");
+                  $batch_result = $db_handle->query("SELECT batch_id, batch_name FROM `st_batch_master` ORDER BY batch_name DESC");
                   while ($row = $batch_result->fetch_assoc()) {
-                    $selected = ($row['session_id'] == 1) ? 'selected' : '';
-                    echo "<option value='{$row['session_id']}' {$selected}>{$row['session_name']}</option>";
+                    echo "<option value='{$row['batch_name']}'>{$row['batch_name']}</option>";
                   }
                   ?>
                 </select>
@@ -338,7 +337,7 @@ include "header/header.php";
           d.select_class = $('#select_class').val();
           d.select_section = $('#select_section').val();
           d.select_session = $('#select_session').val();
-          d.select_academic_year = $('#select_academic_year').val();
+          d.select_batch = $('#select_batch').val();
           d.select_semester = $('#select_semester').val();
           d.select_department = $('#select_department').val();
         }
@@ -383,7 +382,7 @@ include "header/header.php";
     });
 
     // Filter changes
-    $('#select_class, #select_section, #select_session, #select_academic_year, #select_semester, #select_department').change(function() {
+    $('#select_class, #select_section, #select_session, #select_batch, #select_semester, #select_department').change(function() {
       dataTable.ajax.reload();
     });
 

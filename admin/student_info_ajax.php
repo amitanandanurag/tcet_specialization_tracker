@@ -35,7 +35,7 @@ $requestData = $_REQUEST;
 $select_class = $_POST['select_class'] ?? '';
 $select_section = $_POST['select_section'] ?? '';
 $select_session = $_POST['select_session'] ?? '';
-$select_academic_year = $_POST['select_academic_year'] ?? '';
+$select_batch = $_POST['select_batch'] ?? '';
 $select_semester = $_POST['select_semester'] ?? '';
 $select_department = $_POST['select_department'] ?? '';
 
@@ -170,8 +170,8 @@ if (!empty($select_class)) {
 if (!empty($select_section)) {
     $sql .= " AND sm.division_id = '" . mysqli_real_escape_string($db_handle->conn, $select_section) . "'";
 }
-if (!empty($select_academic_year)) {
-    $sql .= " AND sm.academic_year_id = '" . mysqli_real_escape_string($db_handle->conn, $select_academic_year) . "'";
+if (!empty($select_batch)) {
+    $sql .= " AND sm.grad_year = '" . mysqli_real_escape_string($db_handle->conn, $select_batch) . "'";
 }
 if (!empty($select_semester)) {
     $sql .= " AND sm.current_semester_id = '" . mysqli_real_escape_string($db_handle->conn, $select_semester) . "'";

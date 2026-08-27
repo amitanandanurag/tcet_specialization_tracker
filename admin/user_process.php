@@ -41,7 +41,7 @@ $insertSql = "INSERT INTO st_user_master (user_name, email_id, phone_number, dep
 $db_handle->query($insertSql);
 $userId = mysqli_insert_id($db_handle->conn);
 
-$checkLogin = mysqli_query($db_handle->conn, "SELECT login_id FROM st_login WHERE username = '$emailEsc' LIMIT 1");
+$checkLogin = mysqli_query($db_handle->conn, "SELECT login_id FROM st_login WHERE user_id = $userId LIMIT 1");
 if ($checkLogin && mysqli_num_rows($checkLogin) === 0) {
     mysqli_query($db_handle->conn, "INSERT INTO st_login (username, password, user_id) VALUES ('$emailEsc', 'Amit@1234', $userId)");
 }

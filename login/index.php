@@ -396,8 +396,8 @@ include_once("../database/db_connect.php");
                 <button type="button" class="btn" onclick="openForgotPassword()" style="color:white; background-color:transparent; border:1px solid white; padding:8px 16px; border-radius:4px; cursor:pointer;">Forgot Password?</button>
             </div>
             <div class="copyright">
-                <p>© 2019. All rights reserved | Designed by <a href="https://dignityitsolution.com/"
-                        target="_blank">Dignity IT Solution</a></p>
+                <p>© 2019. All rights reserved | Designed by <a href="tcetmumbai.in"
+                        target="_blank">/a></p>
             </div>
         </div>
     </div>

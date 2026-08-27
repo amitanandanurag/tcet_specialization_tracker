@@ -300,20 +300,27 @@ class DBController
       $mentorId = intval($row['mentor_id']);
       mysqli_stmt_close($stmt);
       
-      // Delete existing mapping for this student in this semester
-      $deleteSql = "DELETE FROM st_mentor_student_mapping WHERE student_id = ? AND semester_id = ?";
+      // Fetch student's academic_year_id
+      $ayId = 1;
+      $ayRes = mysqli_query($this->conn, "SELECT academic_year_id FROM st_student_master WHERE student_id = $studentId");
+      if ($ayRes && $ayRow = mysqli_fetch_assoc($ayRes)) {
+          $ayId = intval($ayRow['academic_year_id'] ?? 1);
+      }
+
+      // Delete existing mapping for this student in this academic year
+      $deleteSql = "DELETE FROM st_mentor_student_mapping WHERE student_id = ? AND academic_year_id = ?";
       $delStmt = mysqli_prepare($this->conn, $deleteSql);
       if ($delStmt) {
-        mysqli_stmt_bind_param($delStmt, "ii", $studentId, $semesterId);
+        mysqli_stmt_bind_param($delStmt, "ii", $studentId, $ayId);
         mysqli_stmt_execute($delStmt);
         mysqli_stmt_close($delStmt);
       }
       
-      // Insert new mapping
-      $insertSql = "INSERT INTO st_mentor_student_mapping (mentor_id, student_id, semester_id) VALUES (?, ?, ?)";
+      // Insert new mapping with academic_year_id
+      $insertSql = "INSERT INTO st_mentor_student_mapping (mentor_id, student_id, semester_id, academic_year_id) VALUES (?, ?, ?, ?)";
       $insStmt = mysqli_prepare($this->conn, $insertSql);
       if ($insStmt) {
-        mysqli_stmt_bind_param($insStmt, "iii", $mentorId, $studentId, $semesterId);
+        mysqli_stmt_bind_param($insStmt, "iiii", $mentorId, $studentId, $semesterId, $ayId);
         $res = mysqli_stmt_execute($insStmt);
         mysqli_stmt_close($insStmt);
         
@@ -328,6 +335,89 @@ class DBController
       mysqli_stmt_close($stmt);
     }
     
+    return false;
+  }
+
+  public function syncStudentSemesterHistory($studentId, $semesterId)
+  {
+    if (!($this->conn instanceof mysqli)) {
+      return false;
+    }
+    
+    $studentId = intval($studentId);
+    $semesterId = intval($semesterId);
+    
+    if ($studentId <= 0 || $semesterId <= 0) {
+      return false;
+    }
+    
+    // Fetch current snapshot from st_student_master
+    $sql = "SELECT academic_year_id, class_id, division_id, specialization_id, specialization_subject_id,
+                   minor_course_id, minor_subject_id, cgpa, research_component_i_id, research_core_vii,
+                   research_component_ii_id, research_core_viii
+            FROM st_student_master
+            WHERE student_id = ?
+            LIMIT 1";
+            
+    $stmt = mysqli_prepare($this->conn, $sql);
+    if (!$stmt) {
+      return false;
+    }
+    
+    mysqli_stmt_bind_param($stmt, "i", $studentId);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+    
+    if ($result && $row = mysqli_fetch_assoc($result)) {
+      mysqli_stmt_close($stmt);
+      
+      $ayId = $row['academic_year_id'] !== null ? intval($row['academic_year_id']) : null;
+      $classId = $row['class_id'] !== null ? intval($row['class_id']) : null;
+      $divId = $row['division_id'] !== null ? intval($row['division_id']) : null;
+      $specId = $row['specialization_id'] !== null ? intval($row['specialization_id']) : null;
+      $specSubId = $row['specialization_subject_id'] !== null ? intval($row['specialization_subject_id']) : null;
+      $minorCourseId = $row['minor_course_id'] !== null ? intval($row['minor_course_id']) : null;
+      $minorSubId = $row['minor_subject_id'] !== null ? intval($row['minor_subject_id']) : null;
+      $cgpa = $row['cgpa'] !== null ? floatval($row['cgpa']) : null;
+      $resComp1 = $row['research_component_i_id'] !== null ? intval($row['research_component_i_id']) : null;
+      $resCore7 = $row['research_core_vii'] !== null ? (string)$row['research_core_vii'] : null;
+      $resComp2 = $row['research_component_ii_id'] !== null ? intval($row['research_component_ii_id']) : null;
+      $resCore8 = $row['research_core_viii'] !== null ? (string)$row['research_core_viii'] : null;
+      
+      // UPSERT into st_student_semester_history
+      $upsertSql = "INSERT INTO st_student_semester_history (
+                      student_id, academic_year_id, class_id, semester_id, division_id,
+                      specialization_id, specialization_subject_id, minor_course_id, minor_subject_id,
+                      cgpa, research_component_i_id, research_core_vii, research_component_ii_id, research_core_viii
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ON DUPLICATE KEY UPDATE
+                      academic_year_id = VALUES(academic_year_id),
+                      class_id = VALUES(class_id),
+                      division_id = VALUES(division_id),
+                      specialization_id = VALUES(specialization_id),
+                      specialization_subject_id = VALUES(specialization_subject_id),
+                      minor_course_id = VALUES(minor_course_id),
+                      minor_subject_id = VALUES(minor_subject_id),
+                      cgpa = VALUES(cgpa),
+                      research_component_i_id = VALUES(research_component_i_id),
+                      research_core_vii = VALUES(research_core_vii),
+                      research_component_ii_id = VALUES(research_component_ii_id),
+                      research_core_viii = VALUES(research_core_viii)";
+                      
+      $upStmt = mysqli_prepare($this->conn, $upsertSql);
+      if ($upStmt) {
+        mysqli_stmt_bind_param($upStmt, "iiiiiiiiidisis",
+          $studentId, $ayId, $classId, $semesterId, $divId,
+          $specId, $specSubId, $minorCourseId, $minorSubId,
+          $cgpa, $resComp1, $resCore7, $resComp2, $resCore8
+        );
+        $res = mysqli_stmt_execute($upStmt);
+        mysqli_stmt_close($upStmt);
+        return $res;
+      }
+    } else {
+      mysqli_stmt_close($stmt);
+    }
     return false;
   }
 
