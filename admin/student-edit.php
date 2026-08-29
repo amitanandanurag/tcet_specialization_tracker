@@ -14,6 +14,7 @@ if (isset($_REQUEST['id'])) {
     IFNULL(dep.department_name, '') AS department_name,
     IFNULL(sp.specialization_name, '') AS specialization_name,
     IFNULL(ssb.subject_name, '') AS specialization_subject_name,
+    current_history.specialization_subject_id AS current_history_subject_id,
     IFNULL(sess.session_name, '') AS academic_year_name,
     IFNULL(sem.semester_name, '') AS semester_name,
     IFNULL(mc.course_name, '') AS minor_course_name,
@@ -23,7 +24,8 @@ if (isset($_REQUEST['id'])) {
   LEFT JOIN st_section_master sec ON sec.id = sm.division_id
   LEFT JOIN st_department_master dep ON dep.department_id = sm.department_id
   LEFT JOIN st_specialization_master sp ON sp.specialization_id = sm.specialization_id
-  LEFT JOIN st_specialization_subject_master ssb ON ssb.subject_id = sm.specialization_subject_id
+    LEFT JOIN st_student_semester_history current_history ON current_history.student_id = sm.student_id AND current_history.semester_id = sm.current_semester_id
+    LEFT JOIN st_specialization_subject_master ssb ON ssb.subject_id = COALESCE(NULLIF(sm.specialization_subject_id, 0), current_history.specialization_subject_id)
   LEFT JOIN st_minorcourse mc ON mc.course_id = sm.minor_course_id
   LEFT JOIN st_minorsubject ms ON ms.subject_id = sm.minor_subject_id
   LEFT JOIN st_session_master sess ON sess.session_id = sm.academic_year_id
@@ -32,6 +34,9 @@ if (isset($_REQUEST['id'])) {
   
   $result = $db_handle->query($sql);
   $row = $result->fetch_assoc();
+    if (empty($row['specialization_subject_id']) && !empty($row['current_history_subject_id'])) {
+        $row['specialization_subject_id'] = $row['current_history_subject_id'];
+    }
 
   if (!$row) {
     echo "<div class='alert alert-danger'>Student record not found.</div>";
@@ -250,7 +255,7 @@ if (isset($_REQUEST['id'])) {
                         <select class="form-control select" name="specialization_subject_id" id="specialization_subject_select" style="width: 100%;">
                             <option value="">Select Specialization Subject</option>
                             <?php
-                            $subjResult = $db_handle->conn->query("SELECT subject_id, subject_name FROM st_specialization_subject_master");
+                            $subjResult = $db_handle->conn->query("SELECT subject_id, subject_name FROM st_specialization_subject_master WHERE subject_id > 0 AND is_active = 1 AND department_id = " . intval($row['department_id']) . " AND semester_id = " . intval($row['current_semester_id']) . " AND specialization_id = " . intval($row['specialization_id']) . " ORDER BY subject_name");
                             while ($subjRow = $subjResult->fetch_assoc()) {
                                 $selected = ($row['specialization_subject_id'] == $subjRow['subject_id']) ? 'selected' : '';
                                 echo "<option value='{$subjRow['subject_id']}' $selected>{$subjRow['subject_name']}</option>";

@@ -875,6 +875,10 @@ if ((int) ($usertype ?? 0) !== 1 && (int) ($usertype ?? 0) !== 2) {
                             '</div>');
             body.append(typeRow);
 
+            body.append($('<div style="font-size: 13px; color: #475569; margin-top: 4px;">' +
+                          '<strong>Mentor:</strong> ' + (sem.mentor || 'N/A') +
+                      '</div>'));
+
             // Marks details (Offline marks entry)
             if (sem.marks_entry) {
                 var m = sem.marks_entry;
@@ -947,6 +951,9 @@ if ((int) ($usertype ?? 0) !== 1 && (int) ($usertype ?? 0) !== 2) {
                                 '</div>' +
                             '</div>');
             body.append(metaRow);
+            if (sem.progress !== null && sem.progress !== undefined) {
+                body.append($('<div style="font-size: 13px; color: #475569;"><strong>Semester Progress:</strong> ' + sem.progress + '%</div>'));
+            }
 
             card.append(body);
             grid.append(card);

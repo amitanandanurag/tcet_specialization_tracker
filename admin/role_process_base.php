@@ -60,23 +60,18 @@ if ($userId > 0) {
 if (intval($roleId) === 4 && isset($_POST['subject_id'])) {
   $subjectId = intval($_POST['subject_id']);
   if ($subjectId > 0 && $userId > 0) {
-    mysqli_query($db_handle->conn, "DELETE FROM st_mentor_subject_mapping WHERE mentor_id = $userId");
-    mysqli_query($db_handle->conn, "INSERT INTO st_mentor_subject_mapping (mentor_id, subject_id) VALUES ($userId, $subjectId)");
-    
-    // Auto-allocate this mentor to any student who has selected this subject but does not have a mentor assigned for their current semester
-    $unassignedSql = "
-        SELECT sm.student_id, sm.current_semester_id 
-        FROM st_student_master sm
-        LEFT JOIN st_mentor_student_mapping msm ON msm.student_id = sm.student_id AND msm.semester_id = sm.current_semester_id
-        WHERE sm.specialization_subject_id = $subjectId AND msm.mentor_id IS NULL
-    ";
-    $unassignedResult = mysqli_query($db_handle->conn, $unassignedSql);
-    if ($unassignedResult) {
-        while ($studRow = mysqli_fetch_assoc($unassignedResult)) {
-            $sId = intval($studRow['student_id']);
-            $semId = intval($studRow['current_semester_id'] ?? 1);
-            mysqli_query($db_handle->conn, "INSERT INTO st_mentor_student_mapping (mentor_id, student_id, semester_id) VALUES ($userId, $sId, $semId)");
-        }
+    mysqli_begin_transaction($db_handle->conn);
+    try {
+      mysqli_query($db_handle->conn, "DELETE FROM st_mentor_subject_mapping WHERE mentor_id = $userId");
+      $insert = mysqli_query($db_handle->conn, "INSERT INTO st_mentor_subject_mapping (mentor_id, subject_id) VALUES ($userId, $subjectId)");
+      if (!$insert) {
+        throw new Exception("Database error mapping subject.");
+      }
+      
+      $db_handle->recalculateMentorStudents($userId);
+      mysqli_commit($db_handle->conn);
+    } catch (Throwable $e) {
+      mysqli_rollback($db_handle->conn);
     }
   }
 }

@@ -11,7 +11,7 @@ if (!isset($_SESSION['user_session'])) {
   exit();
 }
 
-$loginUserId = $_SESSION['user_session'];
+$loginUserId = intval($_SESSION['user_id'] ?? 0);
 
 $userData = $db_handle->runQuery("
     SELECT role_id, department_id
@@ -22,8 +22,8 @@ $userData = $db_handle->runQuery("
 $loginRole = $userData[0]['role_id'] ?? 0;
 $loginDepartment = $userData[0]['department_id'] ?? 0;
 
-// Access control: only Roles 1 (Super Admin), 2 (Admin), or 3 (Coordinator)
-if ($loginRole != 1 && $loginRole != 2 && $loginRole != 3) {
+// Access control: Super Admin, Admin, Coordinator/HOD, or Mentor.
+if (!in_array((int) $loginRole, array(1, 2, 3, 4), true)) {
   echo "<script>alert('Access Denied'); window.location.href='index.php';</script>";
   exit();
 }
@@ -40,41 +40,70 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $message = "Please select both a mentor and a specialization subject.";
     $messageType = "danger";
   } else {
-    // Save to st_mentor_subject_mapping
-    mysqli_query($db_handle->conn, "DELETE FROM st_mentor_subject_mapping WHERE mentor_id = $mentorId");
-    $insert = mysqli_query($db_handle->conn, "INSERT INTO st_mentor_subject_mapping (mentor_id, subject_id) VALUES ($mentorId, $subjectId)");
-
-    if ($insert) {
-      $message = "Subject assigned to mentor successfully!";
-      $messageType = "success";
-
-      // Proactive Auto-Allocation: find unassigned students for this subject and assign them this mentor
-      $unassignedSql = "
-          SELECT sm.student_id, sm.current_semester_id 
-          FROM st_student_master sm
-          LEFT JOIN st_mentor_student_mapping msm ON msm.student_id = sm.student_id AND msm.semester_id = sm.current_semester_id
-          WHERE sm.specialization_subject_id = $subjectId AND msm.mentor_id IS NULL
-      ";
-      $unassignedResult = mysqli_query($db_handle->conn, $unassignedSql);
-      $allocCount = 0;
-      if ($unassignedResult) {
-        while ($studRow = mysqli_fetch_assoc($unassignedResult)) {
-          $sId = intval($studRow['student_id']);
-          $semId = intval($studRow['current_semester_id'] ?? 1);
-          mysqli_query($db_handle->conn, "INSERT INTO st_mentor_student_mapping (mentor_id, student_id, semester_id) VALUES ($mentorId, $sId, $semId)");
-          $allocCount++;
-        }
-      }
-      if ($allocCount > 0) {
-        $message .= " Automatically allocated this mentor to $allocCount student(s) who selected this subject.";
-      }
-
-      if (method_exists($db_handle, 'writeAuditLog')) {
-        $db_handle->writeAuditLog($loginUserId, 'MENTOR_SUBJECT_MAPPED', 'st_mentor_subject_mapping', $mentorId, "Assigned subject ID {$subjectId} to mentor ID {$mentorId}");
-      }
-    } else {
-      $message = "Error assigning subject to mentor: " . mysqli_error($db_handle->conn);
+    $subjectCheck = mysqli_query($db_handle->conn, "SELECT subject_id FROM st_specialization_subject_master WHERE subject_id = {$subjectId} AND subject_id > 0 AND is_active = 1 LIMIT 1");
+    if (!$subjectCheck || mysqli_num_rows($subjectCheck) === 0) {
+      $message = "Selected subject is invalid or inactive.";
       $messageType = "danger";
+    } else {
+      mysqli_begin_transaction($db_handle->conn);
+      try {
+        // Get mentor name
+        $mentorName = '';
+        $mQuery = mysqli_query($db_handle->conn, "SELECT COALESCE(NULLIF(TRIM(user_name), ''), email_id) AS mentor_name FROM st_user_master WHERE user_id = $mentorId");
+        if ($mQuery && ($mRow = mysqli_fetch_assoc($mQuery))) {
+          $mentorName = $mRow['mentor_name'];
+        }
+
+        // Get old subject name
+        $oldSubjectName = 'None';
+        $oldSubQuery = mysqli_query($db_handle->conn, "
+          SELECT ssm.subject_name 
+          FROM st_mentor_subject_mapping msm
+          JOIN st_specialization_subject_master ssm ON ssm.subject_id = msm.subject_id
+          WHERE msm.mentor_id = $mentorId
+          LIMIT 1
+        ");
+        if ($oldSubQuery && ($oldRow = mysqli_fetch_assoc($oldSubQuery))) {
+          $oldSubjectName = $oldRow['subject_name'];
+        }
+
+        // Get new subject name
+        $newSubjectName = '';
+        $newSubQuery = mysqli_query($db_handle->conn, "SELECT subject_name FROM st_specialization_subject_master WHERE subject_id = $subjectId");
+        if ($newSubQuery && ($newRow = mysqli_fetch_assoc($newSubQuery))) {
+          $newSubjectName = $newRow['subject_name'];
+        }
+
+        // Update st_mentor_subject_mapping
+        mysqli_query($db_handle->conn, "DELETE FROM st_mentor_subject_mapping WHERE mentor_id = $mentorId");
+        $insert = mysqli_query($db_handle->conn, "INSERT INTO st_mentor_subject_mapping (mentor_id, subject_id) VALUES ($mentorId, $subjectId)");
+        
+        if (!$insert) {
+          throw new Exception("Database error mapping subject.");
+        }
+
+        // Recalculate student allocations
+        $recalc = $db_handle->recalculateMentorStudents($mentorId);
+
+        mysqli_commit($db_handle->conn);
+
+        $message = "<strong>Mentor Subject Updated Successfully</strong><br><br>";
+        $message .= "<strong>Mentor:</strong> " . htmlspecialchars($mentorName) . "<br>";
+        $message .= "<strong>Previous Subject:</strong> " . htmlspecialchars($oldSubjectName) . "<br>";
+        $message .= "<strong>New Subject:</strong> " . htmlspecialchars($newSubjectName) . "<br>";
+        $message .= "<strong>Students Removed:</strong> " . intval($recalc['removed']) . "<br>";
+        $message .= "<strong>Students Newly Allocated:</strong> " . intval($recalc['allocated']) . "<br>";
+        $message .= "<strong>Current Students:</strong> " . intval($recalc['current']);
+        $messageType = "success";
+
+        if (method_exists($db_handle, 'writeAuditLog')) {
+          $db_handle->writeAuditLog($loginUserId, 'MENTOR_SUBJECT_MAPPED', 'st_mentor_subject_mapping', $mentorId, "Assigned subject ID {$subjectId} to mentor ID {$mentorId}");
+        }
+      } catch (Throwable $e) {
+        mysqli_rollback($db_handle->conn);
+        $message = "Error assigning subject to mentor: " . htmlspecialchars($e->getMessage());
+        $messageType = "danger";
+      }
     }
   }
 }
@@ -83,12 +112,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete_mapping') {
   $mappingId = intval($_POST['mapping_id'] ?? 0);
   if ($mappingId > 0) {
-    $del = mysqli_query($db_handle->conn, "DELETE FROM st_mentor_subject_mapping WHERE mapping_id = $mappingId");
-    if ($del) {
-      $message = "Mapping deleted successfully!";
+    mysqli_begin_transaction($db_handle->conn);
+    try {
+      // Find mentor_id first
+      $mQuery = mysqli_query($db_handle->conn, "SELECT mentor_id FROM st_mentor_subject_mapping WHERE mapping_id = $mappingId");
+      $mId = 0;
+      if ($mQuery && ($mRow = mysqli_fetch_assoc($mQuery))) {
+        $mId = intval($mRow['mentor_id']);
+      }
+      
+      $del = mysqli_query($db_handle->conn, "DELETE FROM st_mentor_subject_mapping WHERE mapping_id = $mappingId");
+      if (!$del) {
+        throw new Exception("Database error deleting mapping.");
+      }
+      
+      $removedCount = 0;
+      if ($mId > 0) {
+        // recalculateMentorStudents will remove all active allocations because the mapping is now deleted
+        $recalc = $db_handle->recalculateMentorStudents($mId);
+        $removedCount = $recalc['removed'];
+      }
+      
+      mysqli_commit($db_handle->conn);
+      $message = "Mapping deleted successfully! All current allocations for this mentor were removed (Total: $removedCount).";
       $messageType = "success";
-    } else {
-      $message = "Error deleting mapping: " . mysqli_error($db_handle->conn);
+    } catch (Throwable $e) {
+      mysqli_rollback($db_handle->conn);
+      $message = "Error deleting mapping: " . htmlspecialchars($e->getMessage());
       $messageType = "danger";
     }
   }
@@ -124,7 +174,7 @@ if ($loginRole == 3) {
 $mentors = $db_handle->runQuery($mentorsSql) ?? [];
 
 // Fetch specialization subjects
-$subjects = $db_handle->runQuery("SELECT subject_id, subject_name FROM st_specialization_subject_master ORDER BY subject_name ASC") ?? [];
+$subjects = $db_handle->runQuery("SELECT subject_id, subject_name FROM st_specialization_subject_master WHERE subject_id > 0 AND is_active = 1 ORDER BY subject_name ASC") ?? [];
 
 // Fetch list of current mappings to display
 if ($loginRole == 3) {
@@ -174,7 +224,7 @@ include "header/header.php";
     <?php if ($message !== '') { ?>
       <div class="alert alert-<?php echo htmlspecialchars($messageType); ?> alert-dismissible">
         <button type="button" class="close" data-dismiss="alert" aria-hidden="true">×</button>
-        <?php echo htmlspecialchars($message); ?>
+        <?php echo $message; ?>
       </div>
     <?php } ?>
 
@@ -257,7 +307,8 @@ include "header/header.php";
                 <?php } ?>
                 <?php if (empty($mappings)) { ?>
                   <tr>
-                    <td colspan="5" class="text-center text-muted">No mappings defined yet.</td>
+                    <td class="text-center text-muted">-</td>
+                    <td class="text-center text-muted" colspan="4">No mappings defined yet.</td>
                   </tr>
                 <?php } ?>
               </tbody>

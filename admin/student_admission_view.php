@@ -12,7 +12,7 @@ if ($student_id > 0) {
                    s.specialization_subject_id, s.minor_course_id, s.minor_subject_id,
                    s.current_semester_id,
                    c.class_name, sec.sections AS division_name, d.department_name,
-                   sp.specialization_name, sub.subject_name,
+                   sp.specialization_name, sub.subject_name, current_subject.subject_name AS history_subject_name,
                    ay.session_name, sem.semester_name
             FROM st_student_master s
             LEFT JOIN st_class_master c ON c.class_id = s.class_id
@@ -20,6 +20,8 @@ if ($student_id > 0) {
             LEFT JOIN st_department_master d ON d.department_id = s.department_id
             LEFT JOIN st_specialization_master sp ON sp.specialization_id = s.specialization_id
             LEFT JOIN st_specialization_subject_master sub ON sub.subject_id = s.specialization_subject_id
+            LEFT JOIN st_student_semester_history current_history ON current_history.student_id = s.student_id AND current_history.semester_id = s.current_semester_id
+            LEFT JOIN st_specialization_subject_master current_subject ON current_subject.subject_id = current_history.specialization_subject_id
             LEFT JOIN st_session_master ay ON ay.session_id = s.academic_year_id
             LEFT JOIN st_semester_master sem ON sem.semester_id = s.current_semester_id
             WHERE s.student_id = ?
@@ -209,7 +211,7 @@ function formatValue($value) {
                         </div>
                         <div class="detail-item">
                             <div class="detail-label">Specialization Subject</div>
-                            <div class="detail-value"><?php echo formatValue($student['subject_name']); ?></div>
+                            <div class="detail-value"><?php echo formatValue($student['subject_name'] ?: ($student['history_subject_name'] ?? '')); ?></div>
                         </div>
                     </div>
                 </div>

@@ -87,12 +87,37 @@ for ($sem = 1; $sem <= 8; $sem++) {
         'semester_name' => 'Semester ' . $sem,
         'specialization' => 'N/A',
         'subject' => 'N/A',
+        'mentor' => 'N/A',
+        'progress' => null,
         'type' => 'Regular',
         'credits' => 0.00,
         'marks_entry' => null,
         'nptel_entry' => null,
         'status' => 'Not Started'
     );
+
+    $historyStmt = mysqli_prepare($conn, "SELECT sp.specialization_name, ss.subject_name,
+                                                u.user_name AS mentor_name, h.progress_percent, h.status
+                                         FROM st_student_semester_history h
+                                         LEFT JOIN st_specialization_master sp ON sp.specialization_id = h.specialization_id
+                                         LEFT JOIN st_specialization_subject_master ss ON ss.subject_id = h.specialization_subject_id
+                                         LEFT JOIN st_user_master u ON u.user_id = h.mentor_id
+                                         WHERE h.student_id = ? AND h.semester_id = ? LIMIT 1");
+    if ($historyStmt) {
+        mysqli_stmt_bind_param($historyStmt, 'ii', $studentId, $sem);
+        mysqli_stmt_execute($historyStmt);
+        $historyResult = mysqli_stmt_get_result($historyStmt);
+        if ($historyResult && ($historyRow = mysqli_fetch_assoc($historyResult))) {
+            $semData['specialization'] = $historyRow['specialization_name'] ?: 'N/A';
+            $semData['subject'] = $historyRow['subject_name'] ?: 'N/A';
+            $semData['mentor'] = $historyRow['mentor_name'] ?: 'N/A';
+            $semData['progress'] = $historyRow['progress_percent'] !== null ? floatval($historyRow['progress_percent']) : null;
+            if ($historyRow['status'] === 'Completed') {
+                $semData['status'] = 'Completed';
+            }
+        }
+        mysqli_stmt_close($historyStmt);
+    }
 
     // Get semester name master if possible
     $semMasterSql = "SELECT semester_name FROM st_semester_master WHERE semester_id = ? LIMIT 1";

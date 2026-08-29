@@ -24,7 +24,11 @@ if (($isEditMode || empty($admissionForm)) && !empty($userid)) {
   if ($mapRes && ($mapRow = mysqli_fetch_assoc($mapRes))) {
     $sid = intval($mapRow['student_id']);
     if ($sid > 0) {
-      $sres = $db_handle->query("SELECT * FROM st_student_master WHERE student_id = " . $sid . " LIMIT 1");
+      $sres = $db_handle->query("SELECT s.*, COALESCE(NULLIF(s.specialization_subject_id, 0), h.specialization_subject_id) AS current_subject_id
+                                FROM st_student_master s
+                                LEFT JOIN st_student_semester_history h
+                                  ON h.student_id = s.student_id AND h.semester_id = s.current_semester_id
+                                WHERE s.student_id = " . $sid . " LIMIT 1");
       if ($sres && ($srow = mysqli_fetch_assoc($sres))) {
         $admissionForm['registration_no'] = $srow['registration_no'] ?? '';
         $admissionForm['roll_no'] = $srow['roll_no'] ?? '';
@@ -38,7 +42,7 @@ if (($isEditMode || empty($admissionForm)) && !empty($userid)) {
         $admissionForm['minor_course_id'] = $srow['minor_course_id'] ?? '';
         $admissionForm['minor_subject_id'] = $srow['minor_subject_id'] ?? '';
         $admissionForm['minor_cgpa'] = '';
-        $admissionForm['unaided_subject'] = $srow['specialization_subject_id'] ?? '';
+        $admissionForm['unaided_subject'] = $srow['current_subject_id'] ?? $srow['specialization_subject_id'] ?? '';
         $admissionForm['fname'] = $srow['fname'] ?? '';
         $admissionForm['email'] = $srow['email'] ?? '';
         $admissionForm['mobile'] = $srow['mobile'] ?? '';
@@ -250,6 +254,34 @@ if (($isEditMode || empty($admissionForm)) && !empty($userid)) {
     $('#research_component_ii_id').val('');
     $('#research_core_viii').val('');
     setAdmissionDetailSectionsVisible(false);
+  }
+
+  function loadSpecializationSubjects() {
+    var departmentId = $('#department_select').val();
+    var semesterId = $('#semester_select').val();
+    var specializationId = $('#specialization_select').val();
+    var subjectSelect = $('#specialization_subject_select');
+    subjectSelect.empty().append('<option value="">Select Specialization Subject</option>');
+    if (!departmentId || !semesterId || !specializationId) {
+      return;
+    }
+    $.ajax({
+      type: 'POST',
+      url: 'get_specialization_subject.php',
+      dataType: 'json',
+      data: { department_id: departmentId, semester_id: semesterId, specialization_id: specializationId },
+      success: function(response) {
+        if (response && response.success && response.data) {
+          $.each(response.data, function(_, subject) {
+            subjectSelect.append($('<option>', { value: subject.subject_id, text: subject.subject_name }));
+          });
+          var selectedSubjectId = <?php echo json_encode((string) ($admissionForm['unaided_subject'] ?? '')); ?>;
+          if (selectedSubjectId !== '') {
+            subjectSelect.val(selectedSubjectId);
+          }
+        }
+      }
+    });
   }
 
   function loadMinorSubjectsByCourse(courseId) {
@@ -500,14 +532,22 @@ if (($isEditMode || empty($admissionForm)) && !empty($userid)) {
       updateSemestersByClass();
       updateDivisionsByClass();
       updateSpecializationsByClass();
+      loadSpecializationSubjects();
       updateHonoursEligibility();
+    });
+
+    $('#department_select, #semester_select').on('change', function() {
+      loadSpecializationSubjects();
     });
 
     handleSpecializationSelection(false);
 
     $('#specialization_select').on('change', function() {
+      loadSpecializationSubjects();
       handleSpecializationSelection(true);
     });
+
+    loadSpecializationSubjects();
 
     $('#cgpa').on('input keyup change blur', function() {
       var specializationText = $('#specialization_select option:selected').text().toLowerCase();
@@ -802,7 +842,17 @@ if (($isEditMode || empty($admissionForm)) && !empty($userid)) {
                   <select class="form-control select" name="unaided_subject" id="specialization_subject_select" class="batch" style="width: 100%;">
                     <option>Select Specialization Subject</option>
                     <?php
-                    $result = $db_handle->conn->query("SELECT * from st_specialization_subject_master");
+                      $selectedDepartmentId = intval($admissionForm['department_id'] ?? 0);
+                      $selectedSemesterId = intval($admissionForm['current_semester_id'] ?? 0);
+                      $selectedSpecializationId = intval($admissionForm['specialization_id'] ?? 0);
+                      $subjectSql = "SELECT subject_id, subject_name
+                                     FROM st_specialization_subject_master
+                                     WHERE is_active = 1
+                                       AND department_id = {$selectedDepartmentId}
+                                       AND semester_id = {$selectedSemesterId}
+                                       AND specialization_id = {$selectedSpecializationId}
+                                     ORDER BY subject_name";
+                      $result = $db_handle->conn->query($subjectSql);
                     while ($row = $result->fetch_assoc()) {
                       $subject_name = $row['subject_name'];
                       $subject_id = $row['subject_id'];

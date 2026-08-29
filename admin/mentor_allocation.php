@@ -11,7 +11,7 @@ if (!isset($_SESSION['user_session'])) {
   exit();
 }
 
-$loginUserId = $_SESSION['user_session'];
+$loginUserId = intval($_SESSION['user_id'] ?? 0);
 
 $userData = $db_handle->runQuery("
     SELECT role_id, department_id
@@ -19,8 +19,8 @@ $userData = $db_handle->runQuery("
     WHERE user_id='$loginUserId'
 ");
 
-$loginRole = $userData[0]['role_id'];
-$loginDepartment = $userData[0]['department_id'];
+$loginRole = intval($userData[0]['role_id'] ?? 0);
+$loginDepartment = intval($userData[0]['department_id'] ?? 0);
 
 function mentor_allocation_fetch_mentors($db_handle)
 {

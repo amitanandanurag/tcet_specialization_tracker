@@ -202,11 +202,21 @@ if (isset($_POST['save'])) {
 
   if ($result === TRUE) {
     $student_id = mysqli_insert_id($conn);
+    if ($specialization_subject_id !== 'NULL' && !$database->isSubjectAvailable(
+      intval(trim($specialization_subject_id, "'")), intval($_POST['department_id'] ?? 0),
+      intval($current_semester_id), intval($_POST['specialization_id'] ?? 0))) {
+      mysqli_query($conn, "DELETE FROM st_student_master WHERE student_id = " . intval($student_id));
+      echo 'Selected specialization subject is not active for this department and semester.';
+      exit;
+    }
+    $database->removeInvalidStudentMentorAllocation($student_id);
+    $database->syncStudentSemesterHistory($student_id, $current_semester_id);
     if (isset($specialization_subject_id) && $specialization_subject_id !== 'NULL') {
       $clean_subject_id = intval(trim($specialization_subject_id, "'"));
       $clean_semester_id = intval($current_semester_id);
       if ($clean_subject_id > 0 && $clean_semester_id > 0) {
         $database->autoAllocateMentor($student_id, $clean_subject_id, $clean_semester_id);
+        $database->syncStudentSemesterHistory($student_id, $clean_semester_id);
       }
     }
     echo '<script type="text/javascript">alert("Student registered successfully! Student ID: ' . $student_id . '");</script>';

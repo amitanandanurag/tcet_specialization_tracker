@@ -41,8 +41,11 @@ $select_department = $_POST['select_department'] ?? '';
 
 // Calculate total data count (before filters)
 $totalData = 0;
-$totalSql = "SELECT COUNT(DISTINCT sm.student_id) total FROM st_student_master sm LEFT JOIN st_mentor_student_mapping msm
-ON msm.student_id=sm.student_id WHERE 1=1";
+$totalSql = "SELECT COUNT(DISTINCT sm.student_id) total FROM st_student_master sm
+LEFT JOIN st_student_semester_history h_current
+    ON h_current.student_id = sm.student_id AND h_current.semester_id = sm.current_semester_id
+LEFT JOIN st_mentor_student_mapping msm
+    ON msm.student_id=sm.student_id AND msm.semester_id=sm.current_semester_id WHERE 1=1";
 if($user_role==3){
 
     $totalSql .= " AND sm.department_id='$department_id'";
@@ -50,7 +53,16 @@ if($user_role==3){
 }
 elseif($user_role==4){
 
-    $totalSql .= " AND msm.mentor_id='$user_id'";
+    $totalSql .= " AND sm.status = 1 AND EXISTS (
+                SELECT 1 FROM st_mentor_subject_mapping msub
+                        JOIN st_specialization_subject_master current_subject ON current_subject.subject_id = msub.subject_id
+                        JOIN st_user_master current_mentor ON current_mentor.user_id = msub.mentor_id
+        WHERE msub.mentor_id = '$user_id'
+                      AND msub.subject_id = COALESCE(NULLIF(sm.specialization_subject_id, 0), h_current.specialization_subject_id)
+                            AND current_subject.semester_id = sm.current_semester_id
+                            AND current_subject.department_id = sm.department_id
+                            AND current_mentor.department_id = sm.department_id
+        )";
 
 }
 
@@ -88,8 +100,8 @@ $sql = "SELECT
     IFNULL(sp.specialization_name,'') AS specialization_name,
 
     CASE
-        WHEN sm.specialization_subject_id IS NOT NULL
-             AND sm.specialization_subject_id <> 0
+           WHEN COALESCE(NULLIF(sm.specialization_subject_id, 0), h_current.specialization_subject_id) IS NOT NULL
+               AND COALESCE(NULLIF(sm.specialization_subject_id, 0), h_current.specialization_subject_id) <> 0
         THEN IFNULL(ssb.subject_name,'')
 
         WHEN sm.minor_subject_id IS NOT NULL
@@ -111,6 +123,11 @@ FROM st_student_master sm
 
 LEFT JOIN st_mentor_student_mapping msm
 ON msm.student_id = sm.student_id
+AND msm.semester_id = sm.current_semester_id
+
+LEFT JOIN st_student_semester_history h_current
+ON h_current.student_id = sm.student_id
+AND h_current.semester_id = sm.current_semester_id
 
 LEFT JOIN st_class_master cl
        ON cl.class_id = sm.class_id
@@ -125,7 +142,7 @@ LEFT JOIN st_specialization_master sp
        ON sp.specialization_id = sm.specialization_id
 
 LEFT JOIN st_specialization_subject_master ssb
-       ON ssb.subject_id = sm.specialization_subject_id
+    ON ssb.subject_id = COALESCE(NULLIF(sm.specialization_subject_id, 0), h_current.specialization_subject_id)
 
 LEFT JOIN st_minorcourse mc
        ON mc.course_id = sm.minor_course_id
@@ -150,8 +167,6 @@ if($user_role==1 || $user_role==2){
 // Role 3 HOD
 elseif($user_role==3){
 
-    $sql .= " AND sm.department_id='".mysqli_real_escape_string($db_handle->conn,$department_id)."'";
-
     $select_department=$department_id;
 
 }
@@ -159,7 +174,17 @@ elseif($user_role==3){
 // Role 4 Mentor
 elseif($user_role==4){
 
-    $sql .= " AND msm.mentor_id='".mysqli_real_escape_string($db_handle->conn,$user_id)."'";
+        $sql .= " AND sm.status = 1
+                            AND EXISTS (
+                                SELECT 1 FROM st_mentor_subject_mapping msub
+                                JOIN st_specialization_subject_master current_subject ON current_subject.subject_id = msub.subject_id
+                                JOIN st_user_master current_mentor ON current_mentor.user_id = msub.mentor_id
+                                WHERE msub.mentor_id = '" . mysqli_real_escape_string($db_handle->conn, $user_id) . "'
+                                    AND msub.subject_id = COALESCE(NULLIF(sm.specialization_subject_id, 0), h_current.specialization_subject_id)
+                                    AND current_subject.semester_id = sm.current_semester_id
+                                    AND current_subject.department_id = sm.department_id
+                                    AND current_mentor.department_id = sm.department_id
+                            )";
 
 }
 
@@ -215,7 +240,14 @@ if (!empty($requestData['search']['value'])) {
 }
 
 $filteredResult = $db_handle->query($sql);
-$totalFiltered = mysqli_num_rows($filteredResult);
+$totalFiltered = 0;
+if ($filteredResult) {
+    $filteredIds = array();
+    while ($filteredRow = $filteredResult->fetch_assoc()) {
+        $filteredIds[(int) $filteredRow['student_id']] = true;
+    }
+    $totalFiltered = count($filteredIds);
+}
 
 // Ordering
 $orderColumn = 'sm.student_id';

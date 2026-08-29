@@ -28,14 +28,25 @@ if ($linkedStudentId > 0) {
     $studentSql = "SELECT s.student_id, s.academic_year_id, s.registration_no, s.roll_no, s.grad_year,
                           s.cgpa, s.fname, s.mobile, s.email, s.status, s.created_at,
                           c.class_name, sec.sections AS division_name, d.department_name,
-                          sp.specialization_name, sub.subject_name, ay.session_name
+                          sp.specialization_name, sub.subject_name, current_history_subject.subject_name AS current_history_subject_name, ay.session_name
+                                  , sem.semester_name AS current_semester_name
+                                  , (SELECT um.user_name FROM st_mentor_student_mapping mm
+                                      INNER JOIN st_user_master um ON um.user_id = mm.mentor_id
+                                      WHERE mm.student_id = s.student_id AND mm.semester_id = s.current_semester_id
+                                      ORDER BY mm.mapping_id DESC LIMIT 1) AS current_mentor_name
+                                  , (SELECT h.progress_percent FROM st_student_semester_history h
+                                      WHERE h.student_id = s.student_id AND h.semester_id = s.current_semester_id
+                                      LIMIT 1) AS current_progress
                    FROM st_student_master s
                    LEFT JOIN st_class_master c ON c.class_id = s.class_id
                    LEFT JOIN st_section_master sec ON sec.id = s.division_id
                    LEFT JOIN st_department_master d ON d.department_id = s.department_id
                    LEFT JOIN st_specialization_master sp ON sp.specialization_id = s.specialization_id
+                   LEFT JOIN st_student_semester_history current_history ON current_history.student_id = s.student_id AND current_history.semester_id = s.current_semester_id
                    LEFT JOIN st_specialization_subject_master sub ON sub.subject_id = s.specialization_subject_id
+                   LEFT JOIN st_specialization_subject_master current_history_subject ON current_history_subject.subject_id = current_history.specialization_subject_id
                    LEFT JOIN st_session_master ay ON ay.session_id = s.academic_year_id
+                   LEFT JOIN st_semester_master sem ON sem.semester_id = s.current_semester_id
                    WHERE s.student_id = ?
                    LIMIT 1";
 
@@ -222,10 +233,16 @@ function student_dashboard_value($value)
                             <dl class="row student-info-list">
                                 <dt class="col-sm-5">Department</dt>
                                 <dd class="col-sm-7"><?php echo student_dashboard_value($student['department_name']); ?></dd>
+                                <dt class="col-sm-5">Current Semester</dt>
+                                <dd class="col-sm-7"><?php echo student_dashboard_value($student['current_semester_name'] ?? $student['current_semester_id']); ?></dd>
                                 <dt class="col-sm-5">Specialization</dt>
                                 <dd class="col-sm-7"><?php echo student_dashboard_value($student['specialization_name']); ?></dd>
                                 <dt class="col-sm-5">Subject</dt>
-                                <dd class="col-sm-7"><?php echo student_dashboard_value($student['subject_name']); ?></dd>
+                                <dd class="col-sm-7"><?php echo student_dashboard_value($student['subject_name'] ?: ($student['current_history_subject_name'] ?? '')); ?></dd>
+                                <dt class="col-sm-5">Current Mentor</dt>
+                                <dd class="col-sm-7"><?php echo student_dashboard_value($student['current_mentor_name']); ?></dd>
+                                <dt class="col-sm-5">Current Progress</dt>
+                                <dd class="col-sm-7"><?php echo $student['current_progress'] !== null ? student_dashboard_value($student['current_progress']) . '%' : 'N/A'; ?></dd>
                                 <dt class="col-sm-5">Applied On</dt>
                                 <dd class="col-sm-7"><?php echo student_dashboard_value($student['created_at']); ?></dd>
                             </dl>
@@ -251,6 +268,9 @@ function student_dashboard_value($value)
                                         <th>Division</th>
                                         <th>Specialization</th>
                                         <th>Course / Subject</th>
+                                        <th>Mentor</th>
+                                        <th>Progress</th>
+                                        <th>Status</th>
                                         <th>CGPA</th>
                                         <th>Research Components</th>
                                     </tr>
@@ -259,6 +279,10 @@ function student_dashboard_value($value)
                                     <?php
                                     $histSql = "SELECT
                                         sh.semester_id,
+                                        sh.mentor_id,
+                                        sh.progress_percent,
+                                        sh.status,
+                                        IFNULL(mentor.user_name, '') AS mentor_name,
                                         sh.cgpa,
                                         sh.research_core_vii,
                                         sh.research_core_viii,
@@ -283,6 +307,7 @@ function student_dashboard_value($value)
                                     LEFT JOIN st_semester_master sem ON sem.semester_id = sh.semester_id
                                     LEFT JOIN st_specialization_subject_master rsi ON rsi.subject_id = sh.research_component_i_id
                                     LEFT JOIN st_specialization_subject_master rsii ON rsii.subject_id = sh.research_component_ii_id
+                                    LEFT JOIN st_user_master mentor ON mentor.user_id = sh.mentor_id
                                     WHERE sh.student_id = $studentId
                                     ORDER BY sem.semester_name ASC, sh.semester_id ASC";
                                     
@@ -317,6 +342,9 @@ function student_dashboard_value($value)
                                             <td><?php echo htmlspecialchars($hrow['section_name']); ?></td>
                                             <td><?php echo htmlspecialchars($hrow['specialization_name']); ?></td>
                                             <td><?php echo $course_details; ?></td>
+                                            <td><?php echo htmlspecialchars($hrow['mentor_name'] ?: 'Not assigned'); ?></td>
+                                            <td><?php echo $hrow['progress_percent'] !== null ? htmlspecialchars($hrow['progress_percent']) . '%' : 'N/A'; ?></td>
+                                            <td><?php echo htmlspecialchars($hrow['status']); ?></td>
                                             <td><strong><?php echo htmlspecialchars($hrow['cgpa'] ?? 'N/A'); ?></strong></td>
                                             <td><?php echo $research_details; ?></td>
                                         </tr>
@@ -325,7 +353,7 @@ function student_dashboard_value($value)
                                     } else {
                                     ?>
                                         <tr>
-                                            <td colspan="8" class="text-center text-muted">No historical semester registrations recorded.</td>
+                                            <td colspan="11" class="text-center text-muted">No historical semester registrations recorded.</td>
                                         </tr>
                                     <?php } ?>
                                 </tbody>

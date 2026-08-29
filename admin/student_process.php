@@ -232,6 +232,35 @@ if (isset($_POST['save'])) {
         echo "<script>window.open('student_admission.php','_self')</script>";
         exit;
     }
+
+    if ($specialization_subject_id !== 'NULL' && !$database->isSubjectAvailable(
+        intval(trim($specialization_subject_id, "'")), intval($_POST['department_id'] ?? 0),
+        intval($current_semester_id), intval($_POST['specialization_id'] ?? 0))) {
+        echo 'Selected specialization subject is not active for this department and semester.';
+        exit;
+    }
+
+    // If this is a promotion/edit of an existing student, freeze the old
+    // semester before changing the legacy current-state columns.
+    $previousSemesterId = 0;
+    $promotionTransaction = false;
+    if ($existingStudentId > 0) {
+        $oldResult = mysqli_query($conn, "SELECT current_semester_id FROM st_student_master WHERE student_id = " . intval($existingStudentId) . " LIMIT 1");
+        if ($oldResult && ($oldRow = mysqli_fetch_assoc($oldResult))) {
+            $previousSemesterId = intval($oldRow['current_semester_id']);
+        }
+        if ($previousSemesterId > 0 && $previousSemesterId !== intval($current_semester_id)) {
+            mysqli_begin_transaction($conn);
+            $promotionTransaction = true;
+            $historyPrepared = $database->syncStudentSemesterHistory($existingStudentId, $previousSemesterId);
+            $historyPrepared = $historyPrepared && $database->finalizeStudentSemester($existingStudentId, $previousSemesterId);
+            if (!$historyPrepared) {
+                mysqli_rollback($conn);
+                echo 'Unable to preserve the previous semester. Promotion cancelled; run the semester-history migration first.';
+                exit;
+            }
+        }
+    }
     
     // If user has existing linked student, UPDATE that record; otherwise INSERT new
     if ($existingStudentId > 0) {
@@ -254,9 +283,6 @@ if (isset($_POST['save'])) {
             `email` = $email,
             `mark_list` = $mark_list,
             `status` = $status,
-            `m_sem1` = $m_sem1,
-            `m_sem2` = $m_sem2,
-            `m_sem3` = $m_sem3,
             `current_semester_id` = '$current_semester_id',
             `research_component_i_id` = $research_component_i_id,
             `research_core_vii` = $research_core_vii,
@@ -329,6 +355,7 @@ if (isset($_POST['save'])) {
     }
     
     if ($result === TRUE) {
+        $database->removeInvalidStudentMentorAllocation($student_id);
         $database->syncStudentSemesterHistory($student_id, $current_semester_id);
         if (isset($specialization_subject_id) && $specialization_subject_id !== 'NULL') {
             $clean_subject_id = intval(trim($specialization_subject_id, "'"));
@@ -336,6 +363,17 @@ if (isset($_POST['save'])) {
             if ($clean_subject_id > 0 && $clean_semester_id > 0) {
                 $database->autoAllocateMentor($student_id, $clean_subject_id, $clean_semester_id);
             }
+        }
+        // Run again after allocation so the semester snapshot includes the
+        // newly assigned mentor.
+        $newHistorySaved = $database->syncStudentSemesterHistory($student_id, $current_semester_id);
+        if ($promotionTransaction) {
+            if (!$newHistorySaved) {
+                mysqli_rollback($conn);
+                echo 'Unable to create the new semester record. Promotion cancelled.';
+                exit;
+            }
+            mysqli_commit($conn);
         }
         
         // Link the student to the current user
@@ -351,6 +389,9 @@ if (isset($_POST['save'])) {
         echo '<script type="text/javascript">alert("Student admitted successfully! Student ID: ' . $student_id . '");</script>';
         echo "<script>window.open('student_admission_view.php?id=" . $student_id . "','_self')</script>";
     } else {
+        if ($promotionTransaction) {
+            mysqli_rollback($conn);
+        }
         echo "Error: " . mysqli_error($conn);
         echo "<br><br>SQL Query: <pre>" . htmlspecialchars($sql) . "</pre>";
     }

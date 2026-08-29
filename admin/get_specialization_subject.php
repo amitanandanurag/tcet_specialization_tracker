@@ -14,18 +14,23 @@ try {
     $error = null;
 
     // Handle AJAX request for loading specialization subjects
-    if(isset($_POST['specialization_id']) && $_POST['specialization_id'] !== '') {
+    if(isset($_POST['specialization_id'], $_POST['department_id'], $_POST['semester_id'])) {
         $specialization_id = intval($_POST['specialization_id']); // Use intval for safety
+        $department_id = intval($_POST['department_id']);
+        $semester_id = intval($_POST['semester_id']);
         
-        if($specialization_id <= 0) {
-            $error = "Invalid specialization ID: specialization must be selected";
+        if($specialization_id <= 0 || $department_id <= 0 || $semester_id <= 0) {
+            $error = "Department, semester, and specialization must be selected";
         } else {
             // Use prepared statement for security
-            $query = "SELECT subject_id, subject_name FROM st_specialization_subject_master WHERE specialization_id = ? ORDER BY subject_name";
+            $query = "SELECT subject_id, subject_name
+                      FROM st_specialization_subject_master
+                      WHERE specialization_id = ? AND department_id = ? AND semester_id = ? AND is_active = 1
+                      ORDER BY subject_name";
             $stmt = $database->conn->prepare($query);
             
             if($stmt) {
-                $stmt->bind_param("i", $specialization_id);
+                $stmt->bind_param("iii", $specialization_id, $department_id, $semester_id);
                 $stmt->execute();
                 $result = $stmt->get_result();
                 

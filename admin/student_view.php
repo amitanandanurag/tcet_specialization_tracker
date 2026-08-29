@@ -457,6 +457,9 @@ $is_research = strpos($specialization_name, 'research') !== false;
                             <th>Division</th>
                             <th>Specialization</th>
                             <th>Course / Subject</th>
+                            <th>Mentor</th>
+                            <th>Progress</th>
+                            <th>Status</th>
                             <th>CGPA</th>
                             <th>Research Components</th>
                         </tr>
@@ -465,6 +468,10 @@ $is_research = strpos($specialization_name, 'research') !== false;
                         <?php
                         $histSql = "SELECT
                             sh.semester_id,
+                            sh.mentor_id,
+                            sh.progress_percent,
+                            sh.status,
+                            IFNULL(mentor.user_name, '') AS mentor_name,
                             sh.cgpa,
                             sh.research_core_vii,
                             sh.research_core_viii,
@@ -489,6 +496,7 @@ $is_research = strpos($specialization_name, 'research') !== false;
                         LEFT JOIN st_semester_master sem ON sem.semester_id = sh.semester_id
                         LEFT JOIN st_specialization_subject_master rsi ON rsi.subject_id = sh.research_component_i_id
                         LEFT JOIN st_specialization_subject_master rsii ON rsii.subject_id = sh.research_component_ii_id
+                        LEFT JOIN st_user_master mentor ON mentor.user_id = sh.mentor_id
                         WHERE sh.student_id = $student_id
                         ORDER BY sem.semester_name ASC, sh.semester_id ASC";
                         
@@ -523,6 +531,9 @@ $is_research = strpos($specialization_name, 'research') !== false;
                                 <td><?php echo htmlspecialchars($hrow['section_name']); ?></td>
                                 <td><?php echo htmlspecialchars($hrow['specialization_name']); ?></td>
                                 <td><?php echo $course_details; ?></td>
+                                <td><?php echo htmlspecialchars($hrow['mentor_name'] ?: 'Not assigned'); ?></td>
+                                <td><?php echo $hrow['progress_percent'] !== null ? htmlspecialchars($hrow['progress_percent']) . '%' : 'N/A'; ?></td>
+                                <td><?php echo htmlspecialchars($hrow['status']); ?></td>
                                 <td><strong><?php echo htmlspecialchars($hrow['cgpa'] ?? 'N/A'); ?></strong></td>
                                 <td><?php echo $research_details; ?></td>
                             </tr>
@@ -531,7 +542,7 @@ $is_research = strpos($specialization_name, 'research') !== false;
                         } else {
                         ?>
                             <tr>
-                                <td colspan="8" class="text-center text-muted">No historical semester registrations recorded for this student.</td>
+                                <td colspan="11" class="text-center text-muted">No historical semester registrations recorded for this student.</td>
                             </tr>
                         <?php } ?>
                     </tbody>

@@ -414,6 +414,32 @@ function sidebar_seed_mentor_subject_menu($db_handle)
 	}
 }
 
+function sidebar_seed_subject_management_menu($db_handle)
+{
+	$menuResult = mysqli_query($db_handle->conn, "SELECT menu_id FROM st_menu_master WHERE LOWER(TRIM(menu_name)) = 'coordinator' LIMIT 1");
+	if (!$menuResult || !($menuRow = mysqli_fetch_assoc($menuResult))) {
+		return;
+	}
+	$menuId = intval($menuRow['menu_id']);
+	$name = mysqli_real_escape_string($db_handle->conn, 'Subject Management');
+	$route = mysqli_real_escape_string($db_handle->conn, 'specialization_subject_manage.php');
+	$icon = mysqli_real_escape_string($db_handle->conn, 'fa fa-book');
+	$subResult = mysqli_query($db_handle->conn, "SELECT sub_menu_id FROM st_sub_menu_master WHERE menu_id = {$menuId} AND sub_menu_route = '{$route}' LIMIT 1");
+	if ($subResult && ($subRow = mysqli_fetch_assoc($subResult))) {
+		$subMenuId = intval($subRow['sub_menu_id']);
+	} else {
+		$orderResult = mysqli_query($db_handle->conn, "SELECT COALESCE(MAX(sort_order), 0) + 1 AS next_order FROM st_sub_menu_master WHERE menu_id = {$menuId}");
+		$orderRow = $orderResult ? mysqli_fetch_assoc($orderResult) : array();
+		$nextOrder = intval($orderRow['next_order'] ?? 1);
+		mysqli_query($db_handle->conn, "INSERT INTO st_sub_menu_master (menu_id, sort_order, sub_menu_name, sub_menu_icon, sub_menu_route) VALUES ({$menuId}, {$nextOrder}, '{$name}', '{$icon}', '{$route}')");
+		$subMenuId = intval(mysqli_insert_id($db_handle->conn));
+	}
+	if ($subMenuId <= 0) return;
+	foreach (array(1, 2, 3, 4) as $roleId) {
+		mysqli_query($db_handle->conn, "INSERT INTO st_menu_allocation_master (user_id, role_id, menu_id, sub_menu_id) SELECT 0, {$roleId}, {$menuId}, {$subMenuId} WHERE NOT EXISTS (SELECT 1 FROM st_menu_allocation_master WHERE user_id = 0 AND role_id = {$roleId} AND sub_menu_id = {$subMenuId})");
+	}
+}
+
 function sidebar_seed_student_nptel_menu($db_handle)
 {
 	$menuId = 0;
@@ -528,6 +554,10 @@ if ((int) $usertype === 1) {
 	sidebar_seed_student_monitor_menu($db_handle);
 	sidebar_seed_student_nptel_menu($db_handle);
 	sidebar_seed_mentor_subject_menu($db_handle);
+}
+
+if (in_array((int) $usertype, array(1, 2, 3), true)) {
+	sidebar_seed_subject_management_menu($db_handle);
 }
 
 $menuSql = "SELECT m.menu_id, m.menu_name, $menuIconSelect
