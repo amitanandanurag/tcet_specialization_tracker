@@ -1,14 +1,21 @@
 
 $(document).ready(function () {
-
 	$("#login-form").validate({
 		rules: {
 			username: { required: true },
 			password: { required: true }
 		},
 		messages: {
-			username: "please enter your username",
-			password: "please enter your password"
+			username: "Please enter your username or registration number.",
+			password: "Please enter your password."
+		},
+		errorClass: "erp-input-error-msg",
+		errorElement: "div",
+		highlight: function(element) {
+			$(element).closest('.erp-input-group').addClass('erp-input-invalid');
+		},
+		unhighlight: function(element) {
+			$(element).closest('.erp-input-group').removeClass('erp-input-invalid');
 		},
 		submitHandler: function (form, event) {
 			event.preventDefault();
@@ -17,19 +24,22 @@ $(document).ready(function () {
 	});
 
 	function submitForm() {
+		var formData = $("#login-form").serialize();
+		if (formData.indexOf('login_button=') === -1) {
+			formData += '&login_button=1';
+		}
 
-		var data = $("#login-form").serialize();
+		var $btn = $("#login_button");
+		var originalBtnText = $btn.html();
 
 		$.ajax({
 			type: 'POST',
 			url: 'login.php',
-			data: data,
-
+			data: formData,
 			beforeSend: function () {
-				$("#error").fadeOut();
-				$("#login_button").html('sending...');
+				$("#error").fadeOut().empty();
+				$btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Signing In...');
 			},
-
 			success: function (response) {
 				var cleanResponse = $.trim(response || '');
 				var lowerResponse = cleanResponse.toLowerCase();
@@ -40,38 +50,36 @@ $(document).ready(function () {
 					lowerResponse.indexOf('mysqli_sql_exception') !== -1 ||
 					lowerResponse.indexOf('unable to connect with database') !== -1
 				) {
-					cleanResponse = 'Unable to connect with database';
+					cleanResponse = 'Unable to connect with the server database. Please try again later.';
+				} else if (cleanResponse === "email or password does not exist.") {
+					cleanResponse = 'Invalid username or password. Please verify your credentials.';
 				}
-
-				console.log(cleanResponse);
-
 
 				if (cleanResponse === "change_password") {
-					$("#login_button").html('<img src="ajax-loader.gif" /> &nbsp; Redirecting ...');
-
+					$btn.html('<i class="fa fa-check"></i> Redirecting...');
 					setTimeout(function () {
 						window.location.href = "../admin/change_password.php";
-					}, 500);
-
+					}, 400);
 					return;
+				} else if (cleanResponse === "ok" || cleanResponse === "ok1" || cleanResponse === "ok2" || cleanResponse === "ok3" || cleanResponse === "ok4") {
+					$btn.html('<i class="fa fa-check"></i> Success! Redirecting...');
+					var redirectUrl = cleanResponse === "ok4" ? "../admin/student_dashboard.php" : "../admin/index.php";
+					setTimeout(function () {
+						window.location.href = redirectUrl;
+					}, 600);
+				} else {
+					$btn.prop('disabled', false).html('<i class="fa fa-sign-in"></i> Sign In');
+					var alertHtml = '<div class="erp-login-alert">' +
+						'<i class="fa fa-exclamation-circle"></i> ' + $('<div>').text(cleanResponse).html() +
+						'</div>';
+					$("#error").html(alertHtml).fadeIn();
 				}
-
-
-				else if (cleanResponse == "ok" || cleanResponse == "ok1" || cleanResponse == "ok2" || cleanResponse == "ok3" || cleanResponse == "ok4") {
-					$("#login_button").html('<img src="ajax-loader.gif" /> &nbsp; Signing In ...');
-					var redirectUrl = cleanResponse == "ok4" ? "../admin/student_dashboard.php" : "../admin/index.php";
-					setTimeout(function () { window.location.href = redirectUrl; }, 1000);
-				}
-				else {
-					$("#error").fadeIn(1000, function () {
-						var $alert = $('<div class="alert alert-danger">');
-						$('<span class="glyphicon glyphicon-info-sign">').appendTo($alert);
-						$alert.append(document.createTextNode(' ' + cleanResponse + ' !'));
-						$("#error").empty().append($alert);
-						$("#login_button").html('<span class="glyphicon glyphicon-log-in"></span> &nbsp; Sign In');
-					});
-				}
+			},
+			error: function() {
+				$btn.prop('disabled', false).html('<i class="fa fa-sign-in"></i> Sign In');
+				$("#error").html('<div class="erp-login-alert"><i class="fa fa-exclamation-circle"></i> Server connection error. Please try again.</div>').fadeIn();
 			}
-		}); return false;
+		});
+		return false;
 	}
 });

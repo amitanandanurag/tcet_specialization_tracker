@@ -114,13 +114,33 @@ if (isset($_POST['register'])) {
 ?>
 
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<title>Student Registration</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portal Registration - TCET ERP</title>
 
 <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <style>
+:root {
+    --erp-primary: #423cbc;
+    --erp-primary-hover: #352fa1;
+    --erp-border: #e2e8f0;
+    --erp-border-input: #cbd5e1;
+    --erp-text-main: #0f172a;
+    --erp-text-body: #334155;
+    --erp-text-secondary: #475569;
+    --erp-text-muted: #64748b;
+    --erp-success-bg: #f0fdf4;
+    --erp-success-border: #bbf7d0;
+    --erp-success-text: #15803d;
+    --erp-danger-bg: #fef2f2;
+    --erp-danger-border: #fecaca;
+    --erp-danger-text: #b91c1c;
+    --erp-radius: 4px;
+}
+
 * {
     box-sizing: border-box;
     margin: 0;
@@ -128,240 +148,222 @@ if (isset($_POST['register'])) {
 }
 
 body {
-    min-height: 100vh;
-    font-family: 'Segoe UI', sans-serif;
-    background: linear-gradient(135deg, #101828 0%, #1f2937 45%, #0f172a 100%);
-    padding: 24px 16px;
-}
-
-.register-wrap {
-    width: 100%;
-    max-width: 620px;
-    margin: 0 auto;
-}
-
-.register-card {
-    background: rgba(255, 255, 255, 0.96);
-    width: 100%;
-    border-radius: 16px;
-    box-shadow: 0 20px 55px rgba(0, 0, 0, 0.35);
-    overflow: hidden;
-}
-
-.register-header {
-    background: linear-gradient(135deg, #0ea5e9, #2563eb);
-    color: #fff;
-    text-align: center;
-    padding: 22px 20px;
-}
-
-.register-header h2 {
-    margin: 0;
-    font-size: 24px;
-    font-weight: 700;
-    letter-spacing: 0.4px;
-}
-
-.register-header p {
-    margin: 8px 0 0;
-    opacity: 0.92;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: #ffffff;
+    color: var(--erp-text-body);
     font-size: 13px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    padding: 0;
+    margin: 0;
+    overflow-x: hidden;
 }
 
-.register-body {
-    padding: 28px 26px 10px;
+.erp-modal-container {
+    width: 100%;
+    max-width: 100%;
+    margin: 0 auto;
+    background: #ffffff;
 }
 
-.form-group {
-    margin-bottom: 18px;
+.erp-modal-header {
+    padding: 14px 20px;
+    background: #ffffff;
+    border-bottom: 1px solid var(--erp-border);
+    position: relative;
 }
 
-.form-group label {
-    color: #334155;
+.erp-modal-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--erp-text-main);
+    margin: 0;
+    letter-spacing: -0.01em;
+}
+
+.erp-modal-subtitle {
+    font-size: 12px;
+    color: var(--erp-text-muted);
+    margin-top: 3px;
+    margin-bottom: 0;
+}
+
+.erp-modal-body {
+    padding: 18px 20px 20px;
+}
+
+.erp-form-group {
+    margin-bottom: 14px;
+}
+
+.erp-form-group label {
+    display: block;
+    font-size: 12px;
     font-weight: 600;
-    margin-bottom: 7px;
+    color: var(--erp-text-secondary);
+    margin-bottom: 4px;
 }
 
-.input-group {
+.erp-input-group {
+    display: flex;
+    align-items: stretch;
     width: 100%;
+    border: 1px solid var(--erp-border-input);
+    border-radius: var(--erp-radius);
+    background: #ffffff;
+    transition: all 0.15s ease;
 }
 
-.input-group-addon {
-    background: #eff6ff;
-    color: #2563eb;
-    border-color: #cbd5e1;
-    min-width: 44px;
+.erp-input-group:focus-within {
+    border-color: var(--erp-primary);
+    box-shadow: 0 0 0 3px rgba(66, 60, 188, 0.12);
 }
 
-.form-control {
-    height: 46px;
-    border-radius: 10px;
-    border-color: #cbd5e1;
-    box-shadow: none;
+.erp-input-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    background: #f8fafc;
+    border-right: 1px solid var(--erp-border);
+    color: var(--erp-text-muted);
+    font-size: 13px;
+    flex-shrink: 0;
 }
 
-.form-control:focus {
-    border-color: #2563eb;
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
-}
-
-select.form-control {
-    padding-top: 8px;
-    padding-bottom: 8px;
-}
-
-select.form-control option {
-    color: #0f172a;
-}
-
-.register-footer {
-    padding: 0 26px 28px;
-}
-
-button {
+.erp-input-control {
     width: 100%;
-    height: 48px;
-    margin-top: 8px;
-    background: linear-gradient(135deg, #0ea5e9, #2563eb);
-    color: #fff;
+    height: 36px;
+    padding: 6px 12px;
+    font-size: 13px;
+    color: var(--erp-text-main);
+    background: transparent;
     border: none;
-    border-radius: 10px;
-    font-weight: 600;
-    font-size: 15px;
-    cursor: pointer;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-    box-shadow: 0 10px 20px rgba(37, 99, 235, 0.2);
+    outline: none;
 }
 
-button:hover {
-    background: linear-gradient(135deg, #0284c7, #1d4ed8);
-    transform: translateY(-1px);
+.erp-input-control::placeholder {
+    color: #94a3b8;
+    font-size: 12px;
+}
+
+select.erp-input-control {
+    cursor: pointer;
+}
+
+.btn-erp-register-submit {
+    width: 100%;
+    height: 38px;
+    margin-top: 6px;
+    background-color: var(--erp-primary);
+    color: #ffffff;
+    border: 1px solid var(--erp-primary-hover);
+    border-radius: var(--erp-radius);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    box-shadow: 0 1px 2px rgba(66, 60, 188, 0.2);
+}
+
+.btn-erp-register-submit:hover,
+.btn-erp-register-submit:focus {
+    background-color: var(--erp-primary-hover);
+    color: #ffffff;
+    box-shadow: 0 2px 4px rgba(66, 60, 188, 0.3);
 }
 
 #msgBox {
-    color: #b91c1c;
+    color: var(--erp-danger-text);
+    background-color: var(--erp-danger-bg);
+    border: 1px solid var(--erp-danger-border);
+    padding: 10px 12px;
+    border-radius: var(--erp-radius);
+    font-size: 12px;
+    font-weight: 500;
+    margin-bottom: 14px;
     text-align: center;
-    margin-bottom: 16px;
-    padding: 12px 14px;
-    border-radius: 10px;
-    background: #fee2e2;
-    border: 1px solid #fecaca;
 }
 
 #credentialsBox {
-    background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
-    padding: 32px 24px;
-    border-radius: 14px;
-    margin-bottom: 0;
-    color: #0f172a;
+    background-color: var(--erp-success-bg);
+    border: 1px solid var(--erp-success-border);
+    padding: 20px 18px;
+    border-radius: var(--erp-radius);
+    color: var(--erp-text-main);
     text-align: center;
-    border: 2px solid #86efac;
-    margin-top: 12px;
+}
+
+.credentials-title {
+    color: var(--erp-success-text);
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
 }
 
 #credText {
     background: #ffffff;
-    padding: 20px 16px;
-    border-radius: 10px;
-    margin: 18px 0;
-    border: 1px solid #d1fae5;
-    font-family: 'Courier New', monospace;
-    font-size: 14px;
-    line-height: 1.8;
+    padding: 14px;
+    border-radius: var(--erp-radius);
+    margin: 12px 0;
+    border: 1px solid var(--erp-border);
+    font-family: SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 13px;
+    line-height: 1.6;
     color: #065f46;
-    font-weight: 500;
+    text-align: left;
 }
 
 #credText strong {
-    display: block;
-    font-size: 12px;
     color: #047857;
+    font-size: 11px;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 4px;
-    font-weight: 600;
-}
-
-.credentials-title {
-    color: #059669;
-    margin-bottom: 16px;
-    font-size: 18px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.3px;
-}
-
-.credentials-title::before {
-    content: "✓ ";
-    color: #10b981;
-}
-
-.helper-text {
-    text-align: center;
-    color: #64748b;
-    margin-bottom: 14px;
-    font-size: 13px;
+    letter-spacing: 0.4px;
+    display: inline-block;
+    width: 80px;
 }
 
 .btn-copy {
-    margin-top: 18px;
     width: 100%;
-    height: 48px;
-    padding: 0;
-    border-radius: 10px;
-    background: linear-gradient(135deg, #059669, #10b981);
-    color: white;
+    height: 36px;
+    border-radius: var(--erp-radius);
+    background-color: #ffffff;
+    color: var(--erp-success-text);
+    border: 1px solid var(--erp-success-border);
+    font-size: 12px;
     font-weight: 600;
-    border: none;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.15s ease;
 }
 
 .btn-copy:hover {
-    background: linear-gradient(135deg, #047857, #059669);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 16px rgba(5, 150, 105, 0.3);
+    background-color: #ecfdf5;
 }
 
 .btn-proceed {
-    margin-top: 14px;
     width: 100%;
-    height: 44px;
-    padding: 0;
-    border-radius: 10px;
-    background: linear-gradient(135deg, #0ea5e9, #2563eb);
-    color: white;
+    height: 36px;
+    margin-top: 10px;
+    border-radius: var(--erp-radius);
+    background-color: var(--erp-primary);
+    color: #ffffff;
+    border: 1px solid var(--erp-primary-hover);
+    font-size: 12px;
     font-weight: 600;
-    border: none;
     cursor: pointer;
-    transition: all 0.3s ease;
-    font-size: 14px;
+    transition: all 0.15s ease;
 }
 
 .btn-proceed:hover {
-    background: linear-gradient(135deg, #0284c7, #1d4ed8);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 16px rgba(2, 132, 199, 0.3);
-}
-
-.form-hidden {
-    display: none;
-}
-
-.form-hidden {
-    display: none;
-}
-
-@media (max-width: 480px) {
-    .register-body,
-    .register-footer {
-        padding-left: 18px;
-        padding-right: 18px;
-    }
-
-    .register-header h2 {
-        font-size: 18px;
-    }
+    background-color: var(--erp-primary-hover);
 }
 </style>
 
@@ -369,18 +371,15 @@ button:hover {
 function copyCredentials() {
     const text = document.getElementById("credText").innerText;
     navigator.clipboard.writeText(text);
-
-    alert("Copied!");
+    alert("Credentials copied to clipboard!");
 }
 
 function proceedToEnrollment() {
-    // Close the modal - user can now access enrollment form
     if (window.parent && window.parent !== window) {
         if (typeof window.parent.closePopup === 'function') {
             window.parent.closePopup();
-            // Show alert with next steps
             setTimeout(function() {
-                alert("Registration successful!\n\nNext: Log in with your credentials or contact admin for enrollment.");
+                alert("Registration successful! You can now log in with your credentials.");
             }, 300);
         }
     }
@@ -391,7 +390,7 @@ function showRegisterError(message) {
     if (!msgBox) {
         msgBox = document.createElement('div');
         msgBox.id = 'msgBox';
-        var form = document.querySelector('.register-body form');
+        var form = document.querySelector('.erp-modal-body form');
         if (form) {
             form.parentNode.insertBefore(msgBox, form);
         }
@@ -436,7 +435,7 @@ function validateStudentRegisterForm(event) {
 
     if (!emailPattern.test(emailValue)) {
         event.preventDefault();
-        showRegisterError('Use institute email only.');
+        showRegisterError('Use institute email only (name@tcetmumbai.in).');
         return false;
     }
 
@@ -462,7 +461,7 @@ function validateStudentRegisterForm(event) {
 }
 
 window.addEventListener('DOMContentLoaded', function () {
-    var form = document.querySelector('.register-body form');
+    var form = document.querySelector('.erp-modal-body form');
     if (form) {
         form.addEventListener('submit', validateStudentRegisterForm);
     }
@@ -504,89 +503,81 @@ window.addEventListener('load', function () {
 </head>
 <body>
 
-<div class="register-wrap">
-    <div class="register-card">
-        <div class="register-header">
-            <h2>Portal Registration</h2>
-            <p>Use your institute email and active phone number to create the account.</p>
-        </div>
+<div class="erp-modal-container">
+    <div class="erp-modal-header">
+        <h2 class="erp-modal-title">Portal Registration</h2>
+        <p class="erp-modal-subtitle">Create your TCET ERP account</p>
+    </div>
 
-        <div class="register-body">
-            <?php if (!empty($message)) { ?>
-            <div id="msgBox"><?php echo htmlspecialchars($message); ?></div>
-            <?php } ?>
+    <div class="erp-modal-body">
+        <?php if (!empty($message)) { ?>
+        <div id="msgBox"><?php echo htmlspecialchars($message); ?></div>
+        <?php } ?>
 
-            <?php if (isset($_SESSION['show_credentials']) && $_SESSION['show_credentials']) { ?>
-            <div id="credentialsBox">
-                <div class="credentials-title">Portal Registration Successful</div>
-                <p style="color: #059669; margin: 14px 0; font-size: 14px;">Your account has been created. Please save your login credentials below.</p>
-                <div id="credText">
-                    <strong>Username:</strong>
-                    <?php echo $_SESSION['registered_username']; ?>
-                    <br><br>
-                    <strong>Password:</strong>
-                    <?php echo $_SESSION['registered_password']; ?>
-                </div>
-                <button type="button" class="btn-copy" onclick="copyCredentials()">📋 Copy Credentials</button>
-                <p style="color: #6b7280; margin-top: 16px; font-size: 12px; line-height: 1.6;">
-                    Login with these credentials.<br>
-                    <strong>Keep this information secure</strong>
-                </p>
-                <button type="button" class="btn-proceed" onclick="proceedToEnrollment()">→ Proceed to Enrollment</button>
+        <?php if (isset($_SESSION['show_credentials']) && $_SESSION['show_credentials']) { ?>
+        <div id="credentialsBox">
+            <div class="credentials-title"><i class="fa fa-check-circle"></i> Registration Successful</div>
+            <p style="color: var(--erp-text-secondary); margin: 6px 0 12px; font-size: 12px;">Your student account has been created. Please note your temporary login credentials:</p>
+            <div id="credText">
+                <div><strong>Username:</strong> <?php echo htmlspecialchars($_SESSION['registered_username']); ?></div>
+                <div style="margin-top: 6px;"><strong>Password:</strong> <?php echo htmlspecialchars($_SESSION['registered_password']); ?></div>
             </div>
-            <?php
-            unset($_SESSION['show_credentials']);
-            unset($_SESSION['registered_username']);
-            unset($_SESSION['registered_password']);
-            ?>
-            <?php } else { ?>
-            <form method="POST" autocomplete="off">
-                <div class="form-group">
-                    <label>Username</label>
-                    <div class="input-group">
-                        <span class="input-group-addon"><i class="fa fa-user"></i></span>
-                        <input type="text" name="username" class="form-control" placeholder="Enter username" required autocomplete="off">
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label>Institute Email</label>
-                    <div class="input-group">
-                        <span class="input-group-addon"><i class="fa fa-envelope"></i></span>
-                        <input type="email" name="email" class="form-control" placeholder="name@tcetmumbai.in" required autocomplete="email">
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label>Phone Number</label>
-                    <div class="input-group">
-                        <span class="input-group-addon"><i class="fa fa-phone"></i></span>
-                        <input type="text" name="phone" class="form-control" placeholder="10 digit phone number" required maxlength="10" inputmode="numeric" autocomplete="tel">
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label>Department</label>
-                    <div class="input-group">
-                        <span class="input-group-addon"><i class="fa fa-building"></i></span>
-                        <select name="department" class="form-control" required>
-                            <option value="">Select department</option>
-                            <?php
-                            $dept = $db_handle->query("SELECT department_id, department_name FROM st_department_master ORDER BY department_name ASC");
-                            while ($row = $dept->fetch_assoc()) {
-                                echo '<option value="'.$row['department_id'].'">'.$row['department_name'].'</option>';
-                            }
-                            ?>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="register-footer">
-                    <button type="submit" name="register">REGISTER</button>
-                </div>
-            </form>
-            <?php } ?>
+            <button type="button" class="btn-copy" onclick="copyCredentials()"><i class="fa fa-copy"></i> Copy Credentials</button>
+            <button type="button" class="btn-proceed" onclick="proceedToEnrollment()">Proceed to Sign In <i class="fa fa-arrow-right"></i></button>
         </div>
+        <?php
+        unset($_SESSION['show_credentials']);
+        unset($_SESSION['registered_username']);
+        unset($_SESSION['registered_password']);
+        ?>
+        <?php } else { ?>
+        <form method="POST" autocomplete="off">
+            <div class="erp-form-group">
+                <label>Username</label>
+                <div class="erp-input-group">
+                    <span class="erp-input-icon"><i class="fa fa-user"></i></span>
+                    <input type="text" name="username" class="erp-input-control" placeholder="Enter username" required autocomplete="off">
+                </div>
+            </div>
+
+            <div class="erp-form-group">
+                <label>Institute Email</label>
+                <div class="erp-input-group">
+                    <span class="erp-input-icon"><i class="fa fa-envelope"></i></span>
+                    <input type="email" name="email" class="erp-input-control" placeholder="name@tcetmumbai.in" required autocomplete="email">
+                </div>
+            </div>
+
+            <div class="erp-form-group">
+                <label>Phone Number</label>
+                <div class="erp-input-group">
+                    <span class="erp-input-icon"><i class="fa fa-phone"></i></span>
+                    <input type="text" name="phone" class="erp-input-control" placeholder="10 digit phone number" required maxlength="10" inputmode="numeric" autocomplete="tel">
+                </div>
+            </div>
+
+            <div class="erp-form-group">
+                <label>Department</label>
+                <div class="erp-input-group">
+                    <span class="erp-input-icon"><i class="fa fa-building"></i></span>
+                    <select name="department" class="erp-input-control" required>
+                        <option value="">Select department</option>
+                        <?php
+                        $dept = $db_handle->query("SELECT department_id, department_name FROM st_department_master ORDER BY department_name ASC");
+                        while ($row = $dept->fetch_assoc()) {
+                            echo '<option value="'.intval($row['department_id']).'">'.htmlspecialchars($row['department_name']).'</option>';
+                        }
+                        ?>
+                    </select>
+                </div>
+            </div>
+
+            <button type="submit" name="register" class="btn-erp-register-submit">
+                <i class="fa fa-user-plus"></i> Register
+            </button>
+        </form>
+        <?php } ?>
+    </div>
 </div>
 
 </body>

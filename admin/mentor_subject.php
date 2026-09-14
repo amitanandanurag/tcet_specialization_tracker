@@ -212,47 +212,74 @@ include "header/header.php";
 ?>
 
 <div class="content-wrapper">
-  <section class="content-header">
-    <h1><i class="fa fa-book"></i> Mentor Specialization Subject Assignment</h1>
-    <ol class="breadcrumb">
-      <li><a href="index.php"><i class="fa fa-dashboard"></i> Home</a></li>
-      <li class="active">Mentor Subject Assignment</li>
-    </ol>
-  </section>
+  <!-- Institutional ERP Page Header -->
+  <div class="erp-page-header">
+    <div>
+      <h1 class="erp-page-title">Mentor Subject Assignment</h1>
+      <p class="erp-page-subtitle">Map faculty mentors to specialization subject courses for student cohort allocation</p>
+    </div>
+    <div class="erp-page-actions">
+      <a href="mentor_assignment.php" class="btn btn-erp-primary"><i class="fa fa-users"></i> Mentor Allocation Matrix</a>
+      <a href="specialization_subject_manage.php" class="btn btn-erp-secondary"><i class="fa fa-book"></i> Subject Directory</a>
+    </div>
+  </div>
 
-  <section class="content">
+  <section class="content" style="padding-top: 0;">
     <?php if ($message !== '') { ?>
-      <div class="alert alert-<?php echo htmlspecialchars($messageType); ?> alert-dismissible">
+      <div class="alert alert-<?php echo htmlspecialchars($messageType); ?> alert-dismissible" style="border-radius: 4px; margin-bottom: 16px;">
         <button type="button" class="close" data-dismiss="alert" aria-hidden="true">×</button>
         <?php echo $message; ?>
       </div>
     <?php } ?>
 
+    <!-- Summary strip -->
+    <div class="erp-summary-bar">
+      <div class="erp-metric-item">
+        <span class="erp-metric-label">Available Mentors</span>
+        <span class="erp-metric-value"><?php echo count($mentors); ?></span>
+        <span class="erp-metric-sub">Faculty Members</span>
+      </div>
+      <div class="erp-metric-item">
+        <span class="erp-metric-label">Specialization Subjects</span>
+        <span class="erp-metric-value"><?php echo count($subjects); ?></span>
+        <span class="erp-metric-sub">Active Courses</span>
+      </div>
+      <div class="erp-metric-item">
+        <span class="erp-metric-label">Active Mappings</span>
+        <span class="erp-metric-value" style="color: #16a34a;"><?php echo count($mappings); ?></span>
+        <span class="erp-metric-sub">Configured</span>
+      </div>
+    </div>
+
     <div class="row">
       <!-- Assignment Form Box -->
       <div class="col-md-4">
-        <div class="box box-primary">
-          <div class="box-header with-border">
-            <h3 class="box-title">Assign Subject to Mentor</h3>
+        <div class="erp-card">
+          <div class="erp-card-header">
+            <div>
+              <h3 class="erp-card-title"><i class="fa fa-link text-primary" style="margin-right: 6px;"></i> Assign Subject</h3>
+              <p class="erp-card-subtitle">Connect faculty member to a subject</p>
+            </div>
           </div>
           <form method="POST" action="mentor_subject.php">
             <input type="hidden" name="action" value="save_mapping">
-            <div class="box-body">
+            <div class="erp-card-body" style="padding: 16px;">
               <div class="form-group">
-                <label>Mentor <span style="color:red;">*</span></label>
-                <select class="form-control select2" name="mentor_id" style="width: 100%;" required>
+                <label style="font-size: 12px; font-weight: 600; color: #475569;">Faculty Mentor <span style="color:#dc2626;">*</span></label>
+                <select class="form-control select2 input-sm" name="mentor_id" style="width: 100%; border-radius: 3px;" required>
                   <option value="">Select Mentor</option>
                   <?php foreach ($mentors as $mentor) { ?>
                     <option value="<?php echo intval($mentor['mentor_id']); ?>">
-                      <?php echo htmlspecialchars($mentor['mentor_name'] . ($mentor['department_name'] ? ' - ' . $mentor['department_name'] : '')); ?>
+                      <?php echo htmlspecialchars($mentor['mentor_name'] . ($mentor['department_name'] ? ' (' . $mentor['department_name'] . ')' : '')); ?>
                     </option>
                   <?php } ?>
                 </select>
+                <span class="help-block" style="font-size: 11px; color: #64748b; margin-top: 4px;">Faculty member assigned as specialization mentor.</span>
               </div>
 
-              <div class="form-group">
-                <label>Specialization Subject <span style="color:red;">*</span></label>
-                <select class="form-control select2" name="subject_id" style="width: 100%;" required>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label style="font-size: 12px; font-weight: 600; color: #475569;">Specialization Subject <span style="color:#dc2626;">*</span></label>
+                <select class="form-control select2 input-sm" name="subject_id" style="width: 100%; border-radius: 3px;" required>
                   <option value="">Select Subject</option>
                   <?php foreach ($subjects as $subj) { ?>
                     <option value="<?php echo intval($subj['subject_id']); ?>">
@@ -260,10 +287,13 @@ include "header/header.php";
                     </option>
                   <?php } ?>
                 </select>
+                <span class="help-block" style="font-size: 11px; color: #64748b; margin-top: 4px;">Subject determining student cohort routing.</span>
               </div>
             </div>
-            <div class="box-footer">
-              <button type="submit" class="btn btn-primary"><i class="fa fa-save"></i> SAVE ASSIGNMENT</button>
+            <div class="erp-card-footer" style="padding: 12px 16px;">
+              <button type="submit" class="btn btn-erp-primary btn-block">
+                <i class="fa fa-save" style="margin-right: 6px;"></i> Save Assignment
+              </button>
             </div>
           </form>
         </div>
@@ -271,19 +301,25 @@ include "header/header.php";
 
       <!-- Current Assignments Table -->
       <div class="col-md-8">
-        <div class="box box-default">
-          <div class="box-header with-border">
-            <h3 class="box-title">Current Mentor-Subject Mapping</h3>
+        <div class="erp-card">
+          <div class="erp-card-header">
+            <div>
+              <h3 class="erp-card-title"><i class="fa fa-list text-primary" style="margin-right: 6px;"></i> Current Mappings</h3>
+              <p class="erp-card-subtitle">Active mentor-subject associations</p>
+            </div>
+            <div class="pull-right">
+              <span class="erp-badge erp-badge-secondary" style="font-size: 12px; padding: 4px 10px;"><?php echo count($mappings); ?> active</span>
+            </div>
           </div>
-          <div class="box-body table-responsive">
-            <table class="table table-bordered table-striped" id="mappingsTable">
+          <div class="erp-card-body table-responsive" style="padding: 0;">
+            <table class="erp-table" id="mappingsTable">
               <thead>
                 <tr>
-                  <th style="width: 10px">#</th>
+                  <th style="width: 45px;" class="col-center">#</th>
                   <th>Mentor Name</th>
                   <th>Department</th>
                   <th>Assigned Specialization Subject</th>
-                  <th style="width: 100px">Action</th>
+                  <th style="width: 90px;" class="col-center">Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -292,23 +328,35 @@ include "header/header.php";
                 foreach ($mappings as $map) {
                 ?>
                   <tr>
-                    <td><?php echo $sr++; ?></td>
-                    <td><strong><?php echo htmlspecialchars($map['mentor_name'] ?? ''); ?></strong></td>
-                    <td><?php echo htmlspecialchars($map['department_name'] ?? ''); ?></td>
-                    <td><span class="label label-info" style="font-size: 13px;"><?php echo htmlspecialchars($map['subject_name'] ?? ''); ?></span></td>
+                    <td class="col-center text-muted"><?php echo $sr++; ?></td>
                     <td>
-                      <form method="POST" action="mentor_subject.php" onsubmit="return confirm('Are you sure you want to remove this mapping?');" style="display:inline;">
+                      <strong style="color: #0f172a;">
+                        <i class="fa fa-user-circle-o text-primary" style="margin-right: 4px;"></i>
+                        <?php echo htmlspecialchars($map['mentor_name'] ?? ''); ?>
+                      </strong>
+                    </td>
+                    <td>
+                      <span class="text-muted" style="font-size: 12px;"><?php echo htmlspecialchars($map['department_name'] ?? '-'); ?></span>
+                    </td>
+                    <td>
+                      <span class="erp-badge erp-badge-purple">
+                        <?php echo htmlspecialchars($map['subject_name'] ?? ''); ?>
+                      </span>
+                    </td>
+                    <td class="col-center">
+                      <form method="POST" action="mentor_subject.php" onsubmit="return confirm('Are you sure you want to remove this mapping? Any active allocations will be recalculated.');" style="display:inline;">
                         <input type="hidden" name="action" value="delete_mapping">
                         <input type="hidden" name="mapping_id" value="<?php echo intval($map['mapping_id']); ?>">
-                        <button type="submit" class="btn btn-danger btn-xs"><i class="fa fa-trash"></i> Delete</button>
+                        <button type="submit" class="btn btn-erp-danger btn-xs" title="Remove Mapping">
+                          <i class="fa fa-trash"></i> Delete
+                        </button>
                       </form>
                     </td>
                   </tr>
                 <?php } ?>
                 <?php if (empty($mappings)) { ?>
                   <tr>
-                    <td class="text-center text-muted">-</td>
-                    <td class="text-center text-muted" colspan="4">No mappings defined yet.</td>
+                    <td class="text-center text-muted" colspan="5" style="padding: 24px;">No mentor-subject mappings defined yet.</td>
                   </tr>
                 <?php } ?>
               </tbody>
@@ -322,10 +370,15 @@ include "header/header.php";
 
 <script>
 $(document).ready(function() {
-  if ($.fn.DataTable) {
+  if ($.fn.DataTable && !$.fn.DataTable.isDataTable('#mappingsTable')) {
     $('#mappingsTable').DataTable({
       pageLength: 15,
-      order: [[1, 'asc']]
+      order: [[1, 'asc']],
+      language: {
+        search: "",
+        searchPlaceholder: "Search mappings...",
+        lengthMenu: "Show _MENU_ entries"
+      }
     });
   }
 });

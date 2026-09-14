@@ -328,14 +328,14 @@ include "header/header.php";
   <section class="content">
     <div class="row">
       <div class="col-md-12">
-        <div class="box box-primary">
-          <div class="box-header with-border">
-            <h3 class="box-title">Assign One Mentor To Every Student</h3>
+        <div class="erp-card">
+          <div class="erp-card-header">
+            <h3 class="erp-card-title"><i class="fa fa-users"></i> Assign One Mentor To Every Student</h3>
           </div>
-          <div class="box-body">
+          <div class="erp-card-body">
             <div class="row" style="margin-bottom: 15px;">
               <div class="col-md-3">
-                <label>Mentor</label>
+                <label style="font-weight:600; font-size:12px; color:var(--erp-text-secondary);">Mentor</label>
                 <select class="form-control" id="mentor_id">
                   <option value="">Select Mentor</option>
                   <?php foreach ($mentors as $mentor) { ?>
@@ -346,23 +346,21 @@ include "header/header.php";
                 </select>
               </div>
               <div class="col-md-2">
-                <label>Class</label>
+                <label style="font-weight:600; font-size:12px; color:var(--erp-text-secondary);">Class</label>
                 <select class="form-control" id="class_id">
                   <option value="">All Classes</option>
                   <?php foreach ($classRows as $classRow) { ?>
                     <option value="<?php echo (int) $classRow['class_id']; ?>">
-
                       <?php echo htmlspecialchars($classRow['class_name']); ?>
                     </option>
                   <?php } ?>
                 </select>
               </div>
               <div class="col-md-2">
-                <label>Division</label>
+                <label style="font-weight:600; font-size:12px; color:var(--erp-text-secondary);">Division</label>
                 <select class="form-control" id="section_id">
                   <option value="">All Divisions</option>
                   <?php foreach ($sectionRows as $sectionRow) { ?>
-
                     <option value="<?php echo (int) $sectionRow['id']; ?>">
                       <?php echo htmlspecialchars($sectionRow['sections']); ?>
                     </option>
@@ -370,10 +368,9 @@ include "header/header.php";
                 </select>
               </div>
               <div class="col-md-2">
-                <label>Session</label>
+                <label style="font-weight:600; font-size:12px; color:var(--erp-text-secondary);">Session</label>
                 <select class="form-control" id="session">
                   <option value="">All Sessions</option>
-
                   <?php foreach ($sessionRows as $sessionRow) { ?>
                     <option value="<?php echo htmlspecialchars($sessionRow['academic_year_id']); ?>">
                       <?php echo htmlspecialchars($sessionRow['academic_year_id']); ?>
@@ -382,7 +379,7 @@ include "header/header.php";
                 </select>
               </div>
               <div class="col-md-3">
-                <label>Current Status</label>
+                <label style="font-weight:600; font-size:12px; color:var(--erp-text-secondary);">Current Status</label>
                 <select class="form-control" id="assignment_status">
                   <option value="">All Students</option>
                   <option value="assigned">Assigned</option>
@@ -391,9 +388,9 @@ include "header/header.php";
               </div>
             </div>
 
-            <div class="row" style="margin-bottom: 15px;">
+            <div class="row" style="margin-bottom: 20px;">
               <div class="col-md-3">
-                <label>Current Mentor Filter</label>
+                <label style="font-weight:600; font-size:12px; color:var(--erp-text-secondary);">Current Mentor Filter</label>
                 <select class="form-control" id="mentor_filter">
                   <option value="">All Mentors</option>
                   <?php foreach ($mentors as $mentor) { ?>
@@ -404,7 +401,7 @@ include "header/header.php";
                 </select>
               </div>
               <div class="col-md-3">
-                <label>Allocation Semester</label>
+                <label style="font-weight:600; font-size:12px; color:var(--erp-text-secondary);">Allocation Semester</label>
                 <select class="form-control" id="semester_id">
                   <option value="">Use Current Semester</option>
                   <?php
@@ -417,24 +414,20 @@ include "header/header.php";
                   <?php } ?>
                 </select>
               </div>
-              <div class="col-md-6" style="padding-top: 25px;">
-                <button type="button" class="btn btn-primary" id="apply_filters"><i class="fa fa-filter"></i> Apply
-                  Filters</button>
-                <button type="button" class="btn btn-default" id="reset_filters"><i class="fa fa-refresh"></i>
-                  Reset</button>
-                <button type="button" class="btn btn-success" id="assign_selected_btn"><i
-                    class="fa fa-check-square-o"></i> Assign Selected</button>
-                <button type="button" class="btn btn-warning" id="assign_filtered_btn"><i class="fa fa-random"></i>
-                  Assign All Filtered</button>
+              <div class="col-md-6" style="padding-top: 24px; display:flex; gap:10px; flex-wrap:wrap;">
+                <button type="button" class="btn-erp-primary" id="apply_filters"><i class="fa fa-filter"></i> Apply Filters</button>
+                <button type="button" class="btn-erp-secondary" id="reset_filters"><i class="fa fa-refresh"></i> Reset</button>
+                <button type="button" class="btn-erp-primary" style="background:#16a34a; border-color:#16a34a;" id="assign_selected_btn"><i class="fa fa-check-square-o"></i> Assign Selected</button>
+                <button type="button" class="btn-erp-primary" style="background:#d97706; border-color:#d97706;" id="assign_filtered_btn"><i class="fa fa-random"></i> Assign All Filtered</button>
               </div>
             </div>
 
-            <div class="table-responsive">
-              <table id="mentorAllocationTable" class="table table-bordered table-striped" width="100%">
+            <div class="table-responsive" style="border: 1px solid var(--erp-border); border-radius: 4px;">
+              <table id="mentorAllocationTable" class="erp-table" width="100%">
                 <thead>
                   <tr>
-                    <th><input type="checkbox" id="select_all_students"></th>
-                    <th>Sr. No</th>
+                    <th style="width: 40px;"><input type="checkbox" id="select_all_students"></th>
+                    <th style="width: 50px;">Sr. No</th>
                     <th>Reg. No</th>
                     <th>Name</th>
                     <th>Class</th>

@@ -18,29 +18,40 @@ if (!$row) {
   exit;
 }
 ?>
-<div class="row">
-  <div class="col-md-6"><p><strong>Name:</strong> <?php echo htmlspecialchars($row['user_name'] ?? ''); ?></p></div>
-  <div class="col-md-6"><p><strong>Email:</strong> <?php echo htmlspecialchars($row['email_id'] ?? ''); ?></p></div>
-</div>
-<div class="row">
-  <div class="col-md-6"><p><strong>Phone:</strong> <?php echo htmlspecialchars($row['phone_number'] ?? ''); ?></p></div>
-  <div class="col-md-6"><p><strong>Department:</strong> <?php echo htmlspecialchars($row['department_name'] ?? ''); ?></p></div>
-</div>
-<div class="row">
-  <div class="col-md-6"><p><strong>Role:</strong> <?php echo htmlspecialchars($row['role_name'] ?? ''); ?></p></div>
-</div>
-
-<?php if (intval($roleId) === 4) {
-  $subjRes = $db_handle->query("
-      SELECT ssm.subject_name 
-      FROM st_mentor_subject_mapping msm 
-      JOIN st_specialization_subject_master ssm ON ssm.subject_id = msm.subject_id 
-      WHERE msm.mentor_id = $userId 
-      LIMIT 1
-  ");
-  $subjName = ($subjRes && $subjRow = $subjRes->fetch_assoc()) ? $subjRow['subject_name'] : 'None';
-?>
-  <div class="row">
-    <div class="col-md-12"><p><strong>Specialization Subject:</strong> <?php echo htmlspecialchars($subjName); ?></p></div>
+<div class="erp-detail-grid">
+  <div class="erp-detail-item">
+    <div class="erp-detail-label">Full Name</div>
+    <div class="erp-detail-value"><?php echo htmlspecialchars($row['user_name'] ?? ''); ?></div>
   </div>
-<?php } ?>
+  <div class="erp-detail-item">
+    <div class="erp-detail-label">Institute Email</div>
+    <div class="erp-detail-value"><?php echo htmlspecialchars($row['email_id'] ?? ''); ?></div>
+  </div>
+  <div class="erp-detail-item">
+    <div class="erp-detail-label">Phone Number</div>
+    <div class="erp-detail-value"><?php echo htmlspecialchars($row['phone_number'] ?? 'Not provided'); ?></div>
+  </div>
+  <div class="erp-detail-item">
+    <div class="erp-detail-label">Department</div>
+    <div class="erp-detail-value"><?php echo htmlspecialchars($row['department_name'] ?? ''); ?></div>
+  </div>
+  <div class="erp-detail-item">
+    <div class="erp-detail-label">Role</div>
+    <div class="erp-detail-value"><?php echo htmlspecialchars($row['role_name'] ?? ''); ?></div>
+  </div>
+  <?php if (intval($roleId) === 4) {
+    $subjRes = $db_handle->query("
+        SELECT ssm.subject_name 
+        FROM st_mentor_subject_mapping msm 
+        JOIN st_specialization_subject_master ssm ON ssm.subject_id = msm.subject_id 
+        WHERE msm.mentor_id = $userId 
+        LIMIT 1
+    ");
+    $subjName = ($subjRes && $subjRow = $subjRes->fetch_assoc()) ? $subjRow['subject_name'] : 'None assigned';
+  ?>
+  <div class="erp-detail-item" style="grid-column: 1 / -1;">
+    <div class="erp-detail-label">Specialization Subject</div>
+    <div class="erp-detail-value"><?php echo htmlspecialchars($subjName); ?></div>
+  </div>
+  <?php } ?>
+</div>

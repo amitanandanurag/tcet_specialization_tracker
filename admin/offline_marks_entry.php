@@ -399,7 +399,7 @@ if ($recentResult) {
                                 </div>
                                 <div class="col-md-6">
                                     <div class="form-group">
-                                        <label>NPTEL Course Name <span id="cert_link_wrapper" style="display:none; margin-left:15px;"><a id="cert_link" href="#" target="_blank" class="btn btn-xs btn-info" style="color: #fff;"><i class="fa fa-eye"></i> View Student Certificate</a></span></label>
+                                        <label>NPTEL Course Name <span id="cert_link_wrapper" style="display:none; margin-left:15px;"><a id="cert_link" href="#" target="_blank" class="btn-erp-secondary" style="padding: 2px 8px; font-size: 11px;"><i class="fa fa-eye"></i> View Student Certificate</a></span></label>
                                         <input type="text" class="form-control" name="course_name" id="course_name" placeholder="e.g. Introduction to AI" required>
                                     </div>
                                 </div>
@@ -483,7 +483,7 @@ if ($recentResult) {
                         </div>
 
                         <div class="box-footer">
-                            <button type="submit" class="btn btn-primary" name="save_offline_marks">
+                            <button type="submit" class="btn-erp-primary" name="save_offline_marks">
                                 <i class="fa fa-save"></i> Save Marks Entry
                             </button>
                         </div>

@@ -109,14 +109,14 @@ if ($roleId === 4) {
 		</div>
 	<?php } ?>
 
-	<div style="margin-top: 12px;">
+	<div style="margin-top: 16px; display: flex; align-items: center; gap: 8px;">
 		<button
 			type="submit"
-			class="btn-submit"
-		>Save Changes</button>
+			class="btn-erp-primary"
+		><i class="fa fa-save"></i> Save Changes</button>
 		<button
 			type="reset"
-			class="btn-reset"
+			class="btn-erp-secondary"
 		>Reset</button>
 	</div>
 </form>

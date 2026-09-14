@@ -121,6 +121,8 @@ $dashboardRoute = ($usertype === 5) ? 'student_dashboard.php' : 'index.php';
 	<link rel="stylesheet" href="plugins/daterangepicker/daterangepicker.css">
 	<!-- bootstrap wysihtml5 - text editor -->
 	<link rel="stylesheet" href="plugins/bootstrap-wysihtml5/bootstrap3-wysihtml5.min.css">
+	<!-- Institutional ERP Design System -->
+	<link rel="stylesheet" href="css/erp-theme.css">
 	<script
 		src="https://code.jquery.com/jquery-3.3.1.js"
 		integrity="sha256-2Kok7MbOyxpgUVvAk/HJ2jigOSYS2auK4Pfzbm7uH60="
@@ -230,59 +232,54 @@ $dashboardRoute = ($usertype === 5) ? 'student_dashboard.php' : 'index.php';
 
 		<header class="main-header">
 			<!-- Logo -->
-			<a href="<?php echo $dashboardRoute; ?>" class="logo">
+			<a href="<?php echo $dashboardRoute; ?>" class="logo" style="text-decoration: none;">
 				<!-- mini logo for sidebar mini 50x50 pixels -->
-				<span class="logo-mini"><img src="images/booklogo.webp" class="py-2" height="40px" /></span>
+				<span class="logo-mini"><img src="images/tcet_logo.png" height="30px" style="border-radius: 4px; background: #ffffff; padding: 2px; object-fit: contain;" alt="TCET" /></span>
 				<!-- logo for regular state and mobile devices -->
-				<span class="logo-lg"><img src="images/booklogo.webp" class="py-2" height="40px" /> <small>TCET</small></span>
+				<span class="logo-lg" style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+					<img src="images/tcet_logo.png" height="32px" style="border-radius: 4px; background: #ffffff; padding: 2px; object-fit: contain;" alt="TCET" />
+					<span style="font-weight: 700; font-size: 15px; letter-spacing: 0.5px;">TCET <span style="font-weight: 400; opacity: 0.85; font-size: 13px;">ERP</span></span>
+				</span>
 			</a>
-			<!-- Header Navbar: style can be found in header.less -->
-			<nav class="navbar navbar-static-top">
+			<!-- Header Navbar -->
+			<nav class="navbar navbar-static-top" role="navigation">
 				<!-- Sidebar toggle button-->
-				<a href="#" class="sidebar-toggle" data-toggle="offcanvas" role="button">
+				<a href="#" class="sidebar-toggle" data-toggle="offcanvas" role="button" title="Toggle Navigation">
 					<span class="sr-only">Toggle navigation</span>
+					<i class="fa fa-bars"></i>
 				</a>
 
 				<div class="navbar-custom-menu">
 					<ul class="nav navbar-nav">
 						<!-- Reload Page Button -->
 						<li>
-							<a href="javascript:void(0);" onclick="window.location.reload();" title="Reload Page" style="font-weight: bold; cursor: pointer;">
-								<i class="fa fa-refresh"></i> <span class="hidden-xs">Reload Page</span>
+							<a href="javascript:void(0);" onclick="window.location.reload();" title="Refresh Page" style="height: 50px; display: flex; align-items: center; padding: 0 14px; color: #ffffff; opacity: 0.9;">
+								<i class="fa fa-refresh" style="font-size: 14px;"></i>
 							</a>
 						</li>
 
+						<!-- Compact User Profile Menu -->
 						<li class="dropdown user user-menu">
-							<a href="#" class="dropdown-toggle" data-toggle="dropdown">
-								<img src="dist/img/user2-160x160.jpg" class="user-image" alt="User Image">
-								<span class="hidden-xs">&nbsp;Welcome, <?php echo $name; ?> &nbsp;</span>
+							<a href="#" class="dropdown-toggle erp-header-user-btn" data-toggle="dropdown">
+								<img src="dist/img/user2-160x160.jpg" class="erp-header-avatar" alt="User Image">
+								<div class="erp-header-user-meta hidden-xs">
+									<span class="erp-header-user-name"><?php echo htmlspecialchars($name !== '' ? $name : $username); ?></span>
+									<span class="erp-header-user-role"><?php echo htmlspecialchars($role_name ?? 'User'); ?></span>
+								</div>
+								<i class="fa fa-angle-down hidden-xs" style="font-size: 11px; opacity: 0.8; margin-left: 4px;"></i>
 							</a>
 							<ul class="dropdown-menu">
-								<li class="user-header text-center" style="padding: 14px; background-color: #423cbc;">
-									<img src="dist/img/user2-160x160.jpg" class="img-circle" alt="User Image"
-										style="width: 90px; height: 90px; border: 2px solid rgba(255,255,255,0.2);">
-
-									<p class="text-white" style="margin-top: 10px; color: #fff; font-size: 17px;">
-										<?php echo $username; ?>
-										<br>
-										<small>Role: <span class="badge"><?php echo $role_name; ?></span></small>
-									</p>
+								<li class="erp-user-dropdown-header">
+									<img src="dist/img/user2-160x160.jpg" alt="User Image">
+									<p class="erp-user-dropdown-name"><?php echo htmlspecialchars($name !== '' ? $name : $username); ?></p>
+									<div class="erp-user-dropdown-role"><?php echo htmlspecialchars($role_name ?? 'User'); ?></div>
 								</li>
-
-								<li class="user-footer" style="background-color: #f9f9f9; padding: 10px;">
-									<div class="pull-left">
-										<a href="profile.php" class="btn btn-default btn-flat">Profile</a>
-									</div>
-									<div class="pull-right">
-										<a href="../login/logout.php" class="btn btn-danger btn-flat">Sign out</a>
-									</div>
-									<div class="clearfix"></div>
+								<li class="erp-user-dropdown-body">
+									<a href="profile.php"><i class="fa fa-user"></i> My Profile</a>
+									<a href="change_password.php"><i class="fa fa-lock"></i> Update Password</a>
+									<a href="../login/logout.php" class="logout-link"><i class="fa fa-sign-out"></i> Sign Out</a>
 								</li>
 							</ul>
-						</li>
-						<!-- Control Sidebar Toggle Button -->
-						<li>
-							<a href="#" data-toggle="control-sidebar"><i class="fa fa-gears"></i></a>
 						</li>
 					</ul>
 				</div>
@@ -292,19 +289,14 @@ $dashboardRoute = ($usertype === 5) ? 'student_dashboard.php' : 'index.php';
 		<aside class="main-sidebar">
 			<!-- sidebar: style can be found in sidebar.less -->
 			<section class="sidebar">
-				<!-- Sidebar user panel -->
-				<div class="user-panel">
-					<div class="pull-left image">
-						<img src="dist/img/user2-160x160.jpg" class="img-circle" alt="User Image">
-					</div>
-					<div class="pull-left info">
-						<p><span><?php echo htmlspecialchars($role_name); ?></span></p>
-						<a class="badge" href="#" style="background:white; color: green;">
-							<i class="fa fa-circle text-success"></i> Online
-						</a>
+				<div class="erp-sidebar-brand hidden-xs">
+					<img src="images/tcet_logo.png" alt="TCET Logo" style="width: 34px; height: 34px; border-radius: 4px; object-fit: contain; background: #ffffff; padding: 2px; border: 1px solid rgba(255,255,255,0.2);">
+					<div>
+						<div class="erp-sidebar-brand-title">TCET Mumbai</div>
+						<span class="erp-sidebar-brand-sub">Academic ERP Portal</span>
 					</div>
 				</div>
-				<br />
 				<?php include_once "side_menu.php"; ?>
 				<!-- /.sidebar -->
+			</section>
 		</aside>

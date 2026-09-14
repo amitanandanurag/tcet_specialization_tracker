@@ -757,11 +757,20 @@ class AcademicImporter
                 $studentId = 0;
                 if ($existingStudentQuery && ($stRow = mysqli_fetch_assoc($existingStudentQuery))) {
                     $studentId = intval($stRow['student_id']);
-                    // Update existing student record idempotently
+                    // Fetch existing student semester to prevent accidental downgrades
+                    $currSemRes = mysqli_query($this->conn, "SELECT current_semester_id FROM st_student_master WHERE student_id = $studentId LIMIT 1");
+                    $existingCurrentSem = ($currSemRes && ($csR = mysqli_fetch_assoc($currSemRes))) ? intval($csR['current_semester_id']) : 0;
+                    $targetCurrentSem = max($existingCurrentSem, $semId);
+
+                    // Update student record idempotently
                     $upStudent = "UPDATE st_student_master 
-                                  SET fname = '$name', roll_no = '$roll', department_id = $deptId, division_id = $divId,
-                                      class_id = $classId, specialization_id = 1, specialization_subject_id = $subjectId,
-                                      cgpa = $cgpa, academic_year_id = $ayId, current_semester_id = $semId,
+                                  SET fname = '$name', roll_no = IF($semId >= $existingCurrentSem, '$roll', roll_no),
+                                      department_id = IF($semId >= $existingCurrentSem, $deptId, department_id),
+                                      division_id = IF($semId >= $existingCurrentSem, $divId, division_id),
+                                      class_id = IF($semId >= $existingCurrentSem, $classId, class_id),
+                                      specialization_id = 1,
+                                      specialization_subject_id = IF($semId >= $existingCurrentSem, $subjectId, specialization_subject_id),
+                                      cgpa = $cgpa, academic_year_id = $ayId, current_semester_id = $targetCurrentSem,
                                       mobile = IF('$mobile' != '', '$mobile', mobile)
                                   WHERE student_id = $studentId";
                     mysqli_query($this->conn, $upStudent);
@@ -790,14 +799,19 @@ class AcademicImporter
                     mysqli_query($this->conn, $insLogin);
                 }
 
-                // Sync Student Semester History
-                $histQuery = "INSERT INTO st_student_semester_history 
-                              (student_id, academic_year_id, class_id, semester_id, division_id, specialization_id, specialization_subject_id, cgpa, status)
-                              VALUES ($studentId, $ayId, $classId, $semId, $divId, 1, $subjectId, $cgpa, 'Active')
-                              ON DUPLICATE KEY UPDATE 
-                                academic_year_id = $ayId, class_id = $classId, division_id = $divId,
-                                specialization_id = 1, specialization_subject_id = $subjectId, cgpa = $cgpa";
-                mysqli_query($this->conn, $histQuery);
+                // Sync Student Semester History (Period-isolated)
+                $histCheck = mysqli_query($this->conn, "SELECT history_id FROM st_student_semester_history WHERE student_id = $studentId AND semester_id = $semId AND academic_year_id = $ayId LIMIT 1");
+                if ($histCheck && ($hRow = mysqli_fetch_assoc($histCheck))) {
+                    $hId = intval($hRow['history_id']);
+                    mysqli_query($this->conn, "UPDATE st_student_semester_history 
+                                               SET class_id = $classId, department_id = $deptId, division_id = $divId, roll_no = '$roll',
+                                                   specialization_id = 1, specialization_subject_id = $subjectId, cgpa = $cgpa, updated_at = CURRENT_TIMESTAMP
+                                               WHERE history_id = $hId");
+                } else {
+                    mysqli_query($this->conn, "INSERT INTO st_student_semester_history 
+                                               (student_id, academic_year_id, class_id, semester_id, department_id, division_id, roll_no, specialization_id, specialization_subject_id, cgpa, status)
+                                               VALUES ($studentId, $ayId, $classId, $semId, $deptId, $divId, '$roll', 1, $subjectId, $cgpa, 'Active')");
+                }
 
                 // Handle NPTEL status if present
                 if (!empty($s['is_nptel'])) {

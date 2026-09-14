@@ -25,14 +25,15 @@ $roleLabel = $roleMap[$roleKey]['label'];
   <section class="content">
     <div class="row">
       <div class="col-md-12">
-        <div class="box box-primary">
-           <!-- <div class="box-header with-border">
-            <a href="user_register.php?role=<?php echo urlencode($roleKey); ?>" class="btn btn-primary">
-            <i class="fa fa-plus"></i> Register <?php echo htmlspecialchars($roleLabel); ?>
+        <div class="erp-card">
+          <div class="erp-card-header" style="display:flex; justify-content:space-between; align-items:center;">
+            <h3 class="erp-card-title"><i class="fa fa-users"></i> <?php echo htmlspecialchars($roleLabel); ?> Directory</h3>
+            <a href="user_register.php?role=<?php echo urlencode($roleKey); ?>" class="btn-erp-primary">
+              <i class="fa fa-plus"></i> Register <?php echo htmlspecialchars($roleLabel); ?>
             </a>
-          </div>-->
-          <div class="box-body table-responsive">
-            <table id="userRoleTable" class="table table-bordered table-striped text-center" width="100%">
+          </div>
+          <div class="erp-card-body table-responsive" style="padding:0;">
+            <table id="userRoleTable" class="erp-table text-center" width="100%">
               <thead>
                 <tr>
                   <th>Sr. No</th>
@@ -41,7 +42,7 @@ $roleLabel = $roleMap[$roleKey]['label'];
                   <th>Phone</th>
                   <th>Department</th>
                   <th>Role</th>
-                  <th>Remove</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
             </table>

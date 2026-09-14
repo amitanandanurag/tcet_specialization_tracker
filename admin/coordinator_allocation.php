@@ -289,14 +289,14 @@ include "header/header.php";
   <section class="content">
     <div class="row">
       <div class="col-md-12">
-        <div class="box box-primary">
-          <div class="box-header with-border">
-            <h3 class="box-title">Assign One Coordinator To Every Mentor</h3>
+        <div class="erp-card">
+          <div class="erp-card-header">
+            <h3 class="erp-card-title"><i class="fa fa-users"></i> Assign One Coordinator To Every Mentor</h3>
           </div>
-          <div class="box-body">
+          <div class="erp-card-body">
             <div class="row" style="margin-bottom: 15px;">
               <div class="col-md-3">
-                <label>Coordinator</label>
+                <label style="font-weight:600; font-size:12px; color:var(--erp-text-secondary);">Coordinator</label>
                 <select class="form-control" id="coordinator_id">
                   <option value="">Select Coordinator</option>
                   <?php foreach ($coordinators as $coord) { ?>
@@ -307,7 +307,7 @@ include "header/header.php";
                 </select>
               </div>
               <div class="col-md-3">
-                <label>Department</label>
+                <label style="font-weight:600; font-size:12px; color:var(--erp-text-secondary);">Department</label>
                 <select class="form-control" id="department_id">
                   <option value="">All Departments</option>
                   <?php foreach ($departmentRows as $deptRow) { ?>
@@ -316,18 +316,15 @@ include "header/header.php";
                 </select>
               </div>
               <div class="col-md-3">
-                <label>Current Status</label>
+                <label style="font-weight:600; font-size:12px; color:var(--erp-text-secondary);">Current Status</label>
                 <select class="form-control" id="assignment_status">
                   <option value="">All Mentors</option>
                   <option value="assigned">Assigned</option>
                   <option value="unassigned">Unassigned</option>
                 </select>
               </div>
-            </div>
-
-            <div class="row" style="margin-bottom: 15px;">
               <div class="col-md-3">
-                <label>Search</label>
+                <label style="font-weight:600; font-size:12px; color:var(--erp-text-secondary);">Filter By Coordinator</label>
                 <select class="form-control" id="coordinator_filter">
                   <option value="">All Coordinators</option>
                   <?php foreach ($coordinators as $coord) { ?>
@@ -335,20 +332,23 @@ include "header/header.php";
                   <?php } ?>
                 </select>
               </div>
-              <div class="col-md-9" style="padding-top: 25px;">
-                <button type="button" class="btn btn-primary" id="apply_filters"><i class="fa fa-filter"></i> Apply Filters</button>
-                <button type="button" class="btn btn-default" id="reset_filters"><i class="fa fa-refresh"></i> Reset</button>
-                <button type="button" class="btn btn-success" id="assign_selected_btn"><i class="fa fa-check-square-o"></i> Assign Selected</button>
-                <button type="button" class="btn btn-warning" id="assign_filtered_btn"><i class="fa fa-random"></i> Assign All Filtered</button>
+            </div>
+
+            <div class="row" style="margin-bottom: 20px;">
+              <div class="col-md-12" style="display:flex; gap:10px; flex-wrap:wrap;">
+                <button type="button" class="btn-erp-primary" id="apply_filters"><i class="fa fa-filter"></i> Apply Filters</button>
+                <button type="button" class="btn-erp-secondary" id="reset_filters"><i class="fa fa-refresh"></i> Reset</button>
+                <button type="button" class="btn-erp-primary" style="background:#16a34a; border-color:#16a34a;" id="assign_selected_btn"><i class="fa fa-check-square-o"></i> Assign Selected</button>
+                <button type="button" class="btn-erp-primary" style="background:#d97706; border-color:#d97706;" id="assign_filtered_btn"><i class="fa fa-random"></i> Assign All Filtered</button>
               </div>
             </div>
 
-            <div class="table-responsive">
-              <table id="coordinatorAllocationTable" class="table table-bordered table-striped" width="100%">
+            <div class="table-responsive" style="border: 1px solid var(--erp-border); border-radius: 4px;">
+              <table id="coordinatorAllocationTable" class="erp-table" width="100%">
                 <thead>
                   <tr>
-                    <th><input type="checkbox" id="select_all_mentors"></th>
-                    <th>Sr. No</th>
+                    <th style="width: 40px;"><input type="checkbox" id="select_all_mentors"></th>
+                    <th style="width: 60px;">Sr. No</th>
                     <th>Mentor Name</th>
                     <th>Department</th>
                     <th>Current Coordinator</th>

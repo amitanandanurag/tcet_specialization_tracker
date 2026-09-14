@@ -12,200 +12,202 @@ include "header/header.php";
 
 <div class="content-wrapper">
   <section class="content-header">
-    <h1>
-      <i class="fa fa-user-plus"></i> ENROLLED STUDENT DETAILS
-    </h1>
+    <div class="erp-page-header">
+      <div class="erp-page-title-wrap">
+        <h1 class="erp-page-title">Enrolled Students</h1>
+        <div class="erp-page-subtitle">Manage student enrollment and academic records</div>
+        <div class="erp-breadcrumb">
+          <a href="index.php"><i class="fa fa-home"></i> Home</a>
+          <span class="sep">/</span>
+          <span class="active-item">Students</span>
+        </div>
+      </div>
+      <div class="erp-page-actions">
+        <a href="student_admission.php" class="btn-erp-primary">
+          <i class="fa fa-user-plus"></i> Enroll Student
+        </a>
+      </div>
+    </div>
   </section>
 
-  <section class="content">
-    <div class="row">
-      <div class="col-md-12">
-        <div class="wrapper2 box box-primary">
-          <div class="div2 box-header with-border">
-            <!-- Filter Section -->
-            <div class="row" style="margin-bottom: 20px;">
-              <div class="col-md-1">
-                <label for="select_all" class="btn btn-default" style="width: 100%;">
-                  <input type="checkbox" id="select_all"> ALL
-                </label>
-              </div>
-
-              <div class="col-md-4">
-                <button type="button" onclick="window.location.href='student_admission.php';" class="btn btn-primary btn-block">
-                  <i class="fa fa-plus"></i> ENROLL NEW STUDENT
-                </button>
-              </div>
-
-              <div class="col-md-2">
-                <select class="form-control" id="select_class" name="select_class">
-                  <option value="">Select Class</option>
-                  <?php
-                  $result = $db_handle->query("SELECT class_id AS id, class_name AS class FROM `st_class_master`");
-                  while ($row = $result->fetch_assoc()) {
-                    echo '<option value="' . $row['id'] . '">' . $row['class'] . '</option>';
-                  }
-                  ?>
-                </select>
-              </div>
-
-              <div class="col-md-2">
-                <select class="form-control" id="select_section" name="select_section">
-                  <option value="">Select Division</option>
-                  <?php
-                  $result = $db_handle->query("SELECT * FROM `st_section_master`");
-                  while ($row = $result->fetch_assoc()) {
-                    echo '<option value="' . $row['id'] . '">' . $row['sections'] . '</option>';
-                  }
-                  ?>
-                </select>
-              </div>
-
-              <div class="col-md-2">
-                <select class="form-control" id="select_session" name="select_session">
-                  <option value="">Select Academic Year</option>
-                  <?php
-                  $result = $db_handle->query("SELECT * FROM `st_session_master`");
-                  while ($row = $result->fetch_assoc()) {
-                    $selected = ($row['session_id'] == 6) ? "selected" : "";
-                    echo '<option value="' . $row['session_id'] . '" ' . $selected . '>' . $row['session_name'] . '</option>';
-                  }
-                  ?>
-                </select>
-              </div>
-
-              <div class="col-md-1">
-                <button type="button" id="search" class="btn btn-primary btn-block">
-                  <i class="fa fa-arrow-circle-right"></i>
-                </button>
-              </div>
-            </div>
-
-            <!-- Additional Filters -->
-            <div class="row" style="margin-bottom: 20px;">
-              <div class="col-md-3">
-                <select class="form-control" id="select_batch" name="select_batch">
-                  <option value="">Select Batch</option>
-                  <?php
-                  $batch_result = $db_handle->query("SELECT batch_id, batch_name FROM `st_batch_master` ORDER BY batch_name DESC");
-                  while ($row = $batch_result->fetch_assoc()) {
-                    echo "<option value='{$row['batch_name']}'>{$row['batch_name']}</option>";
-                  }
-                  ?>
-                </select>
-              </div>
-
-              <div class="col-md-3">
-                <select class="form-control" id="select_semester" name="select_semester">
-                  <option value="">Select Semester</option>
-                  <?php
-                  $semester_result = $db_handle->query("SELECT semester_id, semester_name FROM `st_semester_master` ORDER BY semester_id");
-                  while ($row = $semester_result->fetch_assoc()) {
-                    echo "<option value='{$row['semester_id']}'>{$row['semester_name']}</option>";
-                  }
-                  ?>
-                </select>
-              </div>
-
-              <div class="col-md-3">
-                <select class="form-control" id="select_department" name="select_department">
-                  <option value="">Select Department</option>
-                  <?php
-                  $dept_result = $db_handle->query("SELECT department_id, department_name FROM `st_department_master` ORDER BY department_name");
-                  while ($row = $dept_result->fetch_assoc()) {
-                    echo "<option value='{$row['department_id']}'>{$row['department_name']}</option>";
-                  }
-                  ?>
-                </select>
-              </div>
-
-              <div class="col-md-2">
-                <button type="button" onclick="fnExcelReport();" class="btn btn-success btn-block">
-                  <i class="fa fa-print"></i> EXCEL
-                </button>
-              </div>
-
-              <div class="col-md-1">
-                <button type="button" onclick="bulkDelete()" class="btn btn-danger btn-block">
-                  <i class="fa fa-trash"></i> Bulk
-                </button>
-              </div>
-            </div>
-
-            <!-- Data Table -->
-            <div class="text-center table table-striped table-bordered" style="overflow-x:auto;">
-              <table id="myTable" class="text-center table table-striped table-bordered" width="100%">
-                <thead>
-                  <tr>
-                    <th style="background-color: #423cbc; color: white; padding: 16px" data-orderable="false"><input type="checkbox" id="select_all_header"></th>
-                    <th style="background-color: #423cbc; color: white; padding: 16px">SR. NO</th>
-                    <th style="background-color: #423cbc; color: white; padding: 16px">MESSAGE</th>
-                    <th style="background-color: #423cbc; color: white; padding: 16px">Reg. No</th>
-                    <th style="background-color: #423cbc; color: white; padding: 16px">Name</th>
-                    <th style="background-color: #423cbc; color: white; padding: 16px">Class</th>
-                    <th style="background-color: #423cbc; color: white; padding: 16px">Division</th>
-                    <th style="background-color: #423cbc; color: white; padding: 16px">Academic Year</th>
-                    <th style="background-color: #423cbc; color: white; padding: 16px">Semester</th>
-                    <th style="background-color: #423cbc; color: white; padding: 16px">Department</th>
-                    <th style="background-color: #423cbc; color: white; padding: 16px">Specialization</th>
-                    <th style="background-color: #423cbc; color: white; padding: 16px">Specialization Subject</th>
-                    <th style="background-color: #423cbc; color: white; padding: 16px">Graduation Year</th> <!-- NEW COLUMN -->
-                    <th style="background-color: #423cbc; color: white; padding: 16px">CGPA</th>
-                    <th style="background-color: #423cbc; color: white; padding: 16px">Mobile No</th>
-                    <th style="background-color: #423cbc; color: white; padding: 16px">Roll No</th>
-                    <th style="background-color: #423cbc; color: white; padding: 16px">Email</th>
-                    <th style="background-color: #F97161; padding: 16px">View</th>
-                    <th style="background-color: #F97161; padding: 16px">Edit</th>
-                    <th style="background-color: #F97161; padding: 16px">Remove</th>
-                </thead>
-              </table>
-            </div>
-          </div>
+  <section class="content" style="padding: 0 20px 20px 20px;">
+    <!-- Compact ERP Filter Toolbar -->
+    <div class="erp-filter-card">
+      <div class="erp-filter-top-row">
+        <div class="erp-search-hero">
+          <i class="fa fa-search"></i>
+          <input type="text" id="customSearch" placeholder="Search by student name, roll no., ERP ID, email..." autocomplete="off">
         </div>
+        <div class="erp-filter-actions">
+          <button type="button" id="btnResetFilters" class="btn-erp-secondary" title="Reset all filters">
+            <i class="fa fa-refresh"></i> Reset Filters
+          </button>
+          <button type="button" onclick="fnExcelReport();" class="btn-erp-secondary" style="color: #15803d; border-color: #bbf7d0;" title="Export displayed students to Excel">
+            <i class="fa fa-file-excel-o"></i> Export Excel
+          </button>
+          <button type="button" onclick="bulkDelete()" class="btn-erp-danger" title="Delete selected students">
+            <i class="fa fa-trash"></i> Bulk Delete
+          </button>
+        </div>
+      </div>
+
+      <div class="erp-filter-bottom-row">
+        <div class="erp-filter-select-item">
+          <label for="select_session">Academic Year</label>
+          <select id="select_session" name="select_session">
+            <option value="">All Academic Years</option>
+            <?php
+            $result = $db_handle->query("SELECT * FROM `st_session_master`");
+            while ($row = $result->fetch_assoc()) {
+              $selected = ($row['session_id'] == 6) ? "selected" : "";
+              echo '<option value="' . $row['session_id'] . '" ' . $selected . '>' . htmlspecialchars($row['session_name']) . '</option>';
+            }
+            ?>
+          </select>
+        </div>
+
+        <div class="erp-filter-select-item">
+          <label for="select_semester">Semester</label>
+          <select id="select_semester" name="select_semester">
+            <option value="">All Semesters</option>
+            <?php
+            $semester_result = $db_handle->query("SELECT semester_id, semester_name FROM `st_semester_master` ORDER BY semester_id");
+            while ($row = $semester_result->fetch_assoc()) {
+              echo "<option value='{$row['semester_id']}'>" . htmlspecialchars($row['semester_name']) . "</option>";
+            }
+            ?>
+          </select>
+        </div>
+
+        <div class="erp-filter-select-item">
+          <label for="select_department">Department</label>
+          <select id="select_department" name="select_department">
+            <option value="">All Departments</option>
+            <?php
+            $dept_result = $db_handle->query("SELECT department_id, department_name FROM `st_department_master` ORDER BY department_name");
+            while ($row = $dept_result->fetch_assoc()) {
+              echo "<option value='{$row['department_id']}'>" . htmlspecialchars($row['department_name']) . "</option>";
+            }
+            ?>
+          </select>
+        </div>
+
+        <div class="erp-filter-select-item">
+          <label for="select_class">Class</label>
+          <select id="select_class" name="select_class">
+            <option value="">All Classes</option>
+            <?php
+            $result = $db_handle->query("SELECT class_id AS id, class_name AS class FROM `st_class_master`");
+            while ($row = $result->fetch_assoc()) {
+              echo '<option value="' . $row['id'] . '">' . htmlspecialchars($row['class']) . '</option>';
+            }
+            ?>
+          </select>
+        </div>
+
+        <div class="erp-filter-select-item">
+          <label for="select_section">Division</label>
+          <select id="select_section" name="select_section">
+            <option value="">All Divisions</option>
+            <?php
+            $result = $db_handle->query("SELECT * FROM `st_section_master`");
+            while ($row = $result->fetch_assoc()) {
+              echo '<option value="' . $row['id'] . '">' . htmlspecialchars($row['sections']) . '</option>';
+            }
+            ?>
+          </select>
+        </div>
+
+        <div class="erp-filter-select-item">
+          <label for="select_batch">Batch</label>
+          <select id="select_batch" name="select_batch">
+            <option value="">All Batches</option>
+            <?php
+            $batch_result = $db_handle->query("SELECT batch_id, batch_name FROM `st_batch_master` ORDER BY batch_name DESC");
+            while ($row = $batch_result->fetch_assoc()) {
+              echo "<option value='{$row['batch_name']}'>" . htmlspecialchars($row['batch_name']) . "</option>";
+            }
+            ?>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Data Grid Card -->
+    <div class="erp-card">
+      <div class="erp-card-header">
+        <div class="erp-card-title-group">
+          <h2 class="erp-card-title">Student Directory</h2>
+          <span class="erp-count-badge" id="studentCountBadge"><i class="fa fa-spinner fa-spin"></i> Loading...</span>
+        </div>
+      </div>
+      <div class="table-responsive" style="overflow-x: auto;">
+        <table id="myTable" class="erp-table table table-hover" width="100%">
+          <thead>
+            <tr>
+              <th style="width: 32px; text-align: center;" data-orderable="false"><input type="checkbox" id="select_all_header" style="cursor: pointer;"></th>
+              <th style="width: 70px;">Roll No</th>
+              <th style="min-width: 170px;">Student Name & ERP ID</th>
+              <th style="width: 55px; text-align: center;">Class</th>
+              <th style="width: 45px; text-align: center;">Div</th>
+              <th style="width: 90px;">Academic Year</th>
+              <th style="width: 75px;">Semester</th>
+              <th style="width: 75px;">Department</th>
+              <th style="min-width: 170px;">Specialization & Subject</th>
+              <th style="width: 60px; text-align: right;">CGPA</th>
+              <th style="min-width: 130px;">Contact</th>
+              <th style="width: 95px; text-align: center;" data-orderable="false">Actions</th>
+            </tr>
+          </thead>
+        </table>
       </div>
     </div>
   </section>
 </div>
 
-<!-- Modals -->
+<!-- View Modal -->
 <div id="view" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display: none;">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header">
         <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
         <h4 class="modal-title">
-          <i class="glyphicon glyphicon-user"></i> Student Details
+          <i class="fa fa-user" style="margin-right: 6px;"></i> Student Profile & Academic Progression
         </h4>
       </div>
-      <div class="modal-body">
-        <div id="modal-loader" style="display: none; text-align: center;">
-          <img src="ajax-loader.gif">
+      <div class="modal-body" style="max-height: calc(100vh - 170px); overflow-y: auto;">
+        <div id="modal-loader" style="display: none; text-align: center; padding: 24px;">
+          <i class="fa fa-spinner fa-spin fa-2x text-muted"></i>
+          <p style="margin-top: 8px; color: #64748b; font-size: 12px;">Loading student record...</p>
         </div>
         <div id="dynamic-content"></div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+        <button type="button" class="btn-erp-secondary" data-dismiss="modal">Close</button>
       </div>
     </div>
   </div>
 </div>
 
+<!-- Edit Modal -->
 <div id="edit" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="editModalLabel" aria-hidden="true" style="display: none;">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header">
         <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
         <h4 class="modal-title">
-          <i class="fa fa-pencil"></i> Edit Student Details
+          <i class="fa fa-pencil" style="margin-right: 6px;"></i> Edit Student Information
         </h4>
       </div>
-      <div class="modal-body">
-        <div id="edit-modal-loader" style="display: none; text-align: center;">
-          <img src="ajax-loader.gif">
+      <div class="modal-body" style="max-height: calc(100vh - 170px); overflow-y: auto;">
+        <div id="edit-modal-loader" style="display: none; text-align: center; padding: 24px;">
+          <i class="fa fa-spinner fa-spin fa-2x text-muted"></i>
+          <p style="margin-top: 8px; color: #64748b; font-size: 12px;">Loading student editor...</p>
         </div>
         <div id="edit-dynamic-content"></div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+        <button type="button" class="btn-erp-secondary" data-dismiss="modal">Close</button>
       </div>
     </div>
   </div>
@@ -216,64 +218,46 @@ include "header/header.php";
 <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.19/css/jquery.dataTables.css">
 <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.10.19/js/jquery.dataTables.js"></script>
 
-<style>
-  #myTable th,
-  #myTable td {
-    vertical-align: middle;
-    white-space: nowrap;
-    text-align: center;
-  }
-
-  #myTable td:nth-child(5) {
-    text-align: left;
-    white-space: normal;
-    min-width: 150px;
-  }
-</style>
-
 <script>
-  // Global variable for DataTable
   var dataTable;
 
-  // Delete single user
+  // Single Delete
   function delete_user(id, table) {
     Swal.fire({
-      title: "Are you sure?",
-      text: "Once deleted, Student will be moved to left students!",
+      title: "Remove Student?",
+      text: "Student will be moved to the left students archive.",
       icon: "warning",
       showCancelButton: true,
-      confirmButtonText: "Yes, delete it!",
-      cancelButtonText: "No, cancel!",
-      reverseButtons: true
+      confirmButtonColor: "#b91c1c",
+      cancelButtonColor: "#64748b",
+      confirmButtonText: "Yes, remove",
+      cancelButtonText: "Cancel"
     }).then((result) => {
       if (result.isConfirmed) {
         $.ajax({
           url: 'student_delete.php',
           type: "POST",
-          data: {
-            id: id,
-            table: table
-          },
+          data: { id: id, table: table },
           dataType: "json",
           success: function(data) {
             if (data.status === 'success') {
-              Swal.fire('Deleted!', 'Student details have been moved successfully!', 'success')
+              Swal.fire('Updated', 'Student record removed successfully.', 'success')
                 .then(() => {
                   dataTable.ajax.reload();
                 });
             } else {
-              Swal.fire('Error!', data.message || 'There was a problem deleting the student.', 'error');
+              Swal.fire('Error', data.message || 'Could not delete student.', 'error');
             }
           },
-          error: function(error) {
-            Swal.fire('Error!', 'There was a problem deleting the student.', 'error');
+          error: function() {
+            Swal.fire('Error', 'Server connection error.', 'error');
           }
         });
       }
     });
   }
 
-  // Bulk delete
+  // Bulk Delete
   function bulkDelete() {
     var selectedIds = [];
     $('.selectRow:checked').each(function() {
@@ -281,40 +265,38 @@ include "header/header.php";
     });
 
     if (selectedIds.length === 0) {
-      Swal.fire('Warning!', 'Please select at least one student to delete.', 'warning');
+      Swal.fire('No Selection', 'Please select at least one student checkbox.', 'info');
       return;
     }
 
     Swal.fire({
-      title: "Are you sure?",
-      text: "You are about to delete " + selectedIds.length + " student(s). This action cannot be undone!",
+      title: "Delete " + selectedIds.length + " Student(s)?",
+      text: "This action will archive all selected student records.",
       icon: "warning",
       showCancelButton: true,
-      confirmButtonText: "Yes, delete them!",
-      cancelButtonText: "No, cancel!",
-      reverseButtons: true
+      confirmButtonColor: "#b91c1c",
+      cancelButtonColor: "#64748b",
+      confirmButtonText: "Yes, delete selected",
+      cancelButtonText: "Cancel"
     }).then((result) => {
       if (result.isConfirmed) {
         $.ajax({
           url: 'student_bulk_delete.php',
           type: "POST",
-          data: {
-            ids: selectedIds,
-            table: 'st_student_master'
-          },
+          data: { ids: selectedIds, table: 'st_student_master' },
           dataType: "json",
           success: function(data) {
             if (data.status === 'success') {
-              Swal.fire('Deleted!', data.message, 'success')
+              Swal.fire('Deleted', data.message, 'success')
                 .then(() => {
                   dataTable.ajax.reload();
                 });
             } else {
-              Swal.fire('Error!', data.message || 'There was a problem deleting the students.', 'error');
+              Swal.fire('Error', data.message || 'Problem deleting students.', 'error');
             }
           },
-          error: function(error) {
-            Swal.fire('Error!', 'There was a problem deleting the students.', 'error');
+          error: function() {
+            Swal.fire('Error', 'Server communication failure.', 'error');
           }
         });
       }
@@ -348,37 +330,50 @@ include "header/header.php";
       ],
       "pageLength": 15,
       "autoWidth": false,
-      "scrollX": true,
-      "columnDefs": [{
-          "orderable": false,
-          "targets": [0, 2, 16, 17, 18]
-        },
-        {
-          "className": "text-left",
-          "targets": [4]
-        },
-        {
-          "className": "text-center",
-          "targets": "_all"
-        }
+      "scrollX": false,
+      "dom": "<'row'<'col-sm-12'tr>><'erp-table-footer'<'erp-pagination-info'i><'erp-pagination-controls'p>>",
+      "columnDefs": [
+        { "orderable": false, "targets": [0, 11] },
+        { "className": "text-center", "targets": [0, 3, 4, 11] },
+        { "className": "text-right", "targets": [9] }
       ],
       "language": {
-        "processing": "<span style='color:#8b0000;font-size:20px;'> Processing data.. <i class='fa fa-spinner fa-spin'></i> </span>",
-        "search": "",
-        "searchPlaceholder": "Search...",
+        "processing": "<span style='color: #423cbc; font-size: 13px; font-weight: 600;'><i class='fa fa-spinner fa-spin'></i> Loading records...</span>",
+        "zeroRecords": "<div style='padding: 24px; text-align: center; color: #64748b;'><strong>No students found</strong><br><span style='font-size: 12px;'>Try changing your search or filter parameters.</span></div>",
+        "info": "Showing _START_ to _END_ of _TOTAL_ students",
+        "infoEmpty": "Showing 0 to 0 of 0 students",
         "paginate": {
-          "previous": '<i class="fa fa-angle-double-left"></i> Previous',
-          "next": 'Next <i class="fa fa-angle-double-right"></i>'
+          "previous": '<i class="fa fa-angle-left"></i> Previous',
+          "next": 'Next <i class="fa fa-angle-right"></i>'
         }
+      },
+      "drawCallback": function(settings) {
+        var total = settings.json ? settings.json.recordsFiltered : 0;
+        $('#studentCountBadge').text(total.toLocaleString() + ' students');
+        $('#select_all_header').prop('checked', false);
       }
     });
 
-    $('div.dataTables_filter input').addClass('form-control');
-    $('div.dataTables_filter input').attr('placeholder', 'Search...');
+    // Link prominent search input with DataTables
+    var searchTimer;
+    $('#customSearch').on('keyup input', function() {
+      clearTimeout(searchTimer);
+      var val = $(this).val();
+      searchTimer = setTimeout(function() {
+        dataTable.search(val).draw();
+      }, 250);
+    });
 
-    // Search button click
-    $('#search').click(function() {
-      dataTable.ajax.reload();
+    // Reset Filters
+    $('#btnResetFilters').click(function() {
+      $('#customSearch').val('');
+      $('#select_class').val('');
+      $('#select_section').val('');
+      $('#select_session').val('');
+      $('#select_batch').val('');
+      $('#select_semester').val('');
+      $('#select_department').val('');
+      dataTable.search('').draw();
     });
 
     // Filter changes
@@ -386,8 +381,8 @@ include "header/header.php";
       dataTable.ajax.reload();
     });
 
-    // Select All functionality
-    $(document).on('click', '#select_all, #select_all_header', function() {
+    // Select All
+    $(document).on('click', '#select_all_header', function() {
       var isChecked = $(this).is(':checked');
       $('.selectRow').prop('checked', isChecked);
     });
@@ -398,7 +393,8 @@ include "header/header.php";
     $(document).on('click', '.student_view', function(e) {
       e.preventDefault();
       var uid = $(this).data('id');
-      $('#dynamic-content').html('<div class="text-center"><i class="fa fa-spinner fa-spin fa-3x"></i></div>');
+      $('#dynamic-content').empty();
+      $('#modal-loader').show();
       $('#view').modal('show');
       $.ajax({
         url: 'student_view.php',
@@ -406,16 +402,19 @@ include "header/header.php";
         data: 'id=' + uid,
         dataType: 'html'
       }).done(function(data) {
+        $('#modal-loader').hide();
         $('#dynamic-content').html(data);
       }).fail(function() {
-        $('#dynamic-content').html('<div class="alert alert-danger">Something went wrong, Please try again...</div>');
+        $('#modal-loader').hide();
+        $('#dynamic-content').html('<div class="alert alert-danger" style="margin: 10px;">Failed to load student record. Please try again.</div>');
       });
     });
 
     $(document).on('click', '.student_edit', function(e) {
       e.preventDefault();
       var uid = $(this).data('id');
-      $('#edit-dynamic-content').html('<div class="text-center"><i class="fa fa-spinner fa-spin fa-3x"></i></div>');
+      $('#edit-dynamic-content').empty();
+      $('#edit-modal-loader').show();
       $('#edit').modal('show');
       $.ajax({
         url: 'student-edit.php',
@@ -423,9 +422,11 @@ include "header/header.php";
         data: 'id=' + uid,
         dataType: 'html'
       }).done(function(data) {
+        $('#edit-modal-loader').hide();
         $('#edit-dynamic-content').html(data);
       }).fail(function() {
-        $('#edit-dynamic-content').html('<div class="alert alert-danger">Something went wrong, Please try again...</div>');
+        $('#edit-modal-loader').hide();
+        $('#edit-dynamic-content').html('<div class="alert alert-danger" style="margin: 10px;">Failed to load edit form. Please try again.</div>');
       });
     });
   });
@@ -433,8 +434,8 @@ include "header/header.php";
   // Excel Export
   function fnExcelReport() {
     var table = document.getElementById("myTable");
-    var excludeCols = [0, 2, 16, 17, 18];
-    var tableHTML = "<table border='1' style='border-collapse:collapse;'>";
+    var excludeCols = [0, 11];
+    var tableHTML = "<table border='1' style='border-collapse:collapse; font-family: sans-serif;'>";
 
     for (var i = 0; i < table.rows.length; i++) {
       tableHTML += "<tr>";
@@ -443,16 +444,13 @@ include "header/header.php";
         if (excludeCols.includes(j)) continue;
         var cell = row.cells[j];
         var tag = (i === 0) ? "th" : "td";
-        var cellText = cell.innerText.trim();
-        tableHTML += `<${tag} style="padding:5px;text-align:left;vertical-align:middle;">${cellText}</${tag}>`;
+        var cellText = cell.innerText.replace(/\s+/g, ' ').trim();
+        var bg = (i === 0) ? "background-color: #f1f5f9;" : "";
+        tableHTML += `<${tag} style="padding:6px 10px;text-align:left;vertical-align:middle;${bg}">${cellText}</${tag}>`;
       }
       tableHTML += "</tr>";
     }
     tableHTML += "</table>";
-
-    tableHTML = tableHTML.replace(/<a[^>]*>|<\/a>/gi, "");
-    tableHTML = tableHTML.replace(/<img[^>]*>/gi, "");
-    tableHTML = tableHTML.replace(/<input[^>]*>/gi, "");
 
     var blob = new Blob(['\ufeff', tableHTML], {
       type: 'application/vnd.ms-excel;charset=utf-8;'
@@ -460,7 +458,7 @@ include "header/header.php";
     var url = URL.createObjectURL(blob);
     var link = document.createElement("a");
     link.href = url;
-    link.download = "student_details.xls";
+    link.download = "TCET_Students_Export_" + (new Date().toISOString().slice(0, 10)) + ".xls";
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

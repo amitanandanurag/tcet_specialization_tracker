@@ -51,7 +51,7 @@ while ($row = $result->fetch_assoc()) {
   $nestedData[] = htmlspecialchars($row['phone_number'] ?? '');
   $nestedData[] = htmlspecialchars($row['department_name'] ?? '');
   $nestedData[] = htmlspecialchars($row['role_name'] ?? '');
-  $nestedData[] = "<button class='btn btn-danger btn-sm' onclick=\"deleteUser('" . intval($row['user_id']) . "','" . $roleKey . "')\"><i class='fa fa-trash'></i></button>";
+  $nestedData[] = "<button class='btn-erp-icon del-btn' title='Delete' onclick=\"deleteUser('" . intval($row['user_id']) . "','" . $roleKey . "')\"><i class='fa fa-trash'></i></button>";
   $data[] = $nestedData;
 }
 

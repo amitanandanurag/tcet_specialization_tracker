@@ -227,74 +227,77 @@ switch ($type) {
 
 <style>
     .content-wrapper {
-        background: #f8f9fc;
+        background: var(--erp-bg, #f8fafc);
     }
     
     .box {
-        border-radius: 8px;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-        border: none;
+        border-radius: var(--erp-radius-md, 6px);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+        border: 1px solid var(--erp-border, #e2e8f0);
+        background: #ffffff;
     }
     
     .box-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border-radius: 8px 8px 0 0;
-        padding: 15px 20px;
+        background: #ffffff;
+        color: var(--erp-text-main, #0f172a);
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--erp-border, #e2e8f0);
     }
     
     .box-title {
-        font-size: 18px;
-        font-weight: 600;
+        font-size: 14px;
+        font-weight: 700;
         margin: 0;
+        color: var(--erp-text-main, #0f172a);
     }
     
     .table {
         background: white;
-        border-radius: 8px;
+        border-radius: 4px;
         overflow: hidden;
     }
     
     .table thead tr th {
-        background: #f8f9fa;
-        font-weight: 600;
+        background: #f8fafc;
+        font-weight: 700;
         text-transform: uppercase;
-        font-size: 12px;
-        letter-spacing: 0.5px;
-        padding: 15px;
-        border: none;
-    }
-    
-    .table tbody tr {
-        transition: background-color 0.2s ease;
+        font-size: 11px;
+        letter-spacing: 0.4px;
+        padding: 10px 12px;
+        border-bottom: 1px solid #cbd5e1;
+        color: #334155;
     }
     
     .table tbody tr:hover {
-        background-color: #f8f9fc;
+        background-color: #f8fafc;
     }
     
     .table td {
-        padding: 15px;
+        padding: 9px 12px;
         vertical-align: middle;
-        border-top: 1px solid #e9ecef;
+        border-top: 1px solid var(--erp-border, #e2e8f0);
+        font-size: 13px;
+        color: #334155;
     }
     
     .btn-back {
-        background: linear-gradient(135deg, #667eea, #764ba2);
-        border: none;
-        padding: 8px 20px;
-        border-radius: 25px;
-        color: white;
-        font-weight: 500;
-        transition: all 0.3s ease;
+        background: #ffffff;
+        border: 1px solid var(--erp-border-dark, #cbd5e1);
+        padding: 6px 14px;
+        border-radius: var(--erp-radius-sm, 4px);
+        color: var(--erp-text-secondary, #475569);
+        font-weight: 600;
+        font-size: 12px;
+        transition: all 0.15s ease;
         text-decoration: none;
-        display: inline-block;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
     }
     
     .btn-back:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-        color: white;
+        background: #f8fafc;
+        color: var(--erp-text-main, #0f172a);
         text-decoration: none;
     }
     
@@ -311,20 +314,22 @@ switch ($type) {
     }
     
     .badge {
-        padding: 6px 12px;
-        border-radius: 20px;
-        font-weight: 500;
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-weight: 600;
         font-size: 11px;
-        text-transform: uppercase;
         letter-spacing: 0.3px;
+        display: inline-block;
     }
     
-    .badge-student { background: #007bff; }
-    .badge-admin { background: #28a745; }
-    .badge-coordinator { background: #ffc107; color: #212529; }
-    .badge-mentor { background: #17a2b8; }
-    .badge-super-admin { background: #dc3545; }
-    .badge-danger { background: #dc3545; }
+    .badge-student { background: #e0e7ff; color: #4338ca; border: 1px solid #c7d2fe; }
+    .badge-admin { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+    .badge-coordinator { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
+    .badge-mentor { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+    .badge-super-admin { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
+    .badge-danger { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
+    .badge-primary { background: #ede9fe; color: #423cbc; border: 1px solid #ddd6fe; }
+    .badge-info { background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
 </style>
 
 <div class="content-wrapper">

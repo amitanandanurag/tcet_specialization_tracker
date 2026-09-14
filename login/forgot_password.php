@@ -43,210 +43,229 @@ if (isset($_POST['reset_btn'])) {
 ?>
 
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Forgot Password</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forgot Password - TCET ERP</title>
 
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
     <style>
+        :root {
+            --erp-primary: #423cbc;
+            --erp-primary-hover: #352fa1;
+            --erp-border: #e2e8f0;
+            --erp-border-input: #cbd5e1;
+            --erp-text-main: #0f172a;
+            --erp-text-body: #334155;
+            --erp-text-secondary: #475569;
+            --erp-text-muted: #64748b;
+            --erp-success-bg: #f0fdf4;
+            --erp-success-border: #bbf7d0;
+            --erp-success-text: #15803d;
+            --erp-danger-bg: #fef2f2;
+            --erp-danger-border: #fecaca;
+            --erp-danger-text: #b91c1c;
+            --erp-radius: 4px;
+        }
+
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
         }
 
-        html,
         body {
-            height: 100%;
-            overflow: hidden;
-        }
-
-        body {
-            min-height: 100vh;
-            font-family: 'Segoe UI', sans-serif;
-            background: linear-gradient(135deg, #101828 0%, #1f2937 45%, #0f172a 100%);
-            padding: 24px 16px;
-        }
-
-        .register-wrap {
-            width: 100%;
-            max-width: 620px;
-            margin: 0 auto;
-        }
-
-        .register-card {
-            background: rgba(255, 255, 255, 0.96);
-            width: 100%;
-            border-radius: 16px;
-            box-shadow: 0 20px 55px rgba(0, 0, 0, 0.35);
-            overflow: hidden;
-        }
-
-        .register-header {
-            background: linear-gradient(135deg, #0ea5e9, #2563eb);
-            color: #fff;
-            text-align: center;
-            padding: 22px 20px;
-        }
-
-        .register-header h2 {
-            margin: 0;
-            font-size: 24px;
-            font-weight: 700;
-            letter-spacing: 0.4px;
-        }
-
-        .register-header p {
-            margin: 8px 0 0;
-            opacity: 0.92;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #ffffff;
+            color: var(--erp-text-body);
             font-size: 13px;
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+            padding: 0;
+            margin: 0;
+            overflow-x: hidden;
         }
 
-        .register-body {
-            padding: 28px 26px 10px;
-        }
-
-        .form-group {
-            margin-bottom: 18px;
-        }
-
-        .form-group label {
-            color: #334155;
-            font-weight: 600;
-            margin-bottom: 7px;
-        }
-
-        .input-group {
+        .erp-modal-container {
             width: 100%;
+            max-width: 100%;
+            margin: 0 auto;
+            background: #ffffff;
         }
 
-        .input-group-addon {
-            background: #eff6ff;
-            color: #2563eb;
-            border-color: #cbd5e1;
-            min-width: 44px;
+        .erp-modal-header {
+            padding: 14px 20px;
+            background: #ffffff;
+            border-bottom: 1px solid var(--erp-border);
+            display: flex;
+            align-items: center;
+            gap: 12px;
         }
 
-        .form-control {
-            height: 46px;
-            border-radius: 10px;
-            border-color: #cbd5e1;
-            box-shadow: none;
+        .erp-header-logo {
+            width: 38px;
+            height: 38px;
+            object-fit: contain;
+            border-radius: var(--erp-radius);
+            border: 1px solid var(--erp-border);
+            padding: 2px;
+            background: #ffffff;
         }
 
-        .form-control:focus {
-            border-color: #2563eb;
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+        .erp-modal-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--erp-text-main);
+            margin: 0;
+            letter-spacing: -0.01em;
         }
 
-        .register-footer {
-            padding: 0 26px 28px;
+        .erp-modal-subtitle {
+            font-size: 12px;
+            color: var(--erp-text-muted);
+            margin-top: 2px;
+            margin-bottom: 0;
         }
 
-        button,
-        .btn-link-like {
-            width: 100%;
-            height: 48px;
-            margin-top: 8px;
-            border: none;
-            border-radius: 10px;
-            font-weight: 600;
-            font-size: 15px;
-            cursor: pointer;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        .erp-modal-body {
+            padding: 18px 20px 20px;
         }
 
-        .btn-reset {
-            background: linear-gradient(135deg, #0ea5e9, #2563eb);
-            color: #fff;
-            box-shadow: 0 10px 20px rgba(37, 99, 235, 0.2);
+        .erp-form-group {
+            margin-bottom: 14px;
         }
 
-        .btn-reset:hover {
-            background: linear-gradient(135deg, #0284c7, #1d4ed8);
-            transform: translateY(-1px);
-        }
-
-        .btn-back {
+        .erp-form-group label {
             display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--erp-text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .erp-input-group {
+            display: flex;
+            align-items: stretch;
             width: 100%;
-            line-height: 46px;
-            text-align: center;
-            background: transparent;
-            color: #334155;
-            border: 1px solid #cbd5e1;
-            text-decoration: none;
+            border: 1px solid var(--erp-border-input);
+            border-radius: var(--erp-radius);
+            background: #ffffff;
+            transition: all 0.15s ease;
         }
 
-        .btn-back:hover {
+        .erp-input-group:focus-within {
+            border-color: var(--erp-primary);
+            box-shadow: 0 0 0 3px rgba(66, 60, 188, 0.12);
+        }
+
+        .erp-input-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 38px;
             background: #f8fafc;
-            text-decoration: none;
-            transform: translateY(-1px);
+            border-right: 1px solid var(--erp-border);
+            color: var(--erp-text-muted);
+            font-size: 13px;
+            flex-shrink: 0;
         }
 
-        #msgBox {
-            text-align: center;
-            margin-bottom: 20px;
-            padding: 18px 16px;
-            border-radius: 12px;
-            font-weight: 500;
-            border: 2px solid;
-            animation: slideIn 0.3s ease-out;
+        .erp-input-control {
+            width: 100%;
+            height: 36px;
+            padding: 6px 12px;
+            font-size: 13px;
+            color: var(--erp-text-main);
+            background: transparent;
+            border: none;
+            outline: none;
         }
 
-        #msgBox.success {
-            color: #065f46;
-            background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
-            border-color: #86efac;
-        }
-
-        #msgBox.error {
-            color: #7f1d1d;
-            background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
-            border-color: #fca5a5;
-        }
-
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+        .erp-input-control::placeholder {
+            color: #94a3b8;
+            font-size: 12px;
         }
 
         .helper-text {
-            text-align: center;
-            color: #64748b;
+            color: var(--erp-text-muted);
+            font-size: 12px;
             margin-bottom: 14px;
-            font-size: 13px;
+            background: #f8fafc;
+            padding: 8px 12px;
+            border-radius: var(--erp-radius);
+            border: 1px solid var(--erp-border);
         }
 
-        .copyright {
-            margin-top: 12px;
+        .btn-erp-reset-submit {
+            width: 100%;
+            height: 38px;
+            background-color: var(--erp-primary);
+            color: #ffffff;
+            border: 1px solid var(--erp-primary-hover);
+            border-radius: var(--erp-radius);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            box-shadow: 0 1px 2px rgba(66, 60, 188, 0.2);
+        }
+
+        .btn-erp-reset-submit:hover,
+        .btn-erp-reset-submit:focus {
+            background-color: var(--erp-primary-hover);
+            color: #ffffff;
+            box-shadow: 0 2px 4px rgba(66, 60, 188, 0.3);
+        }
+
+        .btn-erp-back {
+            display: block;
+            width: 100%;
+            height: 36px;
+            line-height: 34px;
             text-align: center;
-            color: #64748b;
-            font-size: 13px;
+            background-color: #ffffff;
+            color: var(--erp-text-secondary);
+            border: 1px solid var(--erp-border-input);
+            border-radius: var(--erp-radius);
+            font-size: 12px;
+            font-weight: 600;
+            text-decoration: none;
+            margin-top: 8px;
+            transition: all 0.15s ease;
         }
 
-        .copyright a {
-            color: #ED2C02;
+        .btn-erp-back:hover {
+            background-color: #f8fafc;
+            color: var(--erp-text-main);
+            text-decoration: none;
         }
 
-        @media (max-width: 480px) {
-            .register-body,
-            .register-footer {
-                padding-left: 18px;
-                padding-right: 18px;
-            }
+        #msgBox {
+            padding: 10px 12px;
+            border-radius: var(--erp-radius);
+            font-size: 12px;
+            font-weight: 500;
+            margin-bottom: 14px;
+            text-align: center;
+        }
 
-            .register-header h2 {
-                font-size: 18px;
-            }
+        #msgBox.success {
+            color: var(--erp-success-text);
+            background-color: var(--erp-success-bg);
+            border: 1px solid var(--erp-success-border);
+        }
+
+        #msgBox.error {
+            color: var(--erp-danger-text);
+            background-color: var(--erp-danger-bg);
+            border: 1px solid var(--erp-danger-border);
         }
     </style>
 
@@ -255,27 +274,23 @@ if (isset($_POST['reset_btn'])) {
             const msg = document.getElementById("msgBox");
 
             if (msg && msg.innerText.trim() !== "") {
-                // Check if this is a success message
                 const successMessage = "Password reset successful!";
                 if (msg.innerText.includes(successMessage)) {
-                    // Reset successful - close popup after delay
                     setTimeout(() => {
                         try {
                             parent.closeForgotPasswordPopup();
                         } catch(e) {
                             parent.location.reload();
                         }
-                    }, 2000);
+                    }, 2500);
                 } else {
-                    // Error message - fade out after 3 seconds
                     setTimeout(() => {
                         msg.style.transition = "opacity 0.5s";
                         msg.style.opacity = "0";
-
                         setTimeout(() => {
                             msg.style.display = "none";
                         }, 500);
-                    }, 3000);
+                    }, 4000);
                 }
             }
         };
@@ -292,43 +307,41 @@ if (isset($_POST['reset_btn'])) {
 
 <body>
 
-    <div class="register-wrap">
-        <div class="register-card">
-            <div class="register-header">
-                <h2>Forgot Password</h2>
-                <p>Reset your password using your institute email address.</p>
+    <div class="erp-modal-container">
+        <div class="erp-modal-header">
+            <img src="images/tcet_logo.png" alt="TCET Mumbai Logo" class="erp-header-logo">
+            <div>
+                <h2 class="erp-modal-title">Forgot Password</h2>
+                <p class="erp-modal-subtitle">Reset your TCET ERP account password</p>
+            </div>
+        </div>
+
+        <div class="erp-modal-body">
+            <div class="helper-text">
+                <i class="fa fa-info-circle" style="color: var(--erp-primary); margin-right: 4px;"></i>
+                Enter your registered institute email. The temporary password will be reset to <strong>Tcet@1234</strong>.
             </div>
 
-            <div class="register-body">
-                <div style="text-align:center; margin-bottom: 18px;">
-                    <img src="images/school_logo.jpg" alt="logo" width="110" height="110" style="border-radius:50%; object-fit: contain; background: #ffffff; padding: 5px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+            <?php if (!empty($message)) { ?>
+                <div id="msgBox" class="<?php echo $messageType; ?>"><?php echo $message; ?></div>
+            <?php } ?>
+
+            <form method="POST" autocomplete="off">
+                <div class="erp-form-group">
+                    <label>Institute Email</label>
+                    <div class="erp-input-group">
+                        <span class="erp-input-icon"><i class="fa fa-envelope"></i></span>
+                        <input type="email" name="email" class="erp-input-control" placeholder="name@tcetmumbai.in" required>
+                    </div>
                 </div>
 
-                <div class="helper-text">The default password will be set to <strong>Tcet@1234</strong>.</div>
-
-                <?php if (!empty($message)) { ?>
-                    <div id="msgBox" class="<?php echo $messageType; ?>"><?php echo $message; ?></div>
-                <?php } ?>
-
-                <form method="POST" autocomplete="off">
-                    <div class="form-group">
-                        <label>Institute Email</label>
-                        <div class="input-group">
-                            <span class="input-group-addon"><i class="fa fa-envelope"></i></span>
-                            <input type="email" name="email" class="form-control" placeholder="name@tcetmumbai.in" required>
-                        </div>
-                    </div>
-
-                    <div class="register-footer">
-                        <button type="submit" name="reset_btn" class="btn-reset">Reset Password</button>
-                        <a href="#" class="btn-back" onclick="closeModal(); return false;">Back to Login</a>
-                    </div>
-                </form>
-            </div>
-
-            <div class="copyright">
-                <p>© 2019. All rights reserved | Designed by <a href="https://dignityitsolution.com/" target="_blank">Dignity IT Solution</a></p>
-            </div>
+                <div style="margin-top: 16px;">
+                    <button type="submit" name="reset_btn" class="btn-erp-reset-submit">
+                        <i class="fa fa-key"></i> Reset Password
+                    </button>
+                    <a href="#" class="btn-erp-back" onclick="closeModal(); return false;">Back to Login</a>
+                </div>
+            </form>
         </div>
     </div>
 

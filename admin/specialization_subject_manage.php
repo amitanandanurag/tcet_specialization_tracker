@@ -36,7 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             mysqli_stmt_bind_param($stmt, 'iiiss', $departmentId, $semesterId, $specializationId, $subjectName, $description);
         }
         if ($stmt && mysqli_stmt_execute($stmt)) {
-            $message = 'Subject saved successfully.';
+            $message = 'Specialization subject saved successfully.';
         } else {
             $message = 'Unable to save subject. It may already exist for this department, semester, and specialization.';
             $messageType = 'danger';
@@ -59,24 +59,158 @@ $semesters = $db_handle->runQuery("SELECT semester_id, semester_name FROM st_sem
 $specializations = $db_handle->runQuery("SELECT specialization_id, specialization_name FROM st_specialization_master ORDER BY specialization_name") ?? array();
 $subjects = $db_handle->runQuery("SELECT s.subject_id, s.subject_name, s.description, s.is_active, d.department_name, sem.semester_name, sp.specialization_name FROM st_specialization_subject_master s LEFT JOIN st_department_master d ON d.department_id = s.department_id LEFT JOIN st_semester_master sem ON sem.semester_id = s.semester_id LEFT JOIN st_specialization_master sp ON sp.specialization_id = s.specialization_id ORDER BY d.department_name, sem.semester_id, s.subject_name") ?? array();
 ?>
+
 <div class="content-wrapper">
-  <section class="content-header"><h1><i class="fa fa-book"></i> Specialization Subjects</h1></section>
-  <section class="content">
-    <?php if ($message !== ''): ?><div class="alert alert-<?php echo $messageType; ?>"><?php echo htmlspecialchars($message); ?></div><?php endif; ?>
-    <div class="box box-primary"><div class="box-header with-border"><h3 class="box-title">Add Subject</h3></div>
-      <form method="post"><input type="hidden" name="action" value="save"><input type="hidden" name="subject_id" value="<?php echo (int) ($editSubject['subject_id'] ?? 0); ?>"><div class="box-body">
-        <div class="row">
-          <div class="col-md-3"><label>Department</label><select name="department_id" class="form-control" required><option value="">Select Department</option><?php foreach ($departments as $item): ?><option value="<?php echo (int) $item['department_id']; ?>" <?php echo ((int) ($editSubject['department_id'] ?? 0) === (int) $item['department_id']) ? 'selected' : ''; ?>><?php echo htmlspecialchars($item['department_name']); ?></option><?php endforeach; ?></select></div>
-          <div class="col-md-2"><label>Semester</label><select name="semester_id" class="form-control" required><option value="">Select Semester</option><?php foreach ($semesters as $item): ?><option value="<?php echo (int) $item['semester_id']; ?>" <?php echo ((int) ($editSubject['semester_id'] ?? 0) === (int) $item['semester_id']) ? 'selected' : ''; ?>><?php echo htmlspecialchars($item['semester_name']); ?></option><?php endforeach; ?></select></div>
-          <div class="col-md-3"><label>Specialization</label><select name="specialization_id" class="form-control" required><option value="">Select Specialization</option><?php foreach ($specializations as $item): ?><option value="<?php echo (int) $item['specialization_id']; ?>" <?php echo ((int) ($editSubject['specialization_id'] ?? 0) === (int) $item['specialization_id']) ? 'selected' : ''; ?>><?php echo htmlspecialchars($item['specialization_name']); ?></option><?php endforeach; ?></select></div>
-          <div class="col-md-4"><label>Subject</label><input name="subject_name" class="form-control" required maxlength="255" value="<?php echo htmlspecialchars($editSubject['subject_name'] ?? ''); ?>"></div>
-        </div>
-        <div class="form-group" style="margin-top:15px"><label>Description</label><textarea name="description" class="form-control" maxlength="1000"><?php echo htmlspecialchars($editSubject['description'] ?? ''); ?></textarea></div>
-      </div><div class="box-footer"><button class="btn btn-primary" type="submit"><i class="fa fa-save"></i> <?php echo $editSubject ? 'Update Subject' : 'Save Subject'; ?></button><?php if ($editSubject): ?> <a class="btn btn-default" href="specialization_subject_manage.php">Cancel</a><?php endif; ?></div></form>
+  <!-- Institutional ERP Page Header -->
+  <div class="erp-page-header">
+    <div>
+      <h1 class="erp-page-title">Specialization Subjects</h1>
+      <p class="erp-page-subtitle">Course catalog, departmental alignment, and academic curriculum mapping</p>
     </div>
-    <div class="box box-default"><div class="box-header with-border"><h3 class="box-title">Configured Subjects</h3></div><div class="box-body table-responsive"><table class="table table-bordered table-striped"><thead><tr><th>Department</th><th>Semester</th><th>Specialization</th><th>Subject</th><th>Status</th><th>Action</th></tr></thead><tbody>
-      <?php foreach ($subjects as $item): ?><tr><td><?php echo htmlspecialchars($item['department_name'] ?? ''); ?></td><td><?php echo htmlspecialchars($item['semester_name'] ?? ''); ?></td><td><?php echo htmlspecialchars($item['specialization_name'] ?? ''); ?></td><td><?php echo htmlspecialchars($item['subject_name']); ?></td><td><?php echo ((int) $item['is_active'] === 1) ? 'Active' : 'Inactive'; ?></td><td><a class="btn btn-xs btn-primary" href="specialization_subject_manage.php?edit=<?php echo (int) $item['subject_id']; ?>">Edit</a> <form style="display:inline" method="post"><input type="hidden" name="action" value="toggle"><input type="hidden" name="subject_id" value="<?php echo (int) $item['subject_id']; ?>"><button class="btn btn-xs <?php echo ((int) $item['is_active'] === 1) ? 'btn-warning' : 'btn-success'; ?>" type="submit"><?php echo ((int) $item['is_active'] === 1) ? 'Deactivate' : 'Activate'; ?></button></form></td></tr><?php endforeach; ?>
-    </tbody></table></div></div>
+    <div class="erp-page-actions">
+      <a href="mentor_assignment.php" class="btn btn-erp-primary"><i class="fa fa-users"></i> Mentor Allocation</a>
+      <a href="mentor_subject.php" class="btn btn-erp-secondary"><i class="fa fa-link"></i> Mentor Subject Map</a>
+    </div>
+  </div>
+
+  <section class="content" style="padding-top: 0;">
+    <?php if ($message !== ''): ?>
+      <div class="alert alert-<?php echo $messageType; ?> alert-dismissable" style="border-radius: 4px; margin-bottom: 16px;">
+        <button type="button" class="close" data-dismiss="alert">&times;</button>
+        <?php echo htmlspecialchars($message); ?>
+      </div>
+    <?php endif; ?>
+
+    <!-- Add/Edit Subject ERP Card -->
+    <div class="erp-card" style="margin-bottom: 20px;">
+      <div class="erp-card-header">
+        <div>
+          <h3 class="erp-card-title"><i class="fa fa-pencil text-primary" style="margin-right: 6px;"></i> <?php echo $editSubject ? 'Edit Specialization Subject' : 'Add New Specialization Subject'; ?></h3>
+          <p class="erp-card-subtitle">Define curriculum courses linked to department tracks and academic terms</p>
+        </div>
+      </div>
+      <form method="post">
+        <input type="hidden" name="action" value="save">
+        <input type="hidden" name="subject_id" value="<?php echo (int) ($editSubject['subject_id'] ?? 0); ?>">
+        <div class="erp-card-body" style="padding: 16px;">
+          <div class="row">
+            <div class="col-md-3">
+              <div class="form-group">
+                <label style="font-size: 12px; font-weight: 600; color: #475569;">Department <span class="text-danger">*</span></label>
+                <select name="department_id" class="form-control input-sm" required>
+                  <option value="">-- Select Department --</option>
+                  <?php foreach ($departments as $item): ?>
+                    <option value="<?php echo (int) $item['department_id']; ?>" <?php echo ((int) ($editSubject['department_id'] ?? 0) === (int) $item['department_id']) ? 'selected' : ''; ?>>
+                      <?php echo htmlspecialchars($item['department_name']); ?>
+                    </option>
+                  <?php endforeach; ?>
+                </select>
+              </div>
+            </div>
+            <div class="col-md-2">
+              <div class="form-group">
+                <label style="font-size: 12px; font-weight: 600; color: #475569;">Semester <span class="text-danger">*</span></label>
+                <select name="semester_id" class="form-control input-sm" required>
+                  <option value="">-- Select Semester --</option>
+                  <?php foreach ($semesters as $item): ?>
+                    <option value="<?php echo (int) $item['semester_id']; ?>" <?php echo ((int) ($editSubject['semester_id'] ?? 0) === (int) $item['semester_id']) ? 'selected' : ''; ?>>
+                      <?php echo htmlspecialchars($item['semester_name']); ?>
+                    </option>
+                  <?php endforeach; ?>
+                </select>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="form-group">
+                <label style="font-size: 12px; font-weight: 600; color: #475569;">Specialization Track <span class="text-danger">*</span></label>
+                <select name="specialization_id" class="form-control input-sm" required>
+                  <option value="">-- Select Specialization --</option>
+                  <?php foreach ($specializations as $item): ?>
+                    <option value="<?php echo (int) $item['specialization_id']; ?>" <?php echo ((int) ($editSubject['specialization_id'] ?? 0) === (int) $item['specialization_id']) ? 'selected' : ''; ?>>
+                      <?php echo htmlspecialchars($item['specialization_name']); ?>
+                    </option>
+                  <?php endforeach; ?>
+                </select>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="form-group">
+                <label style="font-size: 12px; font-weight: 600; color: #475569;">Subject Name <span class="text-danger">*</span></label>
+                <input name="subject_name" class="form-control input-sm" required maxlength="255" placeholder="e.g. Advanced Web Development" value="<?php echo htmlspecialchars($editSubject['subject_name'] ?? ''); ?>">
+              </div>
+            </div>
+          </div>
+          <div class="form-group" style="margin-top: 5px; margin-bottom: 0;">
+            <label style="font-size: 12px; font-weight: 600; color: #475569;">Description (Optional)</label>
+            <textarea name="description" class="form-control input-sm" rows="2" maxlength="1000" placeholder="Optional curriculum summary or course prerequisites..."><?php echo htmlspecialchars($editSubject['description'] ?? ''); ?></textarea>
+          </div>
+        </div>
+        <div class="erp-card-footer" style="padding: 12px 16px;">
+          <button class="btn btn-erp-primary" type="submit">
+            <i class="fa fa-save"></i> <?php echo $editSubject ? 'Update Subject' : 'Save Subject'; ?>
+          </button>
+          <?php if ($editSubject): ?>
+            <a class="btn btn-erp-secondary" href="specialization_subject_manage.php" style="margin-left: 6px;">Cancel</a>
+          <?php endif; ?>
+        </div>
+      </form>
+    </div>
+
+    <!-- Configured Subjects Data Grid -->
+    <div class="erp-card">
+      <div class="erp-card-header">
+        <div>
+          <h3 class="erp-card-title"><i class="fa fa-list text-primary" style="margin-right: 6px;"></i> Configured Specialization Courses</h3>
+          <p class="erp-card-subtitle">Active and archived subject tracks across all academic departments</p>
+        </div>
+        <div class="pull-right">
+          <span class="erp-badge erp-badge-secondary" style="font-size: 12px; padding: 4px 10px;">Total: <?php echo count($subjects); ?> courses</span>
+        </div>
+      </div>
+      <div class="erp-card-body table-responsive" style="padding: 0;">
+        <table class="erp-table">
+          <thead>
+            <tr>
+              <th style="width: 45px;" class="col-center">#</th>
+              <th>Subject Name</th>
+              <th>Department</th>
+              <th style="width: 110px;">Semester</th>
+              <th>Specialization Track</th>
+              <th style="width: 90px;" class="col-center">Status</th>
+              <th style="width: 130px;" class="col-center">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <?php foreach ($subjects as $idx => $item): 
+              $isActive = (int) $item['is_active'] === 1;
+              $statusBadge = $isActive ? 'erp-badge-success' : 'erp-badge-secondary';
+              $statusText = $isActive ? 'Active' : 'Inactive';
+            ?>
+              <tr>
+                <td class="col-center text-muted"><?php echo $idx + 1; ?></td>
+                <td><strong style="color: #0f172a;"><?php echo htmlspecialchars($item['subject_name']); ?></strong></td>
+                <td><span class="text-muted" style="font-size: 12px;"><?php echo htmlspecialchars($item['department_name'] ?? 'N/A'); ?></span></td>
+                <td><span class="erp-badge erp-badge-secondary"><?php echo htmlspecialchars($item['semester_name'] ?? 'N/A'); ?></span></td>
+                <td><span style="font-weight: 500;"><?php echo htmlspecialchars($item['specialization_name'] ?? 'N/A'); ?></span></td>
+                <td class="col-center"><span class="erp-badge <?php echo $statusBadge; ?>"><?php echo $statusText; ?></span></td>
+                <td class="col-center">
+                  <a class="btn btn-erp-secondary btn-xs" href="specialization_subject_manage.php?edit=<?php echo (int) $item['subject_id']; ?>">
+                    <i class="fa fa-pencil"></i> Edit
+                  </a>
+                  <form style="display:inline" method="post">
+                    <input type="hidden" name="action" value="toggle">
+                    <input type="hidden" name="subject_id" value="<?php echo (int) $item['subject_id']; ?>">
+                    <button class="btn btn-erp-secondary btn-xs" type="submit" style="margin-left: 3px;" title="<?php echo $isActive ? 'Deactivate' : 'Activate'; ?>">
+                      <i class="fa <?php echo $isActive ? 'fa-ban text-danger' : 'fa-check text-success'; ?>"></i>
+                    </button>
+                  </form>
+                </td>
+              </tr>
+            <?php endforeach; ?>
+          </tbody>
+        </table>
+      </div>
+    </div>
   </section>
 </div>
 <?php include "header/footer.php"; ?>

@@ -25,22 +25,22 @@ $roleLabel = $roleMap[$roleKey]['label'];
   <section class="content">
     <div class="row">
       <div class="col-md-8 col-md-offset-2">
-        <div class="box box-primary">
-          <div class="box-header with-border">
-            <h3 class="box-title">New <?php echo htmlspecialchars($roleLabel); ?></h3>
+        <div class="erp-card">
+          <div class="erp-card-header">
+            <h3 class="erp-card-title"><i class="fa fa-user-plus"></i> New <?php echo htmlspecialchars($roleLabel); ?></h3>
           </div>
           <form method="post" action="user_process.php" autocomplete="off">
-            <div class="box-body">
+            <div class="erp-card-body">
               <input type="hidden" name="role_id" value="<?php echo intval($roleId); ?>">
               <input type="hidden" name="role_key" value="<?php echo htmlspecialchars($roleKey); ?>">
 
               <div class="form-group">
-                <label>Name <span style="color:red;">*</span></label>
+                <label>Name <span style="color:var(--erp-danger);">*</span></label>
                 <input type="text" name="user_name" class="form-control" required>
               </div>
 
               <div class="form-group">
-                <label>Email <span style="color:red;">*</span></label>
+                <label>Email <span style="color:var(--erp-danger);">*</span></label>
                 <input type="email" name="email_id" class="form-control" required>
               </div>
 
@@ -50,7 +50,7 @@ $roleLabel = $roleMap[$roleKey]['label'];
               </div>
 
               <div class="form-group">
-                <label>Department <span style="color:red;">*</span></label>
+                <label>Department <span style="color:var(--erp-danger);">*</span></label>
                 <select name="department_id" class="form-control" required>
                   <option value="">Select Department</option>
                   <?php
@@ -63,9 +63,9 @@ $roleLabel = $roleMap[$roleKey]['label'];
                 </select>
               </div>
             </div>
-            <div class="box-footer">
-              <button type="submit" class="btn btn-primary"><i class="fa fa-save"></i> Save</button>
-              <a href="user-info.php?role=<?php echo urlencode($roleKey); ?>" class="btn btn-default">Cancel</a>
+            <div class="erp-card-body" style="border-top:1px solid var(--erp-border); display:flex; gap:10px;">
+              <button type="submit" class="btn-erp-primary"><i class="fa fa-save"></i> Save</button>
+              <a href="user-info.php?role=<?php echo urlencode($roleKey); ?>" class="btn-erp-secondary">Cancel</a>
             </div>
           </form>
         </div>

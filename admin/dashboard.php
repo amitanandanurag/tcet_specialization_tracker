@@ -417,86 +417,83 @@ $rowcount_user = mysqli_num_rows($result1);
 
 <!-- Additional CSS for dashboard (only what's not already in header) -->
 <style>
-    /* ========== ADDITIONAL CSS FOR DASHBOARD ========== */
+    /* ========== CLEAN TCET ERP DASHBOARD STYLING ========== */
     :root {
-        --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        --card-shadow: 0 10px 20px rgba(0, 0, 0, 0.08), 0 6px 6px rgba(0, 0, 0, 0.1);
-        --hover-shadow: 0 20px 25px -12px rgba(0, 0, 0, 0.15);
-        --border-radius-lg: 8px;
-        --border-radius-md: 6px;
+        --erp-card-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        --border-radius-lg: 6px;
+        --border-radius-md: 4px;
     }
 
-    /* Modern Card Styling */
+    /* Clean Metric Card Styling */
     .small-box {
         border-radius: var(--border-radius-lg);
-        box-shadow: var(--card-shadow);
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: var(--erp-card-shadow);
+        transition: all 0.2s ease;
         overflow: hidden;
         position: relative;
+        border: 1px solid var(--erp-border, #e2e8f0);
     }
 
     .small-box:hover {
-        transform: translateY(-5px);
-        box-shadow: var(--hover-shadow);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
     }
 
     .small-box .inner {
-        padding: 20px;
+        padding: 16px;
     }
 
     .small-box h3 {
-        font-size: 38px;
+        font-size: 28px;
         font-weight: 700;
-        margin-bottom: 5px;
+        margin-bottom: 2px;
     }
 
     .small-box p {
-        font-size: 15px;
-        opacity: 0.9;
+        font-size: 13px;
+        opacity: 0.95;
         margin-bottom: 0;
+        font-weight: 500;
     }
 
     .small-box .icon {
-        font-size: 70px;
-        top: 15px;
-        right: 10px;
-        opacity: 0.25;
-        transition: all 0.3s ease;
+        font-size: 50px;
+        top: 12px;
+        right: 12px;
+        opacity: 0.2;
+        transition: all 0.2s ease;
     }
 
     .small-box:hover .icon {
-        transform: scale(1.1);
-        opacity: 0.35;
+        opacity: 0.3;
     }
 
     /* Box styling */
     .box {
         border-radius: var(--border-radius-md);
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-        transition: all 0.3s ease;
-        margin-bottom: 25px;
-        border: none;
-    }
-
-    .box:hover {
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+        transition: all 0.2s ease;
+        margin-bottom: 20px;
+        border: 1px solid var(--erp-border, #e2e8f0);
+        background: #ffffff;
     }
 
     .box-header {
-        border-bottom: 2px solid #f0f2f5;
-        padding: 15px 20px;
+        border-bottom: 1px solid var(--erp-border, #e2e8f0);
+        padding: 12px 16px;
     }
 
     .box-header .box-title {
-        font-size: 18px;
-        font-weight: 600;
-        color: #2c3e50;
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--erp-text-main, #0f172a);
+        letter-spacing: 0.2px;
     }
 
-    /* Status Badges */
+    /* Semantic Status Badges */
     .status-badge {
-        padding: 6px 12px;
-        border-radius: 20px;
+        padding: 3px 8px;
+        border-radius: 4px;
         font-weight: 600;
         font-size: 11px;
         display: inline-block;
@@ -505,38 +502,43 @@ $rowcount_user = mysqli_num_rows($result1);
     }
 
     .status-available {
-        background: linear-gradient(135deg, #00b09b, #96c93d);
-        color: white;
-        box-shadow: 0 2px 5px rgba(0, 176, 155, 0.3);
+        background: #f0fdf4;
+        color: #15803d;
+        border: 1px solid #bbf7d0;
     }
 
     .status-meeting {
-        background: linear-gradient(135deg, #f2994a, #f2c94c);
-        color: white;
+        background: #fffbeb;
+        color: #b45309;
+        border: 1px solid #fde68a;
     }
 
     .status-leave {
-        background: linear-gradient(135deg, #eb3349, #f45c43);
-        color: white;
+        background: #fef2f2;
+        color: #b91c1c;
+        border: 1px solid #fecaca;
     }
 
     /* Action Buttons */
     .btn-action {
-        background: linear-gradient(135deg, #667eea, #764ba2);
-        border: none;
-        padding: 6px 14px;
-        border-radius: 25px;
-        color: white;
+        background: var(--erp-primary, #423cbc);
+        border: 1px solid var(--erp-primary-hover, #352fa1);
+        padding: 5px 12px;
+        border-radius: 4px;
+        color: #ffffff;
         font-size: 12px;
-        font-weight: 500;
-        transition: all 0.3s ease;
+        font-weight: 600;
+        transition: all 0.15s ease;
         cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
     }
 
     .btn-action:hover {
-        transform: scale(1.05);
-        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-        color: white;
+        background: var(--erp-primary-hover, #352fa1);
+        color: #ffffff;
+        box-shadow: 0 2px 4px rgba(66, 60, 188, 0.25);
     }
 
     /* Chart containers */
@@ -707,23 +709,25 @@ $rowcount_user = mysqli_num_rows($result1);
             <div class="col-md-12">
                 <div class="box box-info">
                     <div class="box-header with-border">
-                        <div class="btn-group" role="group">
-                            <button type="button" class="btn btn-primary" onclick="quickAction('export_hod')">
+                        <div class="btn-group" role="group" style="display:flex; flex-wrap:wrap; gap:6px;">
+                            <button type="button" class="btn-erp-primary" onclick="quickAction('export_hod')">
                                 <i class="fa fa-download"></i> Export Student List
                             </button>
-                            <button type="button" class="btn btn-default" onclick="quickAction('print_report')">
+                            <button type="button" class="btn-erp-secondary" onclick="quickAction('print_report')">
                                 <i class="fa fa-print"></i> Print Report
                             </button>
-                            <button type="button" class="btn btn-default" onclick="quickAction('send_bulk_email')">
+                            <button type="button" class="btn-erp-secondary" onclick="quickAction('send_bulk_email')">
                                 <i class="fa fa-envelope-o"></i> Bulk Email HODs
                             </button>
-                            <button type="button" class="btn btn-default" onclick="quickAction('add_hod')">
+                            <button type="button" class="btn-erp-secondary" onclick="quickAction('add_hod')">
                                 <i class="fa fa-plus-circle text-green"></i> Add New HOD
                             </button>
-                            <button type="button" class="btn btn-default" onclick="quickAction('add_student')">
+                            <button type="button" class="btn-erp-secondary" onclick="quickAction('add_student')">
                                 <i class="fa fa-plus-circle text-green"></i> List Of Student
                             </button>
-                            <button type="button" class="btn btn-default" onclick="window.location.href='offline_marks_entry.php'"><i class="fa fa-plus-circle text-green"></i> Offline Marks Entry</button>
+                            <button type="button" class="btn-erp-secondary" onclick="window.location.href='offline_marks_entry.php'">
+                                <i class="fa fa-plus-circle text-green"></i> Offline Marks Entry
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -793,7 +797,7 @@ $rowcount_user = mysqli_num_rows($result1);
                                 </div>
                             </div>
                             <div class="box-footer clearfix">
-                                <button type="submit" name="send_email" class="pull-right btn btn-primary">Send <i class="fa fa-arrow-circle-right"></i></button>
+                                <button type="submit" name="send_email" class="pull-right btn-erp-primary">Send <i class="fa fa-arrow-circle-right"></i></button>
                             </div>
                         </form>
                     </div>
@@ -1004,8 +1008,8 @@ $rowcount_user = mysqli_num_rows($result1);
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
-                    <button type="submit" name="edit_hod" class="btn btn-primary">Save Changes</button>
+                    <button type="button" class="btn-erp-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="submit" name="edit_hod" class="btn-erp-primary">Save Changes</button>
                 </div>
             </form>
         </div>

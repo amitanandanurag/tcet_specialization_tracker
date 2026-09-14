@@ -70,7 +70,7 @@ if (isset($_REQUEST['id'])) {
     <input type="hidden" name="student_id" value="<?php echo $student_id; ?>">
     
     <div class="box box-default" style="padding: 10px;">
-        <div class="box-header with-border" style="border-bottom: 2px solid #9C27B0;">
+        <div class="box-header with-border">
             <h3 class="box-title">OFFICIAL DETAILS:- </h3>
             <div class="box-tools pull-right">
                 <button type="button" class="btn btn-box-tool" data-widget="collapse"><i class="fa fa-minus"></i></button>
@@ -335,7 +335,7 @@ if (isset($_REQUEST['id'])) {
 
     <!-- PERSONAL DETAILS -->
     <div class="box box-default" style="padding: 10px;">
-        <div class="box-header with-border" style="border-bottom: 2px solid #9C27B0;">
+        <div class="box-header with-border">
             <h3 class="box-title">PERSONAL DETAILS:- </h3>
             <div class="box-tools pull-right">
                 <button type="button" class="btn btn-box-tool" data-widget="collapse"><i class="fa fa-minus"></i></button>
@@ -372,7 +372,7 @@ if (isset($_REQUEST['id'])) {
 
     <!-- MARKSHEETS SECTION -->
     <div class="box box-default" style="padding: 10px;">
-        <div class="box-header with-border" style="border-bottom: 2px solid #9C27B0;">
+        <div class="box-header with-border">
             <h3 class="box-title">MARKSHEETS (Previous Semester Results):- </h3>
             <div class="box-tools pull-right">
                 <button type="button" class="btn btn-box-tool" data-widget="collapse"><i class="fa fa-minus"></i></button>
@@ -407,7 +407,7 @@ if (isset($_REQUEST['id'])) {
 
     <!-- STATUS SECTION -->
     <div class="box box-default" style="padding: 10px;">
-        <div class="box-header with-border" style="border-bottom: 2px solid #9C27B0;">
+        <div class="box-header with-border">
             <h3 class="box-title">STATUS:- </h3>
             <div class="box-tools pull-right">
                 <button type="button" class="btn btn-box-tool" data-widget="collapse"><i class="fa fa-minus"></i></button>
@@ -429,10 +429,10 @@ if (isset($_REQUEST['id'])) {
         </div>
     </div>
 
-    <div class="row">
-        <div class="col-md-12 text-center">
-            <input type="submit" name="save" value="UPDATE" class="btn btn-primary" />
-            <input type="reset" name="reset" value="RESET" class="btn btn-default" />
+    <div class="row" style="margin-top: 16px;">
+        <div class="col-md-12 text-center" style="display: flex; justify-content: center; gap: 8px;">
+            <button type="submit" name="save" class="btn-erp-primary"><i class="fa fa-save"></i> Update Student</button>
+            <button type="reset" name="reset" class="btn-erp-secondary">Reset</button>
         </div>
     </div>
 

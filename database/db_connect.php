@@ -375,9 +375,8 @@ class DBController
     }
     
     // Fetch current snapshot from st_student_master
-    $sql = "SELECT academic_year_id, class_id, division_id, specialization_id, specialization_subject_id,
-                   minor_course_id, minor_subject_id, cgpa, research_component_i_id, research_core_vii,
-                   research_component_ii_id, research_core_viii
+    $sql = "SELECT academic_year_id, class_id, department_id, division_id, roll_no, specialization_id, specialization_subject_id,
+                   minor_course_id, minor_subject_id, cgpa
             FROM st_student_master
             WHERE student_id = ?
             LIMIT 1";
@@ -394,63 +393,53 @@ class DBController
     if ($result && $row = mysqli_fetch_assoc($result)) {
       mysqli_stmt_close($stmt);
       
-      $ayId = $row['academic_year_id'] !== null ? intval($row['academic_year_id']) : null;
-      $classId = $row['class_id'] !== null ? intval($row['class_id']) : null;
-      $divId = $row['division_id'] !== null ? intval($row['division_id']) : null;
-      $specId = $row['specialization_id'] !== null ? intval($row['specialization_id']) : null;
-      $specSubId = $row['specialization_subject_id'] !== null ? intval($row['specialization_subject_id']) : null;
-      $minorCourseId = $row['minor_course_id'] !== null ? intval($row['minor_course_id']) : null;
-      $minorSubId = $row['minor_subject_id'] !== null ? intval($row['minor_subject_id']) : null;
+      $ayId = ($row['academic_year_id'] !== null && intval($row['academic_year_id']) > 0) ? intval($row['academic_year_id']) : 2;
+      $classId = ($row['class_id'] !== null && intval($row['class_id']) > 0) ? intval($row['class_id']) : 1;
+      $deptId = ($row['department_id'] !== null && intval($row['department_id']) > 0) ? intval($row['department_id']) : 1;
+      $divId = ($row['division_id'] !== null && intval($row['division_id']) > 0) ? intval($row['division_id']) : 1;
+      $rollNo = $row['roll_no'] !== null ? trim((string)$row['roll_no']) : '';
+      $specId = ($row['specialization_id'] !== null && intval($row['specialization_id']) > 0) ? intval($row['specialization_id']) : null;
+      $specSubId = ($row['specialization_subject_id'] !== null && intval($row['specialization_subject_id']) > 0) ? intval($row['specialization_subject_id']) : null;
+      $minorCourseId = ($row['minor_course_id'] !== null && intval($row['minor_course_id']) > 0) ? intval($row['minor_course_id']) : null;
+      $minorSubId = ($row['minor_subject_id'] !== null && intval($row['minor_subject_id']) > 0) ? intval($row['minor_subject_id']) : null;
       $cgpa = $row['cgpa'] !== null ? floatval($row['cgpa']) : null;
-      $resComp1 = $row['research_component_i_id'] !== null ? intval($row['research_component_i_id']) : null;
-      $resCore7 = $row['research_core_vii'] !== null ? (string)$row['research_core_vii'] : null;
-      $resComp2 = $row['research_component_ii_id'] !== null ? intval($row['research_component_ii_id']) : null;
-      $resCore8 = $row['research_core_viii'] !== null ? (string)$row['research_core_viii'] : null;
       
-      // Read the mentor after allocation when available. This value is a
-      // historical snapshot and is not inferred from the student's current row.
+      // Dynamic period-aware mentor resolution
       $mentorId = null;
-      $mentorStmt = mysqli_prepare($this->conn, "SELECT mentor_id FROM st_mentor_student_mapping WHERE student_id = ? AND semester_id = ? ORDER BY mapping_id DESC LIMIT 1");
-      if ($mentorStmt) {
-        mysqli_stmt_bind_param($mentorStmt, "ii", $studentId, $semesterId);
-        mysqli_stmt_execute($mentorStmt);
-        $mentorResult = mysqli_stmt_get_result($mentorStmt);
-        if ($mentorResult && ($mentorRow = mysqli_fetch_assoc($mentorResult))) {
-          $mentorId = intval($mentorRow['mentor_id']);
+      if ($specSubId !== null && $specSubId > 0) {
+        $resolvedMentor = $this->getResolvedMentorForSubject($specSubId, $semesterId, $ayId);
+        if ($resolvedMentor && intval($resolvedMentor['mentor_id']) > 0) {
+          $mentorId = intval($resolvedMentor['mentor_id']);
         }
-        mysqli_stmt_close($mentorStmt);
       }
 
-      // UPSERT only the requested semester. A unique key prevents duplicate
-      // active records for one student and semester.
+      // UPSERT only the requested semester.
       $upsertSql = "INSERT INTO st_student_semester_history (
-                      student_id, academic_year_id, class_id, semester_id, division_id,
+                      student_id, academic_year_id, class_id, semester_id, department_id, division_id, roll_no,
                       specialization_id, specialization_subject_id, minor_course_id, minor_subject_id,
-                      cgpa, research_component_i_id, research_core_vii, research_component_ii_id, research_core_viii,
-                      mentor_id
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                      cgpa, mentor_id, status
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active')
                     ON DUPLICATE KEY UPDATE
                       academic_year_id = IF(status = 'Active', VALUES(academic_year_id), academic_year_id),
                       class_id = IF(status = 'Active', VALUES(class_id), class_id),
+                      department_id = IF(status = 'Active', VALUES(department_id), department_id),
                       division_id = IF(status = 'Active', VALUES(division_id), division_id),
+                      roll_no = IF(status = 'Active', VALUES(roll_no), roll_no),
                       specialization_id = IF(status = 'Active', VALUES(specialization_id), specialization_id),
                       specialization_subject_id = IF(status = 'Active', VALUES(specialization_subject_id), specialization_subject_id),
                       minor_course_id = IF(status = 'Active', VALUES(minor_course_id), minor_course_id),
                       minor_subject_id = IF(status = 'Active', VALUES(minor_subject_id), minor_subject_id),
                       cgpa = IF(status = 'Active', VALUES(cgpa), cgpa),
-                      research_component_i_id = IF(status = 'Active', VALUES(research_component_i_id), research_component_i_id),
-                      research_core_vii = IF(status = 'Active', VALUES(research_core_vii), research_core_vii),
-                      research_component_ii_id = IF(status = 'Active', VALUES(research_component_ii_id), research_component_ii_id),
-                      research_core_viii = IF(status = 'Active', VALUES(research_core_viii), research_core_viii),
                       mentor_id = COALESCE(VALUES(mentor_id), mentor_id)";
                       
       $upStmt = mysqli_prepare($this->conn, $upsertSql);
       if ($upStmt) {
-        $bindTypes = "iiiiiiiiidisis" . "i";
-        mysqli_stmt_bind_param($upStmt, $bindTypes,
-          $studentId, $ayId, $classId, $semesterId, $divId,
+        // studentId(i), ayId(i), classId(i), semesterId(i), deptId(i), divId(i), rollNo(s),
+        // specId(i), specSubId(i), minorCourseId(i), minorSubId(i), cgpa(d), mentorId(i)
+        mysqli_stmt_bind_param($upStmt, "iiiiiisiiiidi",
+          $studentId, $ayId, $classId, $semesterId, $deptId, $divId, $rollNo,
           $specId, $specSubId, $minorCourseId, $minorSubId,
-          $cgpa, $resComp1, $resCore7, $resComp2, $resCore8, $mentorId
+          $cgpa, $mentorId
         );
         $res = mysqli_stmt_execute($upStmt);
         mysqli_stmt_close($upStmt);
@@ -814,22 +803,60 @@ class DBController
     return true;
   }
 
-  public function getResolvedMentorForSubject($subjectId)
+  public function getResolvedMentorForSubject($subjectId, $semesterId = null, $academicYearId = null)
   {
     if (!($this->conn instanceof mysqli) || intval($subjectId) <= 0) {
       return null;
     }
     $subjectId = intval($subjectId);
+    $semId = ($semesterId !== null) ? intval($semesterId) : 0;
+    $ayId = ($academicYearId !== null) ? intval($academicYearId) : 0;
+
+    // 1. Try period-specific mapping first if semester/AY specified
+    if ($semId > 0 || $ayId > 0) {
+      $sql = "SELECT u.user_id AS mentor_id,
+                     COALESCE(NULLIF(TRIM(u.user_name), ''), u.email_id) AS mentor_name,
+                     u.email_id,
+                     u.phone_number,
+                     u.department_id,
+                     d.department_name,
+                     msm.academic_year_id,
+                     msm.semester_id
+              FROM st_mentor_subject_mapping msm
+              JOIN st_user_master u ON u.user_id = msm.mentor_id
+              LEFT JOIN st_department_master d ON d.department_id = u.department_id
+              WHERE msm.subject_id = ?
+                AND (msm.semester_id = ? OR msm.semester_id = 0)
+                AND (msm.academic_year_id = ? OR msm.academic_year_id = 0)
+              ORDER BY (msm.semester_id > 0) DESC, (msm.academic_year_id > 0) DESC
+              LIMIT 1";
+      $stmt = mysqli_prepare($this->conn, $sql);
+      if ($stmt) {
+        mysqli_stmt_bind_param($stmt, "iii", $subjectId, $semId, $ayId);
+        mysqli_stmt_execute($stmt);
+        $result = mysqli_stmt_get_result($stmt);
+        if ($result && ($row = mysqli_fetch_assoc($result))) {
+          mysqli_stmt_close($stmt);
+          return $row;
+        }
+        mysqli_stmt_close($stmt);
+      }
+    }
+
+    // 2. Default subject-level mapping
     $sql = "SELECT u.user_id AS mentor_id,
                    COALESCE(NULLIF(TRIM(u.user_name), ''), u.email_id) AS mentor_name,
                    u.email_id,
                    u.phone_number,
                    u.department_id,
-                   d.department_name
+                   d.department_name,
+                   msm.academic_year_id,
+                   msm.semester_id
             FROM st_mentor_subject_mapping msm
             JOIN st_user_master u ON u.user_id = msm.mentor_id
             LEFT JOIN st_department_master d ON d.department_id = u.department_id
             WHERE msm.subject_id = ?
+            ORDER BY msm.mapping_id DESC
             LIMIT 1";
     $stmt = mysqli_prepare($this->conn, $sql);
     if (!$stmt) {
@@ -843,14 +870,45 @@ class DBController
     return $mentor;
   }
 
-  public function getResolvedMentorForStudent($studentId, $semesterId = null)
+  public function getResolvedMentorForStudent($studentId, $semesterId = null, $academicYearId = null)
   {
     if (!($this->conn instanceof mysqli) || intval($studentId) <= 0) {
       return null;
     }
     $studentId = intval($studentId);
 
-    // Dynamic resolution through Student -> Subject -> Mentor Mapping -> Mentor User
+    // Look up student and relevant semester history
+    if ($semesterId !== null) {
+      $semId = intval($semesterId);
+      $histSql = "SELECT h.specialization_subject_id, h.semester_id, h.academic_year_id
+                  FROM st_student_semester_history h
+                  WHERE h.student_id = ? AND h.semester_id = ?
+                  ORDER BY h.history_id DESC LIMIT 1";
+      $stmt = mysqli_prepare($this->conn, $histSql);
+      if ($stmt) {
+        mysqli_stmt_bind_param($stmt, "ii", $studentId, $semId);
+        mysqli_stmt_execute($stmt);
+        $res = mysqli_stmt_get_result($stmt);
+        if ($res && ($hRow = mysqli_fetch_assoc($res))) {
+          mysqli_stmt_close($stmt);
+          $subId = intval($hRow['specialization_subject_id']);
+          $ay = intval($academicYearId ?? $hRow['academic_year_id']);
+          if ($subId > 0) {
+            $mentor = $this->getResolvedMentorForSubject($subId, $semId, $ay);
+            if ($mentor) {
+              $mentor['subject_id'] = $subId;
+              $subNameRes = mysqli_query($this->conn, "SELECT subject_name FROM st_specialization_subject_master WHERE subject_id = $subId LIMIT 1");
+              $mentor['subject_name'] = ($subNameRes && ($sRow = mysqli_fetch_assoc($subNameRes))) ? $sRow['subject_name'] : '';
+              return $mentor;
+            }
+          }
+        } else {
+          mysqli_stmt_close($stmt);
+        }
+      }
+    }
+
+    // Dynamic resolution for current semester
     $sql = "SELECT u.user_id AS mentor_id,
                    COALESCE(NULLIF(TRIM(u.user_name), ''), u.email_id) AS mentor_name,
                    u.email_id,
@@ -860,12 +918,13 @@ class DBController
                    ssm.subject_id,
                    ssm.subject_name
             FROM st_student_master sm
-            LEFT JOIN st_student_semester_history h ON h.student_id = sm.student_id " . ($semesterId !== null ? "AND h.semester_id = " . intval($semesterId) : "AND h.semester_id = sm.current_semester_id") . "
+            LEFT JOIN st_student_semester_history h ON h.student_id = sm.student_id AND h.semester_id = sm.current_semester_id
             JOIN st_specialization_subject_master ssm ON ssm.subject_id = COALESCE(NULLIF(h.specialization_subject_id, 0), NULLIF(sm.specialization_subject_id, 0))
             JOIN st_mentor_subject_mapping msm ON msm.subject_id = ssm.subject_id
             JOIN st_user_master u ON u.user_id = msm.mentor_id
             LEFT JOIN st_department_master d ON d.department_id = u.department_id
             WHERE sm.student_id = ?
+            ORDER BY (msm.semester_id = sm.current_semester_id) DESC, msm.mapping_id DESC
             LIMIT 1";
 
     $stmt = mysqli_prepare($this->conn, $sql);
@@ -880,16 +939,18 @@ class DBController
     return $mentor;
   }
 
-  public function assignSubjectMentor($subjectId, $mentorId, $changedByUserId = 1)
+  public function assignSubjectMentor($subjectId, $mentorId, $changedByUserId = 1, $semesterId = 0, $academicYearId = 0)
   {
     if (!($this->conn instanceof mysqli) || intval($subjectId) <= 0 || intval($mentorId) <= 0) {
       return false;
     }
     $subjectId = intval($subjectId);
     $mentorId = intval($mentorId);
+    $semesterId = intval($semesterId);
+    $academicYearId = intval($academicYearId);
 
     // Get previous mentor details for audit
-    $prevMentor = $this->getResolvedMentorForSubject($subjectId);
+    $prevMentor = $this->getResolvedMentorForSubject($subjectId, $semesterId, $academicYearId);
     $prevMentorName = $prevMentor ? $prevMentor['mentor_name'] : 'None';
 
     // Get subject name
@@ -907,25 +968,28 @@ class DBController
     }
 
     // Upsert mapping in st_mentor_subject_mapping
-    $sql = "INSERT INTO st_mentor_subject_mapping (mentor_id, subject_id)
-            VALUES (?, ?)
+    $sql = "INSERT INTO st_mentor_subject_mapping (mentor_id, subject_id, academic_year_id, semester_id)
+            VALUES (?, ?, ?, ?)
             ON DUPLICATE KEY UPDATE mentor_id = VALUES(mentor_id), updated_at = CURRENT_TIMESTAMP";
     $stmt = mysqli_prepare($this->conn, $sql);
     if (!$stmt) {
       return false;
     }
-    mysqli_stmt_bind_param($stmt, "ii", $mentorId, $subjectId);
+    mysqli_stmt_bind_param($stmt, "iiii", $mentorId, $subjectId, $academicYearId, $semesterId);
     $res = mysqli_stmt_execute($stmt);
     mysqli_stmt_close($stmt);
 
     if ($res) {
       // Sync legacy mappings / history table if present
+      $whereSem = ($semesterId > 0) ? " AND h.semester_id = $semesterId" : "";
+      $whereAY = ($academicYearId > 0) ? " AND h.academic_year_id = $academicYearId" : "";
       mysqli_query($this->conn, "
         UPDATE st_student_semester_history h
         JOIN st_student_master s ON s.student_id = h.student_id
         SET h.mentor_id = $mentorId
         WHERE COALESCE(NULLIF(h.specialization_subject_id, 0), s.specialization_subject_id) = $subjectId
-          AND h.status = 'Active'
+          $whereSem
+          $whereAY
       ");
 
       // Write audit log
@@ -934,11 +998,202 @@ class DBController
         'MENTOR_ASSIGNMENT_CHANGED',
         'st_mentor_subject_mapping',
         $subjectId,
-        "Subject '{$subName}' mentor changed from '{$prevMentorName}' to '{$newMentorName}'"
+        "Subject '{$subName}' (Sem: {$semesterId}, AY: {$academicYearId}) mentor changed from '{$prevMentorName}' to '{$newMentorName}'"
       );
       return true;
     }
     return false;
+  }
+
+  /**
+   * Complete Academic History retrieval for a student
+   */
+  public function getStudentAcademicHistory($studentId)
+  {
+    if (!($this->conn instanceof mysqli) || intval($studentId) <= 0) {
+      return [];
+    }
+    $studentId = intval($studentId);
+
+    $sql = "SELECT h.history_id,
+                   h.student_id,
+                   h.academic_year_id,
+                   h.class_id,
+                   h.semester_id,
+                   h.division_id,
+                   h.roll_no,
+                   h.department_id,
+                   h.specialization_id,
+                   h.specialization_subject_id,
+                   h.minor_course_id,
+                   h.minor_subject_id,
+                   h.cgpa,
+                   h.progress_percent,
+                   h.status AS history_status,
+                   h.finalized_at,
+                   h.created_at AS enrolled_at,
+                   COALESCE(sem.semester_name, CONCAT('Semester ', h.semester_id)) AS semester_name,
+                   COALESCE(ay.session_name, 'N/A') AS academic_year_name,
+                   COALESCE(c.class_name, 'N/A') AS class_name,
+                   COALESCE(sec.sections, 'N/A') AS division_name,
+                   COALESCE(d.department_name, 'N/A') AS department_name,
+                   COALESCE(sp.specialization_name, 'N/A') AS specialization_name,
+                   COALESCE(sub.subject_name, 'N/A') AS subject_name,
+                   COALESCE(mc.course_name, 'N/A') AS minor_course_name,
+                   COALESCE(ms.subject_name, 'N/A') AS minor_subject_name
+            FROM st_student_semester_history h
+            LEFT JOIN st_semester_master sem ON sem.semester_id = h.semester_id
+            LEFT JOIN st_session_master ay ON ay.session_id = h.academic_year_id
+            LEFT JOIN st_class_master c ON c.class_id = h.class_id
+            LEFT JOIN st_section_master sec ON sec.id = h.division_id
+            LEFT JOIN st_department_master d ON d.department_id = COALESCE(NULLIF(h.department_id, 0), (SELECT s.department_id FROM st_student_master s WHERE s.student_id = h.student_id))
+            LEFT JOIN st_specialization_master sp ON sp.specialization_id = h.specialization_id
+            LEFT JOIN st_specialization_subject_master sub ON sub.subject_id = h.specialization_subject_id
+            LEFT JOIN st_minorcourse mc ON mc.course_id = h.minor_course_id
+            LEFT JOIN st_minorsubject ms ON ms.subject_id = h.minor_subject_id
+            WHERE h.student_id = ?
+            ORDER BY h.semester_id ASC, h.academic_year_id ASC, h.history_id ASC";
+
+    $stmt = mysqli_prepare($this->conn, $sql);
+    if (!$stmt) {
+      return [];
+    }
+    mysqli_stmt_bind_param($stmt, "i", $studentId);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+    $history = [];
+
+    if ($result) {
+      while ($row = mysqli_fetch_assoc($result)) {
+        $subId = intval($row['specialization_subject_id']);
+        $semId = intval($row['semester_id']);
+        $ayId = intval($row['academic_year_id']);
+
+        // Resolve mentor for this specific academic period
+        $mentor = ($subId > 0) ? $this->getResolvedMentorForSubject($subId, $semId, $ayId) : null;
+        $row['mentor_name'] = $mentor ? $mentor['mentor_name'] : 'Not Assigned';
+        $row['mentor_email'] = $mentor ? $mentor['email_id'] : '';
+        $row['mentor_id'] = $mentor ? intval($mentor['mentor_id']) : 0;
+
+        $history[] = $row;
+      }
+    }
+    mysqli_stmt_close($stmt);
+    return $history;
+  }
+
+  /**
+   * Non-destructive Semester Progression / Student Promotion
+   */
+  public function promoteStudentSemester(
+    $studentId,
+    $newSemesterId,
+    $newAcademicYearId = null,
+    $newClassId = null,
+    $newDivisionId = null,
+    $newRollNo = null,
+    $newDepartmentId = null,
+    $newSpecializationId = null,
+    $newSubjectId = null,
+    $newCgpa = null,
+    $promotedByUserId = 1
+  ) {
+    if (!($this->conn instanceof mysqli) || intval($studentId) <= 0 || intval($newSemesterId) <= 0) {
+      return false;
+    }
+    $studentId = intval($studentId);
+    $newSemesterId = intval($newSemesterId);
+
+    // Fetch existing student details
+    $sRes = mysqli_query($this->conn, "SELECT student_id, fname, registration_no, department_id, class_id, division_id, roll_no, specialization_id, specialization_subject_id, cgpa, current_semester_id, academic_year_id FROM st_student_master WHERE student_id = $studentId LIMIT 1");
+    if (!$sRes || mysqli_num_rows($sRes) === 0) {
+      return false;
+    }
+    $sRow = mysqli_fetch_assoc($sRes);
+    $oldSemesterId = intval($sRow['current_semester_id'] ?? 0);
+    $ayId = ($newAcademicYearId !== null && intval($newAcademicYearId) > 0) ? intval($newAcademicYearId) : intval($sRow['academic_year_id'] ?? 2);
+    $classId = ($newClassId !== null && intval($newClassId) > 0) ? intval($newClassId) : intval($sRow['class_id'] ?? 1);
+    $deptId = ($newDepartmentId !== null && intval($newDepartmentId) > 0) ? intval($newDepartmentId) : intval($sRow['department_id'] ?? 1);
+    $divId = ($newDivisionId !== null && intval($newDivisionId) > 0) ? intval($newDivisionId) : intval($sRow['division_id'] ?? 1);
+    $rollNo = ($newRollNo !== null && trim((string)$newRollNo) !== '') ? trim((string)$newRollNo) : ($sRow['roll_no'] ?? '');
+    $specId = ($newSpecializationId !== null && intval($newSpecializationId) > 0) ? intval($newSpecializationId) : intval($sRow['specialization_id'] ?? 0);
+    $subId = ($newSubjectId !== null && intval($newSubjectId) > 0) ? intval($newSubjectId) : intval($sRow['specialization_subject_id'] ?? 0);
+    $cgpaVal = ($newCgpa !== null && floatval($newCgpa) > 0) ? floatval($newCgpa) : floatval($sRow['cgpa'] ?? 0);
+
+    mysqli_begin_transaction($this->conn);
+    try {
+      // 1. Mark previous active semesters as Completed
+      mysqli_query($this->conn, "
+        UPDATE st_student_semester_history
+        SET status = 'Completed', finalized_at = COALESCE(finalized_at, CURRENT_TIMESTAMP)
+        WHERE student_id = $studentId AND semester_id < $newSemesterId AND status = 'Active'
+      ");
+
+      // 2. Resolve mentor for new subject in new semester
+      $newMentorId = null;
+      if ($subId > 0) {
+        $mentorInfo = $this->getResolvedMentorForSubject($subId, $newSemesterId, $ayId);
+        if ($mentorInfo && intval($mentorInfo['mentor_id']) > 0) {
+          $newMentorId = intval($mentorInfo['mentor_id']);
+        }
+      }
+
+      // 3. Upsert record for new semester in st_student_semester_history
+      $histCheck = mysqli_query($this->conn, "
+        SELECT history_id FROM st_student_semester_history
+        WHERE student_id = $studentId AND semester_id = $newSemesterId
+        LIMIT 1
+      ");
+
+      if ($histCheck && ($hRow = mysqli_fetch_assoc($histCheck))) {
+        $hId = intval($hRow['history_id']);
+        $updHistSql = "UPDATE st_student_semester_history
+                       SET academic_year_id = ?, class_id = ?, specialization_id = ?, specialization_subject_id = ?, division_id = ?, roll_no = ?, cgpa = ?, department_id = ?, mentor_id = ?, status = 'Active', updated_at = CURRENT_TIMESTAMP
+                       WHERE history_id = ?";
+        $stmtH = mysqli_prepare($this->conn, $updHistSql);
+        if ($stmtH) {
+          mysqli_stmt_bind_param($stmtH, "iiiiisdiii", $ayId, $classId, $specId, $subId, $divId, $rollNo, $cgpaVal, $deptId, $newMentorId, $hId);
+          mysqli_stmt_execute($stmtH);
+          mysqli_stmt_close($stmtH);
+        }
+      } else {
+        $insHistSql = "INSERT INTO st_student_semester_history
+                       (student_id, academic_year_id, class_id, semester_id, department_id, division_id, roll_no, specialization_id, specialization_subject_id, cgpa, mentor_id, status, progress_percent)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active', 0.00)";
+        $stmtH = mysqli_prepare($this->conn, $insHistSql);
+        if ($stmtH) {
+          mysqli_stmt_bind_param($stmtH, "iiiiiisiidi", $studentId, $ayId, $classId, $newSemesterId, $deptId, $divId, $rollNo, $specId, $subId, $cgpaVal, $newMentorId);
+          mysqli_stmt_execute($stmtH);
+          mysqli_stmt_close($stmtH);
+        }
+      }
+
+      // 4. Update current active state on st_student_master
+      $updStudentSql = "UPDATE st_student_master
+                        SET current_semester_id = ?, academic_year_id = ?, class_id = ?, specialization_id = ?, specialization_subject_id = ?, division_id = ?, department_id = ?, roll_no = ?, cgpa = ?
+                        WHERE student_id = ?";
+      $stmtS = mysqli_prepare($this->conn, $updStudentSql);
+      if ($stmtS) {
+        mysqli_stmt_bind_param($stmtS, "iiiiiiisdi", $newSemesterId, $ayId, $classId, $specId, $subId, $divId, $deptId, $rollNo, $cgpaVal, $studentId);
+        mysqli_stmt_execute($stmtS);
+        mysqli_stmt_close($stmtS);
+      }
+
+      // 5. Audit Log
+      $this->writeAuditLog(
+        $promotedByUserId,
+        'STUDENT_PROMOTED_SEMESTER',
+        'st_student_master',
+        $studentId,
+        "Student '{$sRow['fname']}' ({$sRow['registration_no']}) promoted from Semester {$oldSemesterId} to Semester {$newSemesterId} (AY: {$ayId})"
+      );
+
+      mysqli_commit($this->conn);
+      return true;
+    } catch (Throwable $e) {
+      mysqli_rollback($this->conn);
+      return false;
+    }
   }
 
 }

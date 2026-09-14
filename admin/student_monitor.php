@@ -10,31 +10,23 @@ if ((int) ($usertype ?? 0) !== 1 && (int) ($usertype ?? 0) !== 2) {
 <style>
     /* Premium Design System Styling */
     .monitor-container {
-        font-family: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         padding: 10px;
     }
 
     .search-card {
-        background: rgba(255, 255, 255, 0.9);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        border-radius: 16px;
-        border: 1px solid rgba(255, 255, 255, 0.6);
-        box-shadow: 0 10px 30px rgba(30, 41, 59, 0.08);
-        padding: 24px;
-        margin-bottom: 24px;
-        transition: all 0.3s ease;
-    }
-
-    .search-card:hover {
-        box-shadow: 0 12px 35px rgba(30, 41, 59, 0.12);
+        background: #ffffff;
+        border-radius: var(--erp-radius-md, 6px);
+        border: 1px solid var(--erp-border, #e2e8f0);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+        padding: 20px;
+        margin-bottom: 20px;
     }
 
     .search-title {
-        font-size: 18px;
+        font-size: 15px;
         font-weight: 700;
-        color: #1e293b;
-        margin-bottom: 16px;
+        color: var(--erp-text-main, #0f172a);
+        margin-bottom: 14px;
         display: flex;
         align-items: center;
         gap: 8px;
@@ -45,115 +37,108 @@ if ((int) ($usertype ?? 0) !== 1 && (int) ($usertype ?? 0) !== 2) {
         display: flex;
         width: 100%;
         max-width: 600px;
-        gap: 12px;
+        gap: 10px;
     }
 
     .search-input {
         flex: 1;
-        height: 50px;
-        border-radius: 12px;
-        border: 2px solid #e2e8f0;
-        padding: 10px 16px;
-        font-size: 16px;
+        height: 38px;
+        border-radius: var(--erp-radius-sm, 4px);
+        border: 1px solid var(--erp-border-dark, #cbd5e1);
+        padding: 6px 14px;
+        font-size: 13px;
         font-weight: 500;
-        transition: all 0.25s ease;
+        transition: all 0.15s ease;
         outline: none;
-        color: #0f172a;
+        color: var(--erp-text-main, #0f172a);
     }
 
     .search-input:focus {
-        border-color: #3b82f6;
-        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+        border-color: var(--erp-primary, #423cbc);
+        box-shadow: 0 0 0 3px rgba(66, 60, 188, 0.12);
     }
 
     .search-btn {
-        height: 50px;
-        padding: 0 24px;
-        border-radius: 12px;
-        background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+        height: 38px;
+        padding: 0 16px;
+        border-radius: var(--erp-radius-sm, 4px);
+        background: var(--erp-primary, #423cbc);
         color: white;
-        border: none;
-        font-size: 16px;
+        border: 1px solid var(--erp-primary-hover, #352fa1);
+        font-size: 13px;
         font-weight: 600;
         cursor: pointer;
         display: flex;
         align-items: center;
-        gap: 8px;
-        transition: all 0.25s ease;
-        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+        gap: 6px;
+        transition: all 0.15s ease;
     }
 
     .search-btn:hover {
-        background: linear-gradient(135deg, #1e40af, #2563eb);
-        transform: translateY(-1px);
-        box-shadow: 0 6px 16px rgba(59, 130, 246, 0.35);
-    }
-
-    .search-btn:active {
-        transform: translateY(1px);
+        background: var(--erp-primary-hover, #352fa1);
     }
 
     /* Student Profile Styling */
     .profile-card {
         background: #ffffff;
-        border-radius: 16px;
-        box-shadow: 0 10px 30px rgba(30, 41, 59, 0.08);
-        border: 1px solid #f1f5f9;
+        border-radius: var(--erp-radius-md, 6px);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+        border: 1px solid var(--erp-border, #e2e8f0);
         overflow: hidden;
-        margin-bottom: 24px;
+        margin-bottom: 20px;
         display: none;
     }
 
     .profile-hero {
-        background: linear-gradient(135deg, #1e3a8a, #3b82f6);
-        color: white;
-        padding: 28px;
+        background: #f8fafc;
+        color: var(--erp-text-main, #0f172a);
+        padding: 16px 20px;
         display: flex;
         align-items: center;
-        gap: 24px;
+        gap: 16px;
         position: relative;
+        border-bottom: 1px solid var(--erp-border, #e2e8f0);
     }
 
     .avatar-circle {
-        width: 80px;
-        height: 80px;
+        width: 50px;
+        height: 50px;
         border-radius: 50%;
-        background: rgba(255, 255, 255, 0.2);
-        backdrop-filter: blur(4px);
+        background: var(--erp-primary-light, #eef2ff);
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 32px;
+        font-size: 20px;
         font-weight: 700;
-        color: #ffffff;
-        border: 2px solid rgba(255, 255, 255, 0.6);
-        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+        color: var(--erp-primary, #423cbc);
+        border: 1.5px solid var(--erp-primary-border, #c7d2fe);
     }
 
     .profile-meta h2 {
-        margin: 0 0 6px;
-        font-size: 26px;
-        font-weight: 800;
-        letter-spacing: -0.5px;
+        margin: 0 0 4px;
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--erp-text-main, #0f172a);
     }
 
     .profile-meta p {
         margin: 0;
-        font-size: 15px;
-        opacity: 0.9;
+        font-size: 13px;
+        color: var(--erp-text-secondary, #475569);
         display: flex;
         align-items: center;
-        gap: 12px;
+        gap: 8px;
     }
 
     .badge-status {
-        background: rgba(255, 255, 255, 0.25);
-        padding: 2px 10px;
-        border-radius: 20px;
-        font-size: 12px;
+        background: var(--erp-primary-light, #eef2ff);
+        color: var(--erp-primary, #423cbc);
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 11px;
         font-weight: 600;
         text-transform: uppercase;
-        border: 1px solid rgba(255, 255, 255, 0.4);
+        border: 1px solid var(--erp-primary-border, #c7d2fe);
     }
 
     .profile-details-grid {
@@ -214,11 +199,12 @@ if ((int) ($usertype ?? 0) !== 1 && (int) ($usertype ?? 0) !== 2) {
     }
 
     .btn-call {
-        background-color: #eff6ff;
-        color: #1d4ed8;
+        background-color: #f0fdf4;
+        color: #166534;
+        border: 1px solid #bbf7d0;
     }
     .btn-call:hover {
-        background-color: #dbeafe;
+        background-color: #dcfce7;
     }
 
     .btn-print {
@@ -244,69 +230,73 @@ if ((int) ($usertype ?? 0) !== 1 && (int) ($usertype ?? 0) !== 2) {
 
     .semester-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-        gap: 24px;
-        margin-bottom: 40px;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 16px;
+        margin-bottom: 30px;
     }
 
     .semester-card {
         background: #ffffff;
-        border-radius: 16px;
-        box-shadow: 0 4px 20px rgba(30, 41, 59, 0.04);
-        border: 1px solid #e2e8f0;
+        border-radius: var(--erp-radius-md, 6px);
+        box-shadow: 0 1px 3px rgba(30, 41, 59, 0.04);
+        border: 1px solid var(--erp-border, #e2e8f0);
         overflow: hidden;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        transition: all 0.15s ease;
         display: flex;
         flex-direction: column;
     }
 
     .semester-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 10px 25px rgba(30, 41, 59, 0.08);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(30, 41, 59, 0.06);
     }
 
     .semester-header {
-        padding: 16px 20px;
+        padding: 12px 16px;
         display: flex;
         justify-content: space-between;
         align-items: center;
-        border-bottom: 1px solid #f1f5f9;
+        border-bottom: 1px solid var(--erp-border, #e2e8f0);
         background: #f8fafc;
     }
 
     .semester-name {
-        font-size: 16px;
+        font-size: 14px;
         font-weight: 700;
-        color: #1e293b;
+        color: var(--erp-text-main, #0f172a);
     }
 
     .status-badge {
         font-size: 11px;
-        font-weight: 700;
-        padding: 4px 10px;
-        border-radius: 12px;
+        font-weight: 600;
+        padding: 2px 8px;
+        border-radius: 4px;
         text-transform: uppercase;
+        letter-spacing: 0.3px;
     }
 
     .status-completed {
         background-color: #dcfce7;
         color: #15803d;
+        border: 1px solid #bbf7d0;
     }
 
     .status-current {
-        background-color: #dbeafe;
-        color: #1d4ed8;
-        animation: pulse-border 2s infinite;
+        background-color: #e0e7ff;
+        color: #4338ca;
+        border: 1px solid #c7d2fe;
     }
 
     .status-failed {
         background-color: #fee2e2;
         color: #b91c1c;
+        border: 1px solid #fecaca;
     }
 
     .status-notstarted {
         background-color: #f1f5f9;
         color: #64748b;
+        border: 1px solid #e2e8f0;
     }
 
     @keyframes pulse-border {
@@ -336,15 +326,16 @@ if ((int) ($usertype ?? 0) !== 1 && (int) ($usertype ?? 0) !== 2) {
     }
 
     .subject-icon {
-        font-size: 18px;
-        color: #3b82f6;
-        background: #eff6ff;
-        width: 36px;
-        height: 36px;
+        font-size: 16px;
+        color: var(--erp-primary, #423cbc);
+        background: var(--erp-primary-light, #eef2ff);
+        width: 34px;
+        height: 34px;
         display: flex;
         align-items: center;
         justify-content: center;
-        border-radius: 8px;
+        border-radius: 4px;
+        border: 1px solid var(--erp-primary-border, #c7d2fe);
     }
 
     .subject-details {
@@ -359,7 +350,7 @@ if ((int) ($usertype ?? 0) !== 1 && (int) ($usertype ?? 0) !== 2) {
     }
 
     .subject-title {
-        font-size: 15px;
+        font-size: 14px;
         font-weight: 700;
         color: #0f172a;
         margin-top: 2px;
@@ -399,7 +390,7 @@ if ((int) ($usertype ?? 0) !== 1 && (int) ($usertype ?? 0) !== 2) {
         margin-top: 12px;
         font-size: 12px;
         border: 1px solid #e2e8f0;
-        border-radius: 8px;
+        border-radius: 4px;
         overflow: hidden;
     }
 
@@ -440,10 +431,10 @@ if ((int) ($usertype ?? 0) !== 1 && (int) ($usertype ?? 0) !== 2) {
     }
 
     .spinner {
-        width: 45px;
-        height: 45px;
-        border: 4px solid #f3f3f3;
-        border-top: 4px solid #3b82f6;
+        width: 40px;
+        height: 40px;
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid var(--erp-primary, #423cbc);
         border-radius: 50%;
         animation: spin 1s linear infinite;
         margin: 0 auto 12px;
@@ -458,9 +449,9 @@ if ((int) ($usertype ?? 0) !== 1 && (int) ($usertype ?? 0) !== 2) {
         background-color: #fef2f2;
         border: 1px solid #fecaca;
         color: #991b1b;
-        padding: 16px;
-        border-radius: 12px;
-        margin-bottom: 24px;
+        padding: 14px 16px;
+        border-radius: 4px;
+        margin-bottom: 20px;
         display: none;
         align-items: center;
         gap: 12px;
@@ -472,7 +463,7 @@ if ((int) ($usertype ?? 0) !== 1 && (int) ($usertype ?? 0) !== 2) {
         display: none;
         text-align: center;
         margin-bottom: 24px;
-        border-bottom: 2px double #1e3a8a;
+        border-bottom: 2px double var(--erp-primary, #423cbc);
         padding-bottom: 16px;
     }
 
@@ -480,7 +471,7 @@ if ((int) ($usertype ?? 0) !== 1 && (int) ($usertype ?? 0) !== 2) {
         margin: 0;
         font-size: 24px;
         font-weight: 800;
-        color: #1e3a8a;
+        color: var(--erp-primary, #423cbc);
     }
 
     .print-logo-section p {
@@ -600,9 +591,10 @@ if ((int) ($usertype ?? 0) !== 1 && (int) ($usertype ?? 0) !== 2) {
     <section class="content monitor-container">
         <!-- Print Letterhead / Header -->
         <div class="print-logo-section">
+            <img src="images/tcet_logo.png" alt="TCET Logo" style="height: 60px; margin-bottom: 8px; object-fit: contain;">
             <h2>THAKUR COLLEGE OF ENGINEERING & TECHNOLOGY</h2>
             <p>An Autonomous College Affiliated to University of Mumbai</p>
-            <p style="font-size: 16px; margin-top: 10px; color: #1e3a8a; text-transform: uppercase;">
+            <p style="font-size: 15px; margin-top: 8px; color: var(--erp-primary, #423cbc); text-transform: uppercase; font-weight: 700;">
                 Student Domain Specialization Progress Report
             </p>
         </div>
@@ -610,11 +602,8 @@ if ((int) ($usertype ?? 0) !== 1 && (int) ($usertype ?? 0) !== 2) {
         <!-- Search Bar Card -->
         <div class="search-card">
             <div class="search-title">
-                <i class="fa fa-search text-blue"></i> Student Profile
+                <i class="fa fa-search" style="color: var(--erp-primary, #423cbc);"></i> Student Profile
             </div>
-            <!--<p class="text-muted" style="margin-top: -8px; margin-bottom: 16px;">
-                Enter a student's Registration Number or Enrollment Number to track their domain courses and progress report across all semesters.
-            </p>-->
             <form id="searchForm" onsubmit="event.preventDefault(); searchStudent();">
                 <div class="search-input-group">
                     <input type="text" id="regNoInput" class="search-input" placeholder="Search by Reg No." required autocomplete="off">
@@ -693,7 +682,7 @@ if ((int) ($usertype ?? 0) !== 1 && (int) ($usertype ?? 0) !== 2) {
                 </div>
                 <div class="detail-item">
                     <span class="detail-label">Aggregate CGPA</span>
-                    <span class="detail-value" id="profileCgpa" style="font-size: 18px; color: #1e3a8a;">9.23</span>
+                    <span class="detail-value" id="profileCgpa" style="font-size: 16px; color: var(--erp-primary, #423cbc); font-weight: 700;">9.23</span>
                 </div>
             </div>
 
@@ -945,7 +934,7 @@ if ((int) ($usertype ?? 0) !== 1 && (int) ($usertype ?? 0) !== 2) {
                                 '</div>' +
                                 '<div class="meta-col" style="text-align: right;">' +
                                     '<span class="meta-lbl">Progress</span>' +
-                                    '<span class="meta-val" style="color: ' + (sem.status === 'Completed' ? '#166534' : (sem.status === 'Current Semester' ? '#1d4ed8' : '#64748b')) + '">' +
+                                    '<span class="meta-val" style="color: ' + (sem.status === 'Completed' ? '#166534' : (sem.status === 'Current Semester' ? '#423cbc' : '#64748b')) + '">' +
                                         sem.status +
                                     '</span>' +
                                 '</div>' +

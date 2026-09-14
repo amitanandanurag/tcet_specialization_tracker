@@ -43,235 +43,279 @@ if ($student_id > 0) {
 }
 
 if (!$student) {
-    echo '<div class="alert alert-danger">Student not found!</div>';
+    echo '<div class="content-wrapper"><section class="content"><div class="alert alert-danger">Student admission record not found.</div></section></div>';
+    include "header/footer.php";
     exit;
 }
 
-$statusText = 'Pending';
+$statusText = 'Pending Approval';
 $statusClass = 'label-warning';
 if ((int)$student['status'] === 1) {
-    $statusText = 'Approved';
+    $statusText = 'Approved / Active';
     $statusClass = 'label-success';
 }
 
-function formatValue($value) {
-    return !empty($value) ? htmlspecialchars($value) : 'N/A';
+if (!function_exists('formatValue')) {
+    function formatValue($value) {
+        $val = trim((string)($value ?? ''));
+        return $val !== '' ? htmlspecialchars($val) : 'N/A';
+    }
 }
 ?>
 
-<style>
-    .detail-section {
-        background: white;
-        border-left: 4px solid #2563eb;
-        padding: 20px;
-        margin-bottom: 20px;
-        border-radius: 4px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-
-    .detail-section h3 {
-        color: #2563eb;
-        margin-top: 0;
-        margin-bottom: 15px;
-        font-weight: 600;
-        font-size: 16px;
-    }
-
-    .detail-row {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: 20px;
-        margin-bottom: 15px;
-    }
-
-    .detail-item {
-        background: #f8f9fa;
-        padding: 12px;
-        border-radius: 6px;
-    }
-
-    .detail-label {
-        font-size: 12px;
-        color: #666;
-        text-transform: uppercase;
-        font-weight: 600;
-        margin-bottom: 4px;
-    }
-
-    .detail-value {
-        font-size: 14px;
-        color: #2f3b45;
-        font-weight: 500;
-    }
-
-    .btn-group-custom {
-        margin-bottom: 20px;
-    }
-
-    .btn-group-custom .btn {
-        margin-right: 10px;
-    }
-
-    .upload-box {
-        background: white;
-        border: 2px dashed #cbd5e1;
-        border-radius: 8px;
-        padding: 15px;
-        margin: 10px 0;
-        text-align: center;
-    }
-
-    .upload-box a {
-        display: inline-block;
-        color: #2563eb;
-        text-decoration: none;
-        margin: 5px;
-        padding: 8px 12px;
-        background: #eff6ff;
-        border-radius: 4px;
-        transition: all 0.2s;
-    }
-
-    .upload-box a:hover {
-        background: #2563eb;
-        color: white;
-    }
-</style>
-
 <div class="content-wrapper">
+    <!-- Page Header -->
     <section class="content-header">
-        <h1><i class="fa fa-file-alt"></i> Student Details</h1>
+        <h1>
+            Student Admission Details
+            <small>Institutional Student Record #<?= $student_id ?></small>
+        </h1>
         <ol class="breadcrumb">
             <li><a href="index.php"><i class="fa fa-dashboard"></i> Home</a></li>
             <li><a href="student_admission.php">Admission</a></li>
-            <li class="active">Student #<?php echo $student_id; ?></li>
+            <li class="active">Student #<?= $student_id ?></li>
         </ol>
     </section>
 
+    <!-- Main Content -->
     <section class="content">
-        <div class="row">
-            <div class="col-md-12">
-                <div class="btn-group-custom">
-                    <a href="student_admission.php?edit=1&id=<?php echo $student_id; ?>" class="btn btn-primary"><i class="fa fa-edit"></i> Edit Details</a>
-                    <span class="label <?php echo $statusClass; ?>" style="padding: 8px 12px; font-size: 12px;">
-                        <?php echo $statusText; ?>
-                    </span>
-                </div>
+        <!-- Top Action & Status Strip -->
+        <div style="margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; gap: 8px;">
+                <a href="student_admission.php?edit=1&id=<?= $student_id ?>" class="btn-erp-primary">
+                    <i class="fa fa-edit"></i> Edit Details / Promote
+                </a>
+                <a href="student-info.php" class="btn-erp-secondary">
+                    <i class="fa fa-arrow-left"></i> Back to Student List
+                </a>
+            </div>
+            <div>
+                <span class="label <?= $statusClass ?>" style="padding: 4px 10px; font-size: 12px;">
+                    <?= $statusText ?>
+                </span>
+            </div>
+        </div>
 
-                <!-- Official Details -->
-                <div class="detail-section">
-                    <h3><i class="fa fa-building"></i> Official Details</h3>
-                    <div class="detail-row">
-                        <div class="detail-item">
-                            <div class="detail-label">Academic Year</div>
-                            <div class="detail-value"><?php echo formatValue($student['session_name']); ?></div>
-                        </div>
-                        <div class="detail-item">
-                            <div class="detail-label">ERP ID (Registration No.)</div>
-                            <div class="detail-value"><?php echo formatValue($student['registration_no']); ?></div>
-                        </div>
-                        <div class="detail-item">
-                            <div class="detail-label">Roll No.</div>
-                            <div class="detail-value"><?php echo formatValue($student['roll_no']); ?></div>
-                        </div>
-                        <div class="detail-item">
-                            <div class="detail-label">Class</div>
-                            <div class="detail-value"><?php echo formatValue($student['class_name']); ?></div>
-                        </div>
-                        <div class="detail-item">
-                            <div class="detail-label">Semester</div>
-                            <div class="detail-value"><?php echo formatValue($student['semester_name']); ?></div>
-                        </div>
-                        <div class="detail-item">
-                            <div class="detail-label">Division</div>
-                            <div class="detail-value"><?php echo formatValue($student['division_name']); ?></div>
-                        </div>
-                        <div class="detail-item">
-                            <div class="detail-label">Graduating Year</div>
-                            <div class="detail-value"><?php echo formatValue($student['grad_year']); ?></div>
-                        </div>
-                    </div>
+        <!-- Official Details Card -->
+        <div class="erp-detail-card">
+            <div class="erp-detail-card-header">
+                <i class="fa fa-building"></i> Official Enrollment Information
+            </div>
+            <div class="erp-detail-grid">
+                <div class="erp-detail-item">
+                    <div class="erp-detail-label">Academic Year</div>
+                    <div class="erp-detail-value"><?= formatValue($student['session_name']) ?></div>
                 </div>
-
-                <!-- Academic Details -->
-                <div class="detail-section">
-                    <h3><i class="fa fa-graduation-cap"></i> Academic Details</h3>
-                    <div class="detail-row">
-                        <div class="detail-item">
-                            <div class="detail-label">Department</div>
-                            <div class="detail-value"><?php echo formatValue($student['department_name']); ?></div>
-                        </div>
-                        <div class="detail-item">
-                            <div class="detail-label">Specialization</div>
-                            <div class="detail-value"><?php echo formatValue($student['specialization_name']); ?></div>
-                        </div>
-                        <div class="detail-item">
-                            <div class="detail-label">CGPA</div>
-                            <div class="detail-value"><?php echo formatValue($student['cgpa']); ?></div>
-                        </div>
-                        <div class="detail-item">
-                            <div class="detail-label">Specialization Subject</div>
-                            <div class="detail-value"><?php echo formatValue($student['subject_name'] ?: ($student['history_subject_name'] ?? '')); ?></div>
-                        </div>
-                        <div class="detail-item">
-                            <div class="detail-label">Assigned Mentor</div>
-                            <div class="detail-value">
-                                <?php 
-                                    $resolvedMentor = $db_handle->getResolvedMentorForStudent($student_id);
-                                    echo $resolvedMentor ? htmlspecialchars($resolvedMentor['mentor_name']) : 'Not Assigned';
-                                ?>
-                            </div>
-                        </div>
-                    </div>
+                <div class="erp-detail-item">
+                    <div class="erp-detail-label">ERP ID / Registration No</div>
+                    <div class="erp-detail-value text-mono"><?= formatValue($student['registration_no']) ?></div>
                 </div>
-
-                <!-- Personal Details -->
-                <div class="detail-section">
-                    <h3><i class="fa fa-user"></i> Personal Details</h3>
-                    <div class="detail-row">
-                        <div class="detail-item">
-                            <div class="detail-label">Full Name</div>
-                            <div class="detail-value"><?php echo formatValue($student['fname']); ?></div>
-                        </div>
-                        <div class="detail-item">
-                            <div class="detail-label">Email</div>
-                            <div class="detail-value"><?php echo formatValue($student['email']); ?></div>
-                        </div>
-                        <div class="detail-item">
-                            <div class="detail-label">Mobile</div>
-                            <div class="detail-value"><?php echo formatValue($student['mobile']); ?></div>
-                        </div>
-                        <div class="detail-item">
-                            <div class="detail-label">Submitted On</div>
-                            <div class="detail-value"><?php echo formatValue(date('d M Y H:i', strtotime($student['created_at']))); ?></div>
-                        </div>
-                    </div>
+                <div class="erp-detail-item">
+                    <div class="erp-detail-label">Roll Number</div>
+                    <div class="erp-detail-value text-mono"><?= formatValue($student['roll_no']) ?></div>
                 </div>
-
-                <!-- Uploaded Documents -->
-                <div class="detail-section">
-                    <h3><i class="fa fa-file-pdf-o"></i> Uploaded Documents</h3>
-                    <?php if (!empty($uploadedFiles)): ?>
-                        <div class="upload-box">
-                            <strong>Uploaded Marksheets:</strong>
-                            <br><br>
-                            <?php foreach ($uploadedFiles as $file): ?>
-                                <?php
-                                $filePath = "uploads/marklists/" . trim($file);
-                                if (file_exists($filePath)):
-                                ?>
-                                    <a href="<?php echo $filePath; ?>" target="_blank" download>
-                                        <i class="fa fa-download"></i> <?php echo htmlspecialchars(trim($file)); ?>
-                                    </a>
-                                <?php endif; ?>
-                            <?php endforeach; ?>
-                        </div>
-                    <?php else: ?>
-                        <p style="color: #999; text-align: center;">No documents uploaded</p>
-                    <?php endif; ?>
+                <div class="erp-detail-item">
+                    <div class="erp-detail-label">Class & Division</div>
+                    <div class="erp-detail-value"><?= formatValue($student['class_name']) ?> &bull; Div <?= formatValue($student['division_name']) ?></div>
+                </div>
+                <div class="erp-detail-item">
+                    <div class="erp-detail-label">Current Semester</div>
+                    <div class="erp-detail-value"><?= formatValue($student['semester_name']) ?></div>
+                </div>
+                <div class="erp-detail-item">
+                    <div class="erp-detail-label">Graduating Year</div>
+                    <div class="erp-detail-value"><?= formatValue($student['grad_year']) ?></div>
                 </div>
             </div>
         </div>
+
+        <!-- Academic Details Card -->
+        <div class="erp-detail-card">
+            <div class="erp-detail-card-header">
+                <i class="fa fa-graduation-cap"></i> Academic & Specialization Track
+            </div>
+            <div class="erp-detail-grid">
+                <div class="erp-detail-item">
+                    <div class="erp-detail-label">Department</div>
+                    <div class="erp-detail-value"><?= formatValue($student['department_name']) ?></div>
+                </div>
+                <div class="erp-detail-item">
+                    <div class="erp-detail-label">Specialization</div>
+                    <div class="erp-detail-value"><?= formatValue($student['specialization_name']) ?></div>
+                </div>
+                <div class="erp-detail-item">
+                    <div class="erp-detail-label">Enrolled Subject</div>
+                    <div class="erp-detail-value"><?= formatValue($student['subject_name'] ?: ($student['history_subject_name'] ?? '')) ?></div>
+                </div>
+                <div class="erp-detail-item">
+                    <div class="erp-detail-label">Assigned Faculty Mentor</div>
+                    <div class="erp-detail-value">
+                        <?php 
+                            $resolvedMentor = $db_handle->getResolvedMentorForStudent($student_id);
+                            if ($resolvedMentor && !empty($resolvedMentor['mentor_name'])) {
+                                echo '<span class="erp-mentor-faculty"><i class="fa fa-user"></i> ' . htmlspecialchars($resolvedMentor['mentor_name']) . '</span>';
+                            } else {
+                                echo '<span class="erp-mentor-unassigned">Not Assigned</span>';
+                            }
+                        ?>
+                    </div>
+                </div>
+                <div class="erp-detail-item">
+                    <div class="erp-detail-label">Aggregate CGPA</div>
+                    <div class="erp-detail-value"><?= formatValue($student['cgpa']) ?></div>
+                </div>
+                <div class="erp-detail-item">
+                    <div class="erp-detail-label">Registration Date</div>
+                    <div class="erp-detail-value"><?= !empty($student['created_at']) ? date('d-m-Y H:i', strtotime($student['created_at'])) : 'N/A' ?></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Personal Details Card -->
+        <div class="erp-detail-card">
+            <div class="erp-detail-card-header">
+                <i class="fa fa-user"></i> Personal & Contact Details
+            </div>
+            <div class="erp-detail-grid">
+                <div class="erp-detail-item">
+                    <div class="erp-detail-label">Full Name</div>
+                    <div class="erp-detail-value"><?= formatValue($student['fname']) ?></div>
+                </div>
+                <div class="erp-detail-item">
+                    <div class="erp-detail-label">Email Address</div>
+                    <div class="erp-detail-value"><?= !empty($student['email']) ? '<a href="mailto:' . htmlspecialchars($student['email']) . '">' . htmlspecialchars($student['email']) . '</a>' : 'N/A' ?></div>
+                </div>
+                <div class="erp-detail-item">
+                    <div class="erp-detail-label">Mobile Number</div>
+                    <div class="erp-detail-value"><?= formatValue($student['mobile']) ?></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Academic Progression Journey Milestone Strip -->
+        <?php
+        $academicHistory = $db_handle->getStudentAcademicHistory($student_id);
+        $currentSemNum = intval($student['current_semester_id'] ?? 5);
+        $allSemesters = [3 => 'SEM III', 4 => 'SEM IV', 5 => 'SEM V', 6 => 'SEM VI', 7 => 'SEM VII', 8 => 'SEM VIII'];
+        $historyBySem = [];
+        foreach ($academicHistory as $h) {
+            $historyBySem[intval($h['semester_id'])] = $h;
+        }
+        ?>
+        <div class="erp-detail-card">
+            <div class="erp-detail-card-header" style="justify-content: space-between;">
+                <div>
+                    <i class="fa fa-road"></i> Academic Progression Journey
+                </div>
+                <span class="text-muted" style="font-size: 11px;">Current: <strong><?= htmlspecialchars($student['semester_name'] ?? ('Semester ' . $currentSemNum)) ?></strong></span>
+            </div>
+            <div class="erp-progression-track">
+                <?php foreach ($allSemesters as $semNum => $semLabel): 
+                    $isPast = $semNum < $currentSemNum;
+                    $isCurrent = $semNum === $currentSemNum;
+                    $isFuture = $semNum > $currentSemNum;
+                    $hasData = isset($historyBySem[$semNum]);
+                    
+                    $stepClass = $isCurrent ? 'is-current' : ($isPast ? 'is-completed' : '');
+                    $stepBadge = $isCurrent ? 'Current' : ($isPast ? 'Completed' : 'Upcoming');
+                    $stepBadgeClass = $isCurrent ? 'label-primary' : ($isPast ? 'label-success' : 'label-default');
+                ?>
+                    <div class="erp-progression-step <?= $stepClass ?>">
+                        <div class="erp-progression-step-title"><?= $semLabel ?></div>
+                        <span class="label <?= $stepBadgeClass ?>" style="font-size: 9px; padding: 1px 4px;"><?= $stepBadge ?></span>
+                        <span class="erp-progression-step-subject" title="<?= htmlspecialchars($hasData ? ($historyBySem[$semNum]['subject_name'] ?: 'Enrolled') : '') ?>">
+                            <?php if ($hasData): ?>
+                                <?= htmlspecialchars($historyBySem[$semNum]['subject_name'] ?: 'Enrolled') ?>
+                            <?php else: ?>
+                                <?= $isFuture ? 'Future Stage' : 'Not Enrolled' ?>
+                            <?php endif; ?>
+                        </span>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+
+        <!-- Semester & Specialization History Ledger -->
+        <div class="box box-solid">
+            <div class="box-header with-border">
+                <h3 class="box-title"><i class="fa fa-history text-muted"></i> Semester & Specialization History Ledger</h3>
+            </div>
+            <div class="box-body table-responsive no-padding">
+                <table class="table table-bordered table-hover table-striped">
+                    <thead>
+                        <tr>
+                            <th>Semester</th>
+                            <th>Academic Year</th>
+                            <th>Division</th>
+                            <th>Roll No</th>
+                            <th>Specialization</th>
+                            <th>Enrolled Subject</th>
+                            <th>Assigned Mentor</th>
+                            <th class="col-num">CGPA</th>
+                            <th class="col-center">Status</th>
+                            <th>Enrolled Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (!empty($academicHistory)): ?>
+                            <?php foreach ($academicHistory as $hrow): 
+                                $isCurrentRow = intval($hrow['semester_id']) === $currentSemNum;
+                                $statusBadge = ($hrow['history_status'] === 'Active' || $isCurrentRow) ? 'label-primary' : 'label-success';
+                                $statusText = ($hrow['history_status'] === 'Active' || $isCurrentRow) ? 'Active (Current)' : 'Completed';
+                            ?>
+                                <tr class="<?= $isCurrentRow ? 'info' : '' ?>">
+                                    <td>
+                                        <strong><?= htmlspecialchars($hrow['semester_name']) ?></strong>
+                                    </td>
+                                    <td><?= htmlspecialchars($hrow['academic_year_name']) ?></td>
+                                    <td><?= htmlspecialchars($hrow['division_name']) ?></td>
+                                    <td><span class="text-mono"><?= htmlspecialchars($hrow['roll_no'] ?: ($student['roll_no'] ?? 'N/A')) ?></span></td>
+                                    <td><?= htmlspecialchars($hrow['specialization_name']) ?></td>
+                                    <td><strong><?= htmlspecialchars($hrow['subject_name']) ?></strong></td>
+                                    <td>
+                                        <?php if ($hrow['mentor_name'] && $hrow['mentor_name'] !== 'Not Assigned'): ?>
+                                            <span class="erp-mentor-faculty">
+                                                <i class="fa fa-user"></i> <?= htmlspecialchars($hrow['mentor_name']) ?>
+                                            </span>
+                                        <?php else: ?>
+                                            <span class="erp-mentor-unassigned">Not Assigned</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td class="col-num font-weight-bold"><?= htmlspecialchars($hrow['cgpa'] ?? 'N/A') ?></td>
+                                    <td class="col-center"><span class="label <?= $statusBadge ?>"><?= $statusText ?></span></td>
+                                    <td><span class="text-muted"><?= htmlspecialchars($hrow['enrolled_at']) ?></span></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <tr>
+                                <td colspan="10" class="text-center text-muted" style="padding: 20px;">No historical semester registrations recorded for this student.</td>
+                            </tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Uploaded Documents -->
+        <?php if (!empty($uploadedFiles)): ?>
+        <div class="erp-detail-card">
+            <div class="erp-detail-card-header">
+                <i class="fa fa-file-pdf-o"></i> Uploaded Documents & Marksheets
+            </div>
+            <div style="padding: 14px;">
+                <?php foreach ($uploadedFiles as $file): ?>
+                    <?php
+                    $filePath = "uploads/marklists/" . trim($file);
+                    if (file_exists($filePath)):
+                    ?>
+                        <a href="<?= $filePath ?>" target="_blank" download class="btn btn-default btn-sm" style="margin-right: 6px; margin-bottom: 6px;">
+                            <i class="fa fa-download text-primary"></i> <?= htmlspecialchars(trim($file)) ?>
+                        </a>
+                    <?php endif; ?>
+                <?php endforeach; ?>
+            </div>
+        </div>
+        <?php endif; ?>
     </section>
 </div>
 

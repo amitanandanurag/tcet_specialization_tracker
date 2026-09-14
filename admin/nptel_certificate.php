@@ -326,7 +326,7 @@ if ($cancelRes) {
                             </div>
                         </div>
                         <div class="box-footer">
-                            <button type="submit" class="btn btn-primary"><i class="fa fa-save"></i> Submit Result</button>
+                            <button type="submit" class="btn-erp-primary"><i class="fa fa-save"></i> Submit Result</button>
                         </div>
                     </form>
                 </div>

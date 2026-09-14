@@ -15,120 +15,77 @@
 
 <style>
   .wrapper2 {
-    border-radius: 12px;
+    border-radius: var(--erp-radius-md, 6px);
     overflow: hidden;
   }
 
   .page-header-box {
-    background: #dde4f5;
-    padding: 5px 5px;
-    border-radius: 5px;
-    margin-bottom: 10px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    background: #ffffff;
+    padding: 14px 18px;
+    border-radius: var(--erp-radius-sm, 4px);
+    margin-bottom: 16px;
+    border: 1px solid var(--erp-border, #e2e8f0);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
   }
 
   .page-header-box h1 {
     margin: 0;
-    color: #060608;
-  }
-
-  table thead th {
-    background: #1e3a8a !important;
-    padding: 10px;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--erp-text-main, #0f172a);
   }
 
   select.form-control {
-    border-radius: 8px;
-    border: 1px solid #3b82f6;
-    height: 40px;
+    border-radius: var(--erp-radius-sm, 4px);
+    border: 1px solid var(--erp-border-dark, #cbd5e1);
+    height: 36px;
+    font-size: 13px;
   }
 
   #resetFilters {
-    background: #ea0e20;
-    color: #fff;
-    border: none;
-    padding: 8px 14px;
-    border-radius: 6px;
+    background: #ffffff;
+    color: var(--erp-text-secondary, #475569);
+    border: 1px solid var(--erp-border-dark, #cbd5e1);
+    padding: 7px 14px;
+    border-radius: var(--erp-radius-sm, 4px);
     cursor: pointer;
-    font-weight: 500;
-    transition: 0.3s;
+    font-weight: 600;
+    font-size: 12px;
+    transition: 0.15s;
   }
 
-  #myTable thead th {
-    background: #2563eb;
+  #resetFilters:hover {
+    background: #f8fafc;
+    color: var(--erp-text-main, #0f172a);
+  }
+
+  #exportData {
+    background: var(--erp-primary, #423cbc);
     color: #fff;
+    border: 1px solid var(--erp-primary-hover, #352fa1);
+    padding: 7px 14px;
+    border-radius: var(--erp-radius-sm, 4px);
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 12px;
+    transition: 0.15s;
   }
 
-  #myTable tbody tr:hover {
-    background: #e0f2fe;
-  }
-
-  .table thead tr:first-child {
-    position: sticky;
-    top: 0;
-    z-index: 5;
+  #exportData:hover {
+    background: var(--erp-primary-hover, #352fa1);
   }
 
   .dataTables_wrapper .dataTables_paginate .paginate_button.current {
-    background: #2563eb !important;
+    background: var(--erp-primary, #423cbc) !important;
     color: #fff !important;
+    border-color: var(--erp-primary, #423cbc) !important;
   }
 
   .skeleton {
     height: 15px;
-    background: linear-gradient(90deg, #eee, #ddd, #eee);
+    background: #f1f5f9;
     margin: 8px 0;
     border-radius: 4px;
-    animation: shimmer 1.5s infinite;
-  }
-
-  @keyframes shimmer {
-    0% {
-      background-position: -200px 0;
-    }
-
-    100% {
-      background-position: 200px 0;
-    }
-  }
-
-  @media (max-width:768px) {
-    table thead tr {
-      display: flex;
-      flex-direction: column;
-    }
-
-    table thead th {
-      width: 100%;
-    }
-
-
-    #resetFilters {
-      width: 100%;
-      margin-top: 5px;
-    }
-
-    #myTable {
-      display: block;
-      overflow-x: auto;
-      white-space: nowrap;
-    }
-
-  }
-
-  #exportData {
-    background: #2563eb;
-    color: #fff;
-    border: none;
-    padding: 8px 14px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-weight: 500;
-    transition: 0.3s;
-  }
-
-  #exportData:hover {
-    background: #1e40af;
   }
 </style>
 <div class="content-wrapper">

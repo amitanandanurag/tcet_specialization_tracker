@@ -631,53 +631,96 @@ if ($menuStmt) {
 <ul class="sidebar-menu" id="sidebar-dynamic-menu">
 <?php
 $sidebarHomeRoute = ((int) ($usertype ?? 0) === 5) ? 'student_dashboard.php' : 'index.php';
-$sidebarHomeLabel = ((int) ($usertype ?? 0) === 5) ? 'DASHBOARD' : strtoupper((string) ($role_name ?? 'Dashboard'));
-$sidebarHomeIcon = ((int) ($usertype ?? 0) === 5) ? 'fa fa-dashboard' : 'fa fa-user';
+$sidebarHomeLabel = ((int) ($usertype ?? 0) === 5) ? 'Dashboard' : 'Dashboard';
+$sidebarHomeIcon = ((int) ($usertype ?? 0) === 5) ? 'fa fa-dashboard' : 'fa fa-th-large';
+$currentScript = basename($_SERVER['PHP_SELF'] ?? '');
 ?>
-<li class="active"><a href="<?php echo htmlspecialchars($sidebarHomeRoute); ?>"><i class="<?php echo htmlspecialchars($sidebarHomeIcon); ?>"></i><span><?php echo htmlspecialchars($sidebarHomeLabel); ?></span></a></li>
 
-<?php foreach ($menuTree as $menuId => $menuData) {
+<li class="header">MAIN</li>
+<li class="<?php echo ($currentScript === 'index.php' || $currentScript === 'student_dashboard.php') ? 'active' : ''; ?>">
+	<a href="<?php echo htmlspecialchars($sidebarHomeRoute); ?>">
+		<i class="<?php echo htmlspecialchars($sidebarHomeIcon); ?>"></i>
+		<span><?php echo htmlspecialchars($sidebarHomeLabel); ?></span>
+	</a>
+</li>
+
+<?php
+$renderedHeaders = array();
+foreach ($menuTree as $menuId => $menuData) {
 	$menuName = trim((string) $menuData['menu_name']);
+	$menuLower = strtolower($menuName);
 	$menuIcon = trim((string) $menuData['menu_icon']);
 	if ($menuIcon === '') {
-		$menuIcon = 'fa fa-folder';
+		$menuIcon = 'fa fa-folder-o';
+	}
+
+	// Institutional section grouping
+	$sectionGroup = '';
+	if (in_array($menuLower, array('students', 'student', 'coordinator', 'academics', 'academic'), true)) {
+		$sectionGroup = 'ACADEMIC';
+	} elseif (in_array($menuLower, array('admin', 'mentor', 'management'), true)) {
+		$sectionGroup = 'MANAGEMENT';
+	} elseif (in_array($menuLower, array('settings', 'system'), true)) {
+		$sectionGroup = 'SYSTEM';
+	}
+
+	if ($sectionGroup !== '' && !isset($renderedHeaders[$sectionGroup])) {
+		echo '<li class="header">' . htmlspecialchars($sectionGroup) . '</li>';
+		$renderedHeaders[$sectionGroup] = true;
+	}
+
+	// Check if any submenu is active
+	$isMenuActive = false;
+	if (!empty($menuData['submenus'])) {
+		foreach ($menuData['submenus'] as $sub) {
+			$routeBase = basename($sub['sub_menu_route'] ?? '');
+			if ($routeBase !== '' && $routeBase !== '#' && strpos($currentScript, $routeBase) !== false) {
+				$isMenuActive = true;
+				break;
+			}
+		}
 	}
 ?>
-<li class="treeview" data-menu-id="<?php echo $menuId; ?>" id="sidebar-menu-<?php echo $menuId; ?>">
-<a href="#">
-<i class="<?php echo htmlspecialchars($menuIcon); ?>" aria-hidden="true"></i> <span><?php echo strtoupper(htmlspecialchars($menuName)); ?></span>
-<span class="pull-right-container">
-<i class="fa fa-angle-right pull-right"></i>
-</span>
-</a>
-<ul class="treeview-menu" id="sidebar-submenu-<?php echo $menuId; ?>">
-<?php if (!empty($menuData['submenus'])) {
-	foreach ($menuData['submenus'] as $subMenu) {
-		$subId = intval($subMenu['sub_menu_id']);
-		$subName = trim((string) $subMenu['sub_menu_name']);
-		$subRoute = trim((string) ($subMenu['sub_menu_route'] ?? '#'));
-		$subIcon = trim((string) ($subMenu['sub_menu_icon'] ?? 'fa fa-angle-double-right'));
-		if ($subRoute === '') {
-			$subRoute = '#';
-		}
-		if ((int) ($usertype ?? 0) === 5 && $subRoute === 'student_admission.php') {
-			$subRoute = $studentAdmissionRoute;
-		}
-		if ($subIcon === '') {
-			$subIcon = 'fa fa-angle-double-right';
-		}
-?>
-<li data-sub-menu-id="<?php echo $subId; ?>" id="sidebar-submenu-item-<?php echo $subId; ?>"><a href="<?php echo htmlspecialchars($subRoute); ?>"><i class="<?php echo htmlspecialchars($subIcon); ?>"></i><?php echo strtoupper(htmlspecialchars($subName)); ?></a></li>
-<?php }
-} ?>
-</ul>
+<li class="treeview <?php echo $isMenuActive ? 'active' : ''; ?>" data-menu-id="<?php echo $menuId; ?>" id="sidebar-menu-<?php echo $menuId; ?>">
+	<a href="#">
+		<i class="<?php echo htmlspecialchars($menuIcon); ?>" aria-hidden="true"></i>
+		<span><?php echo htmlspecialchars(ucwords(strtolower($menuName))); ?></span>
+		<span class="pull-right-container">
+			<i class="fa fa-angle-right pull-right"></i>
+		</span>
+	</a>
+	<ul class="treeview-menu" id="sidebar-submenu-<?php echo $menuId; ?>" <?php echo $isMenuActive ? 'style="display: block;"' : ''; ?>>
+	<?php if (!empty($menuData['submenus'])) {
+		foreach ($menuData['submenus'] as $subMenu) {
+			$subId = intval($subMenu['sub_menu_id']);
+			$subName = trim((string) $subMenu['sub_menu_name']);
+			$subRoute = trim((string) ($subMenu['sub_menu_route'] ?? '#'));
+			$subIcon = trim((string) ($subMenu['sub_menu_icon'] ?? 'fa fa-circle-o'));
+			if ($subRoute === '') {
+				$subRoute = '#';
+			}
+			if ((int) ($usertype ?? 0) === 5 && $subRoute === 'student_admission.php') {
+				$subRoute = $studentAdmissionRoute;
+			}
+			if ($subIcon === '' || $subIcon === 'fa fa-angle-double-right') {
+				$subIcon = 'fa fa-circle-o';
+			}
+			$isSubActive = ($subRoute !== '#' && basename($subRoute) === $currentScript);
+	?>
+		<li class="<?php echo $isSubActive ? 'active' : ''; ?>" data-sub-menu-id="<?php echo $subId; ?>" id="sidebar-submenu-item-<?php echo $subId; ?>">
+			<a href="<?php echo htmlspecialchars($subRoute); ?>">
+				<i class="<?php echo htmlspecialchars($subIcon); ?>"></i>
+				<span><?php echo htmlspecialchars($subName); ?></span>
+			</a>
+		</li>
+	<?php }
+	} ?>
+	</ul>
 </li>
 <?php } ?>
 
 </ul>
 
 <?php if (empty($menuTree)) { ?>
-<div class="text-muted" style="padding: 10px 15px;">No menu items are assigned to this role.</div>
+<div class="text-muted" style="padding: 10px 15px; font-size: 11px;">No menu items are assigned to this role.</div>
 <?php } ?>
-
-</section>

@@ -95,220 +95,181 @@ foreach ($alloc_raw as $row) {
 }
 $allocations_json = json_encode($allocations);
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport">
-  <title>Allocation Master – Super Admin</title>
- 
-  <!-- Bootstrap 3 -->
-  <link rel="stylesheet" href="bootstrap/css/bootstrap.min.css">
-  <!-- Font Awesome -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.5.0/css/font-awesome.min.css">
-  <!-- Ionicons -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/ionicons/2.0.1/css/ionicons.min.css">
-  <!-- AdminLTE -->
-  <link rel="stylesheet" href="dist/css/AdminLTE.min.css">
-  <link rel="stylesheet" href="dist/css/skins/_all-skins.min.css">
-  <!-- iCheck -->
-  <link rel="stylesheet" href="plugins/iCheck/flat/blue.css">
- 
-  <style>
-    /* ── Menu tree structure ── */
-    .menu-tree { list-style: none; padding: 0; margin: 0; }
-    .menu-tree .tree-item {
-      border: 1px solid #ddd;
-      border-radius: 3px;
-      margin-bottom: 8px;
-      background: #f9f9f9;
-      transition: border-color .15s;
-    }
-    .menu-tree .tree-item.active-menu { border-color: #3c8dbc; background: #eaf4fb; }
-    .tree-header {
-      padding: 10px 14px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      cursor: pointer;
-      user-select: none;
-    }
-    .tree-header:hover { background: rgba(0,0,0,.03); border-radius: 3px 3px 0 0; }
-    .tree-header .menu-label { font-size: 14px; font-weight: 700; flex: 1; color: #333; }
-    .tree-toggle { font-size: 12px; color: #999; transition: transform .2s; }
-    .tree-toggle.open { transform: rotate(90deg); }
- 
-    /* ── Sub-menu grid ── */
-    .sub-menu-grid {
-      display: none;
-      padding: 10px 14px 14px 46px;
-      border-top: 1px solid #e0e0e0;
-      background: #fff;
-      grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-      gap: 8px;
-    }
-    .sub-menu-grid.open { display: grid; }
-    .sub-item {
-      border: 1px solid #ddd;
-      border-radius: 3px;
-      padding: 8px 12px;
-      background: #f9f9f9;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 13px;
-      transition: border-color .15s, background .15s;
-    }
-    .sub-item.active-sub { border-color: #00c0ef; background: #e8f7fd; }
- 
-    /* ── Step label ── */
-    .step-label {
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: .08em;
-      color: #3c8dbc;
-      margin-bottom: 8px;
-    }
- 
-    /* ── Info note ── */
-    .alloc-info { font-size: 12px; color: #777; margin-top: 10px; }
-    .alloc-info i { color: #3c8dbc; margin-right: 4px; }
-  </style>
-</head>
-<body class="skin-blue sidebar-mini">
- 
-<div class="wrapper">
- 
- 
-  <!-- ══ CONTENT WRAPPER ══ -->
-  <div class="content-wrapper">
- 
-    <!-- Page Header -->
-    <section class="content-header">
-      <h1>Allocation Master <small>Assign menus to roles</small></h1>
-      <ol class="breadcrumb">
-        <li><a href="#"><i class="fa fa-home"></i> Home</a></li>
-        <li>Super Admin</li>
-        <li class="active">Allocation Master</li>
-      </ol>
-    </section>
- 
-    <!-- Main Content -->
-    <section class="content">
- 
-      <?php if ($success_msg): ?>
-        <div class="alert alert-success alert-dismissible">
-          <button type="button" class="close" data-dismiss="alert">&times;</button>
-          <i class="fa fa-check"></i> <?= $success_msg ?>
-        </div>
-      <?php endif; ?>
- 
-      <?php if ($error_msg): ?>
-        <div class="alert alert-danger alert-dismissible">
-          <button type="button" class="close" data-dismiss="alert">&times;</button>
-          <i class="fa fa-ban"></i> <?= $error_msg ?>
-        </div>
-      <?php endif; ?>
- 
-      <form method="POST" action="">
- 
-        <div class="row">
-          <div class="col-md-8 col-md-offset-2">
- 
-            <!-- ── Step 1: Role ── -->
-            <div class="box box-primary">
-              <div class="box-header with-border">
-                <h3 class="box-title"><i class="fa fa-users"></i> Step 01 — Select Role</h3>
-              </div>
-              <div class="box-body">
-                <div class="form-group">
-                  <label for="role_select">Role</label>
-                  <select name="role_id" id="role_select" class="form-control" required>
-                    <option value="">— Choose a role —</option>
-                    <?php foreach ($roles as $rid => $rname): ?>
-                      <option value="<?= $rid ?>" <?= (isset($_POST['role_id']) && $_POST['role_id'] == $rid) ? 'selected' : '' ?>>
-                        <?= htmlspecialchars($rname) ?>
-                      </option>
-                    <?php endforeach; ?>
-                  </select>
-                </div>
+<style>
+  /* ── Menu tree structure ── */
+  .menu-tree { list-style: none; padding: 0; margin: 0; }
+  .menu-tree .tree-item {
+    border: 1px solid var(--erp-border, #e2e8f0);
+    border-radius: var(--erp-radius-sm, 4px);
+    margin-bottom: 8px;
+    background: #ffffff;
+    transition: border-color .15s;
+  }
+  .menu-tree .tree-item.active-menu { border-color: var(--erp-primary, #423cbc); background: var(--erp-primary-light, #f5f3ff); }
+  .tree-header {
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .tree-header:hover { background: #f8fafc; border-radius: 4px 4px 0 0; }
+  .tree-header .menu-label { font-size: 13px; font-weight: 700; flex: 1; color: var(--erp-text-main, #0f172a); margin: 0; }
+  .tree-toggle { font-size: 12px; color: #94a3b8; transition: transform .2s; }
+  .tree-toggle.open { transform: rotate(90deg); }
+
+  /* ── Sub-menu grid ── */
+  .sub-menu-grid {
+    display: none;
+    padding: 10px 14px 14px 46px;
+    border-top: 1px solid var(--erp-border, #e2e8f0);
+    background: #f8fafc;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 8px;
+  }
+  .sub-menu-grid.open { display: grid; }
+  .sub-item {
+    border: 1px solid var(--erp-border, #e2e8f0);
+    border-radius: var(--erp-radius-sm, 4px);
+    padding: 8px 12px;
+    background: #ffffff;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    transition: border-color .15s, background .15s;
+  }
+  .sub-item.active-sub { border-color: var(--erp-primary, #423cbc); background: var(--erp-primary-light, #f5f3ff); }
+
+  /* ── Info note ── */
+  .alloc-info { font-size: 12px; color: var(--erp-text-secondary, #64748b); margin-top: 10px; }
+  .alloc-info i { color: var(--erp-primary, #423cbc); margin-right: 4px; }
+</style>
+
+<div class="content-wrapper">
+  <!-- Page Header -->
+  <section class="content-header">
+    <h1><i class="fa fa-sitemap"></i> Allocation Master <small style="font-size:12px; color:#64748b;">Assign menus to roles</small></h1>
+    <ol class="breadcrumb">
+      <li><a href="index.php"><i class="fa fa-dashboard"></i> Home</a></li>
+      <li>Super Admin</li>
+      <li class="active">Allocation Master</li>
+    </ol>
+  </section>
+
+  <!-- Main Content -->
+  <section class="content">
+
+    <?php if ($success_msg): ?>
+      <div class="alert alert-success alert-dismissible" style="border-radius:4px;">
+        <button type="button" class="close" data-dismiss="alert">&times;</button>
+        <i class="fa fa-check"></i> <?= htmlspecialchars($success_msg) ?>
+      </div>
+    <?php endif; ?>
+
+    <?php if ($error_msg): ?>
+      <div class="alert alert-danger alert-dismissible" style="border-radius:4px;">
+        <button type="button" class="close" data-dismiss="alert">&times;</button>
+        <i class="fa fa-ban"></i> <?= htmlspecialchars($error_msg) ?>
+      </div>
+    <?php endif; ?>
+
+    <form method="POST" action="">
+
+      <div class="row">
+        <div class="col-md-8 col-md-offset-2">
+
+          <!-- ── Step 1: Role ── -->
+          <div class="erp-card" style="margin-bottom:20px;">
+            <div class="erp-card-header">
+              <h3 class="erp-card-title"><i class="fa fa-users"></i> Step 01 — Select Role</h3>
+            </div>
+            <div class="erp-card-body">
+              <div class="form-group" style="margin:0;">
+                <label for="role_select" style="font-weight:600; font-size:12px; color:var(--erp-text-secondary);">Role</label>
+                <select name="role_id" id="role_select" class="form-control" required>
+                  <option value="">— Choose a role —</option>
+                  <?php foreach ($roles as $rid => $rname): ?>
+                    <option value="<?= $rid ?>" <?= (isset($_POST['role_id']) && $_POST['role_id'] == $rid) ? 'selected' : '' ?>>
+                      <?= htmlspecialchars($rname) ?>
+                    </option>
+                  <?php endforeach; ?>
+                </select>
               </div>
             </div>
- 
-            <!-- ── Step 2: Menus ── -->
-            <div class="box box-primary" id="menu-container">
-              <div class="box-header with-border">
-                <h3 class="box-title"><i class="fa fa-sitemap"></i> Step 02 — Assign Menus &amp; Sub Menus</h3>
-              </div>
-              <div class="box-body">
- 
-                <ul class="menu-tree">
-                  <?php foreach ($all_menus as $menu): ?>
-                    <?php $mid = $menu['menu_id']; ?>
-                    <li class="tree-item" id="tree_item_<?= $mid ?>">
- 
-                      <div class="tree-header">
-                        <!-- iCheck checkbox (hidden real input, iCheck styles the label) -->
-                        <input type="checkbox"
-                               class="main-check flat-blue"
-                               name="menu_ids[]"
-                               value="<?= $mid ?>"
-                               id="menu_<?= $mid ?>"/>
- 
-                        <label class="menu-label" for="menu_<?= $mid ?>">
-                          <?= htmlspecialchars($menu['menu_name']) ?>
-                        </label>
- 
-                        <?php if (!empty($all_subs[$mid])): ?>
-                          <i class="fa fa-angle-right tree-toggle" id="arrow_<?= $mid ?>"></i>
-                        <?php endif; ?>
-                      </div>
- 
+          </div>
+
+          <!-- ── Step 2: Menus ── -->
+          <div class="erp-card" id="menu-container">
+            <div class="erp-card-header">
+              <h3 class="erp-card-title"><i class="fa fa-sitemap"></i> Step 02 — Assign Menus &amp; Sub Menus</h3>
+            </div>
+            <div class="erp-card-body">
+
+              <ul class="menu-tree">
+                <?php foreach ($all_menus as $menu): ?>
+                  <?php $mid = $menu['menu_id']; ?>
+                  <li class="tree-item" id="tree_item_<?= $mid ?>">
+
+                    <div class="tree-header">
+                      <input type="checkbox"
+                             class="main-check flat-blue"
+                             name="menu_ids[]"
+                             value="<?= $mid ?>"
+                             id="menu_<?= $mid ?>"/>
+
+                      <label class="menu-label" for="menu_<?= $mid ?>">
+                        <?= htmlspecialchars($menu['menu_name']) ?>
+                      </label>
+
                       <?php if (!empty($all_subs[$mid])): ?>
-                        <div class="sub-menu-grid" id="sub_grid_<?= $mid ?>">
-                          <?php foreach ($all_subs[$mid] as $sub): ?>
-                            <div class="sub-item" id="sub_item_<?= $sub['sub_menu_id'] ?>">
-                              <input type="checkbox"
-                                     class="sub-check flat-blue"
-                                     name="sub_menu_ids[]"
-                                     value="<?= $sub['sub_menu_id'] ?>"
-                                     data-menu="<?= $mid ?>"
-                                     id="sub_<?= $sub['sub_menu_id'] ?>"/>
-                              <label for="sub_<?= $sub['sub_menu_id'] ?>" style="margin:0;font-weight:400;cursor:pointer;">
-                                <?= htmlspecialchars($sub['sub_menu_name']) ?>
-                              </label>
-                            </div>
-                          <?php endforeach; ?>
-                        </div>
+                        <i class="fa fa-angle-right tree-toggle" id="arrow_<?= $mid ?>"></i>
                       <?php endif; ?>
- 
-                    </li>
-                  <?php endforeach; ?>
-                </ul>
- 
-              </div><!-- /.box-body -->
- 
-              <div class="box-footer">
-                <button type="submit" class="btn btn-primary btn-lg btn-block">
-                  <i class="fa fa-save"></i> &nbsp;Save Menu Allocation
-                </button>
-                <p class="alloc-info">
-                  <i class="fa fa-info-circle"></i>
-                  Changes apply to all users with the selected role on next login.
-                </p>
-              </div>
-            </div><!-- /.box -->
- 
-          </div><!-- /.col -->
-        </div><!-- /.row -->
- 
-      </form>
- 
-    </section><!-- /.content -->
-  </div><!-- /.content-wrapper -->
- 
-</div><!-- /.wrapper -->
+                    </div>
+
+                    <?php if (!empty($all_subs[$mid])): ?>
+                      <div class="sub-menu-grid" id="sub_grid_<?= $mid ?>">
+                        <?php foreach ($all_subs[$mid] as $sub): ?>
+                          <div class="sub-item" id="sub_item_<?= $sub['sub_menu_id'] ?>">
+                            <input type="checkbox"
+                                   class="sub-check flat-blue"
+                                   name="sub_menu_ids[]"
+                                   value="<?= $sub['sub_menu_id'] ?>"
+                                   data-menu="<?= $mid ?>"
+                                   id="sub_<?= $sub['sub_menu_id'] ?>"/>
+                            <label for="sub_<?= $sub['sub_menu_id'] ?>" style="margin:0;font-weight:400;cursor:pointer;">
+                              <?= htmlspecialchars($sub['sub_menu_name']) ?>
+                            </label>
+                          </div>
+                        <?php endforeach; ?>
+                      </div>
+                    <?php endif; ?>
+
+                  </li>
+                <?php endforeach; ?>
+              </ul>
+
+            </div>
+
+            <div class="erp-card-body" style="border-top: 1px solid var(--erp-border); background:#f8fafc;">
+              <button type="submit" class="btn-erp-primary" style="width:100%; justify-content:center; padding:10px 16px; font-size:14px;">
+                <i class="fa fa-save"></i> Save Menu Allocation
+              </button>
+              <p class="alloc-info" style="margin-bottom:0; text-align:center;">
+                <i class="fa fa-info-circle"></i>
+                Changes apply to all users with the selected role on next login.
+              </p>
+            </div>
+          </div>
+
+        </div><!-- /.col -->
+      </div><!-- /.row -->
+
+    </form>
+
+  </section>
+</div>
  
 <!-- ══ SCRIPTS ══ -->
 <!--<script src="plugins/jQuery/jquery-2.2.3.min.js"></script>

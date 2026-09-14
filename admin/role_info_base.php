@@ -1,52 +1,45 @@
 <?php include "header/header.php"; ?>
-<style>
-  #roleTable th,
-  #roleTable td {
-    vertical-align: middle;
-    text-align: center;
-    white-space: nowrap;
-  }
-  #roleTable thead th {
-    background-color: #0DF387;
-  }
-  #roleTable thead th:nth-last-child(-n+3) {
-    background-color: #F97161;
-  }
-  .role-info-box .box-header {
-    border-bottom: 2px solid #9C27B0 !important;
-  }
-</style>
 <div class="content-wrapper">
   <section class="content-header">
-    <h1><i class="fa fa-list"></i> <?php echo htmlspecialchars($roleLabel); ?> DETAILS</h1>
-    <ol class="breadcrumb">
-      <li><a href="index.php"><i class="fa fa-dashboard"></i> Home</a></li>
-      <li class="active"><?php echo htmlspecialchars($roleLabel); ?> Info</li>
-    </ol>
+    <div class="erp-page-header">
+      <div class="erp-page-title-wrap">
+        <h1 class="erp-page-title"><i class="fa fa-users"></i> <?php echo htmlspecialchars($roleLabel); ?> Directory</h1>
+        <div class="erp-breadcrumb">
+          <a href="index.php"><i class="fa fa-dashboard"></i> Dashboard</a>
+          <span class="sep">&rsaquo;</span>
+          <span class="active-item"><?php echo htmlspecialchars($roleLabel); ?> Management</span>
+        </div>
+      </div>
+      <div>
+        <a href="<?php echo htmlspecialchars($registerFile); ?>" class="btn-erp-primary">
+          <i class="fa fa-user-plus"></i> Register <?php echo htmlspecialchars($roleLabel); ?>
+        </a>
+      </div>
+    </div>
   </section>
 
-  <section class="content">
+  <section class="content" style="padding-top: 0;">
     <div class="row">
       <div class="col-md-12">
-        <div class="box box-primary role-info-box">
-          <div class="box-header with-border">
-            <a href="<?php echo htmlspecialchars($registerFile); ?>" class="btn btn-primary">
-              <i class="fa fa-plus"></i> Register <?php echo htmlspecialchars($roleLabel); ?>
-            </a>
+        <div class="erp-card">
+          <div class="erp-card-header">
+            <div class="erp-card-title-group">
+              <h3 class="erp-card-title"><?php echo htmlspecialchars($roleLabel); ?> Records</h3>
+            </div>
           </div>
-          <div class="box-body table-responsive">
-            <table id="roleTable" class="table table-bordered table-striped text-center" width="100%">
+          <div class="table-responsive" style="padding: 12px 16px;">
+            <table id="roleTable" class="erp-table table table-bordered table-striped" width="100%">
               <thead>
                 <tr>
-                  <th>Sr. No</th>
+                  <th style="width: 50px;" class="col-center">#</th>
                   <th>Name</th>
                   <th>Email</th>
                   <th>Phone</th>
                   <th>Department</th>
                   <th>Role</th>
-                  <th>View</th>
-                  <th>Edit</th>
-                  <th>Remove</th>
+                  <th style="width: 40px;" class="col-center">View</th>
+                  <th style="width: 40px;" class="col-center">Edit</th>
+                  <th style="width: 40px;" class="col-center">Delete</th>
                 </tr>
               </thead>
             </table>

@@ -599,7 +599,7 @@ if (($isEditMode || empty($admissionForm)) && !empty($userid)) {
     <?php } ?>
     <form action="student_process.php" name="myform" method="POST" onsubmit="return validateform()" enctype="multipart/form-data">
       <div class="box box-default" style="padding: 10px;">
-        <div class="box-header with-border" style="border-bottom: 2px solid #9C27B0;">
+        <div class="box-header with-border">
           <h3 class="box-title">OFFICIAL DETAILS:- </h3>
           <div class="box-tools pull-right">
             <button type="button" class="btn btn-box-tool" data-widget="collapse"><i class="fa fa-minus"></i></button>
@@ -922,7 +922,7 @@ if (($isEditMode || empty($admissionForm)) && !empty($userid)) {
 
       <div id="below_eligibility_sections" style="display: none;">
         <div class="box box-default" id="personal_details_section" style="padding: 10px;">
-          <div class="box-header with-border" style="border-bottom: 2px solid #9C27B0;">
+          <div class="box-header with-border">
             <h3 class="box-title">PERSONAL DETAILS:- </h3>
             <div class="box-tools pull-right">
               <button type="button" class="btn btn-box-tool" data-widget="collapse"><i class="fa fa-minus"></i></button>
@@ -963,7 +963,7 @@ if (($isEditMode || empty($admissionForm)) && !empty($userid)) {
         </div>
 
         <div class="box box-default" id="upload_documents_section" style="padding: 10px;">
-          <div class="box-header with-border" style="border-bottom: 2px solid #9C27B0;">
+          <div class="box-header with-border">
             <h3 class="box-title"><i class="fa fa-file-pdf-o"></i> Upload MarkSheets:- </h3>
             <p style="margin: 8px 0 0; color: #999; font-size: 12px;">Upload marksheets for all completed semesters</p>
             <div class="box-tools pull-right">
@@ -975,9 +975,9 @@ if (($isEditMode || empty($admissionForm)) && !empty($userid)) {
               <!-- Dynamic semester uploads will be inserted here -->
             </div>
             <div class="row" style="margin: 30px 0 0 0;">
-              <div style="margin-top: 20px; text-align: center;">
-                <input type="submit" name="save" value="Save Changes" class="btn-submit">
-                <input type="reset" name="reset" value="Reset" class="btn-reset">
+              <div style="margin-top: 20px; text-align: center; display: flex; justify-content: center; gap: 8px;">
+                <button type="submit" name="save" class="btn-erp-primary"><i class="fa fa-save"></i> Save Changes</button>
+                <button type="reset" name="reset" class="btn-erp-secondary">Reset</button>
               </div>
             </div>
           </div>
@@ -990,38 +990,38 @@ if (($isEditMode || empty($admissionForm)) && !empty($userid)) {
 <style>
   .semester-upload-card {
     background: white;
-    border: 2px solid #e0e0e0;
-    border-radius: 8px;
-    padding: 16px;
-    margin-bottom: 14px;
-    transition: all 0.3s ease;
+    border: 1px solid var(--erp-border, #e2e8f0);
+    border-radius: 6px;
+    padding: 14px;
+    margin-bottom: 12px;
+    transition: all 0.2s ease;
   }
 
   .semester-upload-card:hover {
-    border-color: #2563eb;
-    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
+    border-color: var(--erp-primary, #423cbc);
+    box-shadow: 0 2px 8px rgba(66, 60, 188, 0.1);
   }
 
   .semester-upload-card.completed {
-    border-color: #10b981;
+    border-color: #bbf7d0;
     background: #f0fdf4;
   }
 
   .semester-badge {
     display: inline-block;
-    background: linear-gradient(135deg, #2563eb, #0ea5e9);
+    background: var(--erp-primary, #423cbc);
     color: white;
-    padding: 6px 12px;
-    border-radius: 6px;
-    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 11px;
     font-weight: 600;
     margin-right: 10px;
-    min-width: 80px;
+    min-width: 70px;
     text-align: center;
   }
 
   .semester-badge.completed {
-    background: linear-gradient(135deg, #10b981, #059669);
+    background: #16a34a;
   }
 
   .semester-label {

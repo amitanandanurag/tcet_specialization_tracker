@@ -33,6 +33,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && 
     header('Content-Type: application/json');
     $subjectId = intval($_POST['subject_id'] ?? 0);
     $newMentorId = intval($_POST['new_mentor_id'] ?? 0);
+    $semesterId = intval($_POST['semester_id'] ?? 0);
+    $academicYearId = intval($_POST['academic_year_id'] ?? 1);
 
     if ($subjectId <= 0 || $newMentorId <= 0) {
         echo json_encode(['success' => false, 'message' => 'Please select a valid subject and mentor.']);
@@ -57,27 +59,30 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && 
     $mRow = mysqli_fetch_assoc($mRes);
     $newMentorName = $mRow['mentor_name'];
 
-    $updated = $db_handle->assignSubjectMentor($subjectId, $newMentorId, $loginUserId);
+    $updated = $db_handle->assignSubjectMentor($subjectId, $newMentorId, $loginUserId, $semesterId, $academicYearId);
 
     if ($updated) {
-        // Count affected students
+        $semClause = $semesterId > 0 ? "AND s.current_semester_id = $semesterId" : "";
         $countRes = mysqli_query($db_handle->conn, "
             SELECT COUNT(DISTINCT s.student_id) AS total
             FROM st_student_master s
             LEFT JOIN st_student_semester_history h ON h.student_id = s.student_id AND h.semester_id = s.current_semester_id
             WHERE COALESCE(NULLIF(h.specialization_subject_id, 0), s.specialization_subject_id) = $subjectId
+            $semClause
         ");
         $affectedCount = 0;
         if ($countRes && ($cRow = mysqli_fetch_assoc($countRes))) {
             $affectedCount = intval($cRow['total']);
         }
 
+        $scopeText = $semesterId > 0 ? "for Semester {$semesterId}" : "across all semesters";
         echo json_encode([
             'success' => true,
-            'message' => "Mentor for '{$subjectName}' updated to '{$newMentorName}'. {$affectedCount} enrolled students now dynamically resolve this mentor.",
+            'message' => "Mentor for '{$subjectName}' ({$scopeText}) updated to '{$newMentorName}'. {$affectedCount} enrolled students now dynamically resolve this mentor.",
             'subject_id' => $subjectId,
             'new_mentor_id' => $newMentorId,
             'new_mentor_name' => $newMentorName,
+            'semester_id' => $semesterId,
             'affected_students' => $affectedCount
         ]);
     } else {
@@ -94,8 +99,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_enrolled_students') {
         SELECT s.student_id, s.registration_no, s.roll_no, s.fname, s.email, s.mobile, s.cgpa,
                COALESCE(d.department_name, 'N/A') AS department_name,
                COALESCE(sec.sections, 'A') AS division_name,
-               COALESCE(sem.semester_name, CONCAT('Semester ', s.current_semester_id)) AS semester_name,
-               IF((SELECT 1 FROM st_nptel_records n WHERE n.student_id = s.student_id LIMIT 1), 1, 0) AS is_nptel
+               COALESCE(sem.semester_name, CONCAT('Semester ', s.current_semester_id)) AS semester_name
         FROM st_student_master s
         LEFT JOIN st_department_master d ON d.department_id = s.department_id
         LEFT JOIN st_section_master sec ON sec.id = s.division_id
@@ -125,7 +129,6 @@ $mentorsSql = "
 $allMentors = $db_handle->runQuery($mentorsSql) ?? [];
 
 // Fetch distinct filter options
-$academicYears = $db_handle->runQuery("SELECT session_id, session_name FROM st_session_master ORDER BY session_id DESC") ?? [];
 $departments = $db_handle->runQuery("SELECT department_id, department_name FROM st_department_master ORDER BY department_name ASC") ?? [];
 $semesters = $db_handle->runQuery("SELECT semester_id, semester_name FROM st_semester_master ORDER BY semester_id ASC") ?? [];
 
@@ -134,9 +137,9 @@ $subjectsSql = "
     SELECT ssm.subject_id,
            ssm.subject_name,
            ssm.is_active,
-           COALESCE(ay.session_name, '2026 -2027') AS academic_year,
+           COALESCE(ay.session_name, '2026-27') AS academic_year,
            COALESCE(GROUP_CONCAT(DISTINCT d.department_name ORDER BY d.department_name SEPARATOR ', '), 'All Departments') AS departments,
-           COALESCE(GROUP_CONCAT(DISTINCT sem.semester_name ORDER BY sem.semester_id SEPARATOR ', '), 'Multiple Semesters') AS semesters,
+           COALESCE(GROUP_CONCAT(DISTINCT sem.semester_name ORDER BY sem.semester_id SEPARATOR ', '), 'Multiple') AS semesters,
            COALESCE(GROUP_CONCAT(DISTINCT sem.semester_id ORDER BY sem.semester_id SEPARATOR ','), '') AS semester_ids,
            COALESCE(NULLIF(TRIM(um.user_name), ''), um.email_id, 'Not Assigned') AS current_mentor_name,
            msm.mentor_id AS current_mentor_id,
@@ -160,19 +163,21 @@ $subjectsSql = "
 ";
 $subjectAssignments = $db_handle->runQuery($subjectsSql) ?? [];
 
-// Calculate summary stats
+// Calculate summary statistics
 $totalSubjects = count($subjectAssignments);
 $totalEnrolled = 0;
 $dummyMentorCount = 0;
 $facultyMentorCount = 0;
+$unassignedCount = 0;
+
 foreach ($subjectAssignments as $sub) {
     $totalEnrolled += intval($sub['student_count']);
-    if (!empty($sub['current_mentor_id'])) {
-        if (!empty($sub['is_dummy_mentor'])) {
-            $dummyMentorCount++;
-        } else {
-            $facultyMentorCount++;
-        }
+    if (empty($sub['current_mentor_id']) || $sub['current_mentor_name'] === 'Not Assigned') {
+        $unassignedCount++;
+    } elseif (!empty($sub['is_dummy_mentor'])) {
+        $dummyMentorCount++;
+    } else {
+        $facultyMentorCount++;
     }
 }
 
@@ -180,163 +185,187 @@ require "header/header.php";
 ?>
 
 <div class="content-wrapper">
-    <!-- Content Header (Page header) -->
-    <section class="content-header">
-        <h1>
-            <i class="fa fa-users text-primary"></i> Mentor Assignments
-            <small>Specialization Subject & Faculty Mentor Management</small>
-        </h1>
-        <ol class="breadcrumb">
-            <li><a href="index.php"><i class="fa fa-dashboard"></i> Home</a></li>
-            <li><a href="specialization_subject_manage.php">Coordinator</a></li>
-            <li class="active">Mentor Assignments</li>
-        </ol>
-    </section>
+    <!-- Institutional ERP Page Header -->
+    <div class="erp-page-header">
+        <div>
+            <h1 class="erp-page-title">Mentor Assignments</h1>
+            <p class="erp-page-subtitle">Manage subject-wise faculty mentor allocation and dynamic student coverage</p>
+        </div>
+        <div class="erp-page-actions">
+            <a href="mentor_subject.php" class="btn btn-erp-secondary"><i class="fa fa-link"></i> Mentor Subject Mapping</a>
+            <a href="specialization_subject_manage.php" class="btn btn-erp-secondary"><i class="fa fa-book"></i> Subject Directory</a>
+        </div>
+    </div>
 
-    <!-- Main content -->
-    <section class="content">
-        <!-- Info Boxes -->
-        <div class="row">
-            <div class="col-md-3 col-sm-6 col-xs-12">
-                <div class="info-box">
-                    <span class="info-box-icon bg-aqua"><i class="fa fa-book"></i></span>
-                    <div class="info-box-content">
-                        <span class="info-box-text">Subjects</span>
-                        <span class="info-box-number"><?= $totalSubjects ?></span>
-                        <span class="progress-description text-muted">Specialization courses</span>
-                    </div>
-                </div>
+    <!-- Main Content Area -->
+    <section class="content" style="padding-top: 0;">
+        <!-- Compact Institutional Summary Metric Bar -->
+        <div class="erp-summary-bar">
+            <div class="erp-metric-item">
+                <span class="erp-metric-label">Total Subjects</span>
+                <span class="erp-metric-value"><?= $totalSubjects ?></span>
+                <span class="erp-metric-sub">Active Courses</span>
             </div>
-
-            <div class="col-md-3 col-sm-6 col-xs-12">
-                <div class="info-box">
-                    <span class="info-box-icon bg-green"><i class="fa fa-graduation-cap"></i></span>
-                    <div class="info-box-content">
-                        <span class="info-box-text">Enrolled Students</span>
-                        <span class="info-box-number"><?= $totalEnrolled ?></span>
-                        <span class="progress-description text-muted">Across all departments</span>
-                    </div>
-                </div>
+            <div class="erp-metric-item">
+                <span class="erp-metric-label">Enrolled Students</span>
+                <span class="erp-metric-value"><?= $totalEnrolled ?></span>
+                <span class="erp-metric-sub">Across All Semesters</span>
             </div>
-
-            <div class="col-md-3 col-sm-6 col-xs-12">
-                <div class="info-box">
-                    <span class="info-box-icon bg-purple"><i class="fa fa-user"></i></span>
-                    <div class="info-box-content">
-                        <span class="info-box-text">Faculty Mentors</span>
-                        <span class="info-box-number"><?= $facultyMentorCount ?></span>
-                        <span class="progress-description text-muted">Assigned staff</span>
-                    </div>
-                </div>
+            <div class="erp-metric-item">
+                <span class="erp-metric-label">Faculty Mentors</span>
+                <span class="erp-metric-value" style="color: #16a34a;"><?= $facultyMentorCount ?></span>
+                <span class="erp-metric-sub">Allocated</span>
             </div>
+            <div class="erp-metric-item">
+                <span class="erp-metric-label">Placeholder Mentors</span>
+                <span class="erp-metric-value" style="color: #7c3aed;"><?= $dummyMentorCount ?></span>
+                <span class="erp-metric-sub">Temporary</span>
+            </div>
+            <?php if ($unassignedCount > 0): ?>
+            <div class="erp-metric-item">
+                <span class="erp-metric-label" style="color: #dc2626;">Unassigned</span>
+                <span class="erp-metric-value" style="color: #dc2626;"><?= $unassignedCount ?></span>
+                <span class="erp-metric-sub">Needs Attention</span>
+            </div>
+            <?php endif; ?>
+        </div>
 
-            <div class="col-md-3 col-sm-6 col-xs-12">
-                <div class="info-box">
-                    <span class="info-box-icon bg-yellow"><i class="fa fa-tag"></i></span>
-                    <div class="info-box-content">
-                        <span class="info-box-text">System Mentors</span>
-                        <span class="info-box-number"><?= $dummyMentorCount ?></span>
-                        <span class="progress-description text-muted">Deterministic placeholders</span>
-                    </div>
+        <!-- ERP Filter & Search Toolbar -->
+        <div class="erp-filter-card">
+            <div class="erp-filter-row">
+                <div class="erp-search-hero">
+                    <i class="fa fa-search"></i>
+                    <input type="text" id="subjectLiveSearch" placeholder="Search subject name, mentor, or department...">
+                </div>
+
+                <div class="erp-filter-item">
+                    <label class="erp-filter-label">Semester</label>
+                    <select id="semFilterSelect" class="form-control input-sm">
+                        <option value="all">All Semesters</option>
+                        <option value="3">Semester III</option>
+                        <option value="4">Semester IV</option>
+                        <option value="5">Semester V</option>
+                        <option value="6">Semester VI</option>
+                        <option value="7">Semester VII</option>
+                        <option value="8">Semester VIII</option>
+                    </select>
+                </div>
+
+                <div class="erp-filter-item">
+                    <label class="erp-filter-label">Department</label>
+                    <select id="deptFilterSelect" class="form-control input-sm">
+                        <option value="all">All Departments</option>
+                        <?php foreach ($departments as $d): ?>
+                            <option value="<?= strtolower(htmlspecialchars($d['department_name'])) ?>"><?= htmlspecialchars($d['department_name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div class="erp-filter-item">
+                    <label class="erp-filter-label">Mentor Status</label>
+                    <select id="mentorStatusFilter" class="form-control input-sm">
+                        <option value="all">All Mentors</option>
+                        <option value="faculty">Faculty Mentors</option>
+                        <option value="placeholder">Placeholder Mentors</option>
+                        <option value="unassigned">Unassigned</option>
+                    </select>
+                </div>
+
+                <div class="erp-filter-actions">
+                    <button type="button" class="btn btn-erp-secondary btn-sm" id="btnResetFilters" title="Reset all filters">
+                        <i class="fa fa-undo"></i> Reset
+                    </button>
                 </div>
             </div>
         </div>
 
-        <!-- Filter & Search Toolbar Box -->
-        <div class="box box-default">
-            <div class="box-body">
-                <div class="row">
-                    <div class="col-md-7 col-sm-12">
-                        <div class="btn-group" role="group" id="semFilterButtonGroup">
-                            <button type="button" class="btn btn-default active sem-filter-btn" data-sem-filter="all">All Semesters (<?= $totalSubjects ?>)</button>
-                            <button type="button" class="btn btn-default sem-filter-btn" data-sem-filter="3">Semester III</button>
-                            <button type="button" class="btn btn-default sem-filter-btn" data-sem-filter="5">Semester V</button>
-                            <button type="button" class="btn btn-default sem-filter-btn" data-sem-filter="7">Semester VII</button>
-                        </div>
-                    </div>
-                    <div class="col-md-5 col-sm-12">
-                        <div class="input-group">
-                            <input type="text" id="subjectLiveSearch" class="form-control" placeholder="Search by subject, mentor, or department...">
-                            <span class="input-group-addon"><i class="fa fa-search"></i></span>
-                        </div>
-                    </div>
+        <!-- Master Assignments Table Card -->
+        <div class="erp-card">
+            <div class="erp-card-header">
+                <div>
+                    <h3 class="erp-card-title"><i class="fa fa-user-circle-o text-primary" style="margin-right: 6px;"></i> Subject Mentor Allocation Matrix</h3>
+                    <p class="erp-card-subtitle">Dynamic student linkage propagates mentor assignment across the entire ERP</p>
+                </div>
+                <div class="pull-right">
+                    <span id="matchingCountText" class="erp-badge erp-badge-secondary" style="font-size: 12px; padding: 5px 10px;">Showing <?= $totalSubjects ?> subjects</span>
                 </div>
             </div>
-        </div>
-
-        <!-- Main Assignments Table Card -->
-        <div class="box box-primary">
-            <div class="box-header with-border">
-                <h3 class="box-title"><i class="fa fa-list"></i> Subject-Wise Mentor Allocation Matrix</h3>
-                <div class="box-tools pull-right">
-                    <span class="label label-primary">AY 2026-27</span>
-                </div>
-            </div>
-            <div class="box-body table-responsive no-padding">
-                <table id="mentorAssignmentsTable" class="table table-bordered table-hover table-striped">
+            <div class="erp-card-body table-responsive" style="padding: 0;">
+                <table id="mentorAssignmentsTable" class="erp-table">
                     <thead>
-                        <tr class="bg-gray-light">
-                            <th style="width: 50px; text-align: center;">#</th>
+                        <tr>
+                            <th style="width: 45px;" class="col-center">#</th>
                             <th>Specialization Subject</th>
                             <th>Department(s)</th>
-                            <th>Semester</th>
-                            <th>Academic Year</th>
-                            <th style="text-align: center;">Enrolled Students</th>
+                            <th style="width: 110px;">Semester</th>
+                            <th style="width: 90px;">Session</th>
+                            <th style="width: 120px;" class="col-center">Enrolled</th>
                             <th>Assigned Mentor</th>
-                            <th style="text-align: center; width: 140px;">Action</th>
+                            <th style="width: 90px;" class="col-center">Action</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php foreach ($subjectAssignments as $idx => $sub): 
                             $isDummy = !empty($sub['is_dummy_mentor']);
-                            $mentorLabelClass = $isDummy ? 'label-warning' : 'label-success';
-                            $mentorType = $isDummy ? 'dummy' : 'faculty';
+                            $isUnassigned = empty($sub['current_mentor_id']) || $sub['current_mentor_name'] === 'Not Assigned';
+                            
+                            $mentorStatusType = 'faculty';
+                            if ($isUnassigned) {
+                                $mentorStatusType = 'unassigned';
+                            } elseif ($isDummy) {
+                                $mentorStatusType = 'placeholder';
+                            }
                         ?>
                             <tr data-subject-id="<?= $sub['subject_id'] ?>" 
                                 data-subject-name="<?= htmlspecialchars($sub['subject_name']) ?>"
-                                data-ay="<?= htmlspecialchars($sub['academic_year']) ?>"
+                                data-departments="<?= strtolower(htmlspecialchars($sub['departments'])) ?>"
                                 data-semester-ids="<?= htmlspecialchars($sub['semester_ids']) ?>"
-                                data-mentor-type="<?= $mentorType ?>"
+                                data-mentor-status="<?= $mentorStatusType ?>"
                                 data-mentor-name="<?= htmlspecialchars($sub['current_mentor_name']) ?>"
                                 data-mentor-id="<?= intval($sub['current_mentor_id']) ?>">
-                                <td style="text-align: center;"><?= $idx + 1 ?></td>
+                                <td class="col-center text-muted"><?= $idx + 1 ?></td>
                                 <td>
-                                    <strong><?= htmlspecialchars($sub['subject_name']) ?></strong>
+                                    <div style="font-weight: 600; color: #0f172a;"><?= htmlspecialchars($sub['subject_name']) ?></div>
                                 </td>
                                 <td>
-                                    <?php 
-                                    $depts = explode(', ', $sub['departments']);
-                                    foreach ($depts as $d): ?>
-                                        <span class="label label-default" style="display:inline-block; margin: 1px;"><?= htmlspecialchars($d) ?></span>
-                                    <?php endforeach; ?>
+                                    <span class="text-muted" style="font-size: 12px;"><?= htmlspecialchars($sub['departments']) ?></span>
                                 </td>
                                 <td>
-                                    <span class="label label-info"><?= htmlspecialchars($sub['semesters']) ?></span>
+                                    <span class="erp-badge erp-badge-secondary"><?= htmlspecialchars($sub['semesters']) ?></span>
                                 </td>
                                 <td>
-                                    <?= htmlspecialchars($sub['academic_year']) ?>
+                                    <span class="text-muted" style="font-size: 12px;"><?= htmlspecialchars($sub['academic_year']) ?></span>
                                 </td>
-                                <td style="text-align: center;">
-                                    <button type="button" class="btn btn-default btn-xs btn-view-students" 
+                                <td class="col-center">
+                                    <button type="button" class="btn btn-erp-secondary btn-xs btn-view-students" 
                                             data-subject-id="<?= $sub['subject_id'] ?>" 
                                             data-subject-name="<?= htmlspecialchars($sub['subject_name']) ?>"
-                                            title="View enrolled students roster">
-                                        <i class="fa fa-users text-primary"></i> <strong><?= intval($sub['student_count']) ?></strong> Students
+                                            title="View student roster">
+                                        <i class="fa fa-users text-primary"></i> <strong><?= intval($sub['student_count']) ?></strong>
                                     </button>
                                 </td>
                                 <td class="mentor-col">
-                                    <span class="label <?= $mentorLabelClass ?>" style="font-size: 12px; padding: 4px 8px;">
-                                        <i class="fa <?= $isDummy ? 'fa-tag' : 'fa-check' ?>"></i>
-                                        <span class="mentor-name-text"><?= htmlspecialchars($sub['current_mentor_name']) ?></span>
-                                    </span>
+                                    <?php if ($isUnassigned): ?>
+                                        <span class="erp-badge erp-badge-danger">
+                                            <i class="fa fa-exclamation-circle"></i> Unassigned
+                                        </span>
+                                    <?php elseif ($isDummy): ?>
+                                        <span class="erp-badge erp-badge-purple">
+                                            <i class="fa fa-user-o"></i> <?= htmlspecialchars($sub['current_mentor_name']) ?>
+                                        </span>
+                                    <?php else: ?>
+                                        <span class="erp-badge erp-badge-success">
+                                            <i class="fa fa-user"></i> <?= htmlspecialchars($sub['current_mentor_name']) ?>
+                                        </span>
+                                    <?php endif; ?>
                                 </td>
-                                <td style="text-align: center;">
-                                    <button type="button" class="btn btn-primary btn-xs btn-change-mentor" 
+                                <td class="col-center">
+                                    <button type="button" class="btn btn-erp-primary btn-xs btn-change-mentor" 
                                             data-subject-id="<?= $sub['subject_id'] ?>" 
                                             data-subject-name="<?= htmlspecialchars($sub['subject_name']) ?>"
                                             data-current-mentor-id="<?= intval($sub['current_mentor_id']) ?>"
                                             data-current-mentor-name="<?= htmlspecialchars($sub['current_mentor_name']) ?>">
-                                        <i class="fa fa-edit"></i> Change Mentor
+                                        <i class="fa fa-pencil"></i> Assign
                                     </button>
                                 </td>
                             </tr>
@@ -344,18 +373,18 @@ require "header/header.php";
                     </tbody>
                 </table>
             </div>
-            <div class="box-footer clearfix text-muted" style="font-size: 12px;">
-                <i class="fa fa-info-circle text-primary"></i> Reassigning a mentor here dynamically propagates across all enrolled student records, reports, and dashboards.
+            <div class="erp-card-footer text-muted" style="font-size: 12px; padding: 12px 18px;">
+                <i class="fa fa-info-circle text-primary"></i> Subject mentor reassignments dynamically propagate across all enrolled student records, reports, and academic progression ledgers.
             </div>
         </div>
     </section>
 </div>
 
-<!-- CHANGE MENTOR MODAL -->
+<!-- CHANGE MENTOR DIALOG MODAL -->
 <div class="modal fade" id="changeMentorModal" tabindex="-1" role="dialog" aria-labelledby="changeMentorModalLabel">
-    <div class="modal-dialog" role="document">
+    <div class="modal-dialog" role="document" style="max-width: 500px;">
         <div class="modal-content">
-            <div class="modal-header bg-primary">
+            <div class="modal-header">
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
                 <h4 class="modal-title" id="changeMentorModalLabel">
                     <i class="fa fa-edit"></i> Change Specialization Mentor
@@ -370,20 +399,33 @@ require "header/header.php";
 
                     <div class="form-group">
                         <label>Specialization Subject</label>
-                        <div id="modal_subject_name_display" class="well well-sm" style="margin-bottom: 0; font-weight: bold;"></div>
+                        <div id="modal_subject_name_display" style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 8px 10px; border-radius: 3px; font-weight: 600; color: #1e293b;"></div>
                     </div>
 
                     <div class="form-group">
                         <label>Current Assigned Mentor</label>
-                        <div id="modal_current_mentor_display" class="well well-sm text-yellow" style="margin-bottom: 0; font-weight: bold;">
-                            <i class="fa fa-user"></i> <span id="modal_current_mentor_text"></span>
+                        <div id="modal_current_mentor_display" style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 8px 10px; border-radius: 3px; color: #334155;">
+                            <i class="fa fa-user text-muted"></i> <span id="modal_current_mentor_text" style="font-weight: 500;"></span>
                         </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Target Academic Period</label>
+                        <select name="semester_id" id="modal_semester_scope" class="form-control">
+                            <option value="0">All Semesters (Global Subject Default)</option>
+                            <option value="3">Semester III (SEM III)</option>
+                            <option value="4">Semester IV (SEM IV)</option>
+                            <option value="5">Semester V (SEM V)</option>
+                            <option value="6">Semester VI (SEM VI)</option>
+                            <option value="7">Semester VII (SEM VII)</option>
+                            <option value="8">Semester VIII (SEM VIII)</option>
+                        </select>
                     </div>
 
                     <div class="form-group">
                         <label>Select New Mentor <span class="text-danger">*</span></label>
                         <select name="new_mentor_id" id="modal_new_mentor_select" class="form-control" required>
-                            <option value="">-- Select Faculty or Dummy Mentor --</option>
+                            <option value="">-- Select Faculty or Placeholder Mentor --</option>
                             <optgroup label="Faculty Members">
                                 <?php foreach ($allMentors as $m): if (empty($m['is_dummy'])): ?>
                                     <option value="<?= $m['mentor_id'] ?>">
@@ -394,18 +436,17 @@ require "header/header.php";
                             <optgroup label="System Placeholder Mentors">
                                 <?php foreach ($allMentors as $m): if (!empty($m['is_dummy'])): ?>
                                     <option value="<?= $m['mentor_id'] ?>">
-                                        <?= htmlspecialchars($m['mentor_name']) ?> (<?= htmlspecialchars($m['email_id']) ?>)
+                                        <?= htmlspecialchars($m['mentor_name']) ?> (Placeholder)
                                     </option>
                                 <?php endif; endforeach; ?>
                             </optgroup>
                         </select>
-                        <p class="help-block"><i class="fa fa-info-circle text-primary"></i> All enrolled students taking this subject will immediately resolve to the selected mentor.</p>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
                     <button type="submit" id="btnSaveMentorChange" class="btn btn-primary">
-                        <i class="fa fa-save"></i> Save Mentor Assignment
+                        <i class="fa fa-save"></i> Save Assignment
                     </button>
                 </div>
             </form>
@@ -413,33 +454,33 @@ require "header/header.php";
     </div>
 </div>
 
-<!-- ENROLLED STUDENTS LIST MODAL -->
+<!-- ENROLLED STUDENTS ROSTER MODAL -->
 <div class="modal fade" id="enrolledStudentsModal" tabindex="-1" role="dialog">
     <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
-            <div class="modal-header bg-primary">
+            <div class="modal-header">
                 <button type="button" class="close" data-dismiss="modal">&times;</button>
                 <h4 class="modal-title">
-                    <i class="fa fa-graduation-cap"></i> Enrolled Students &mdash; <span id="enrolledSubjectTitle"></span>
+                    <i class="fa fa-graduation-cap"></i> Enrolled Students &mdash; <span id="enrolledSubjectTitle" style="font-weight: 500;"></span>
                 </h4>
             </div>
             <div class="modal-body">
-                <div id="enrolledStudentsLoading" class="text-center" style="padding: 30px;">
+                <div id="enrolledStudentsLoading" class="text-center" style="padding: 25px;">
                     <i class="fa fa-spinner fa-spin fa-2x text-primary"></i>
-                    <p class="text-muted" style="margin-top: 10px;">Loading student roster...</p>
+                    <p class="text-muted" style="margin-top: 8px;">Loading roster data...</p>
                 </div>
                 <div id="enrolledStudentsContent" style="display: none;" class="table-responsive">
                     <table class="table table-bordered table-hover table-striped">
                         <thead>
-                            <tr class="bg-gray-light">
-                                <th style="width: 40px; text-align: center;">#</th>
+                            <tr>
+                                <th style="width: 40px;" class="col-center">#</th>
                                 <th>Student Name</th>
                                 <th>ERP ID / Reg No</th>
-                                <th>Dept</th>
-                                <th>Div</th>
+                                <th>Department</th>
+                                <th>Division</th>
                                 <th>Roll No</th>
                                 <th>Semester</th>
-                                <th>CGPA</th>
+                                <th class="col-num">CGPA</th>
                                 <th>Email</th>
                             </tr>
                         </thead>
@@ -467,6 +508,7 @@ $(document).ready(function() {
         $('#modal_subject_name_display').text(subjectName);
         $('#modal_current_mentor_text').text(currentMentorName);
         $('#modal_new_mentor_select').val(currentMentorId);
+        $('#modal_semester_scope').val('0');
         $('#modalAlert').hide().empty();
 
         $('#changeMentorModal').modal('show');
@@ -498,15 +540,15 @@ $(document).ready(function() {
                     // Update row in table immediately
                     var row = $('tr[data-subject-id="' + response.subject_id + '"]');
                     var isDummy = response.new_mentor_name.indexOf('Mentor ') === 0;
-                    var labelClass = isDummy ? 'label-warning' : 'label-success';
-                    var icon = isDummy ? 'fa-tag' : 'fa-check';
+                    var mentorHtml = '';
+                    
+                    if (isDummy) {
+                        mentorHtml = '<span class="erp-badge erp-badge-purple"><i class="fa fa-user-o"></i> ' + $('<div>').text(response.new_mentor_name).html() + '</span>';
+                    } else {
+                        mentorHtml = '<span class="erp-badge erp-badge-success"><i class="fa fa-user"></i> ' + $('<div>').text(response.new_mentor_name).html() + '</span>';
+                    }
 
-                    row.find('.mentor-col').html(
-                        '<span class="label ' + labelClass + '" style="font-size: 12px; padding: 4px 8px;">' +
-                        '<i class="fa ' + icon + '"></i> ' +
-                        '<span class="mentor-name-text">' + $('<div>').text(response.new_mentor_name).html() + '</span>' +
-                        '</span>'
-                    );
+                    row.find('.mentor-col').html(mentorHtml);
 
                     row.find('.btn-change-mentor')
                        .data('current-mentor-id', response.new_mentor_id)
@@ -514,7 +556,7 @@ $(document).ready(function() {
 
                     row.data('mentor-name', response.new_mentor_name);
                     row.data('mentor-id', response.new_mentor_id);
-                    row.data('mentor-type', isDummy ? 'dummy' : 'faculty');
+                    row.data('mentor-status', isDummy ? 'placeholder' : 'faculty');
 
                     setTimeout(function() {
                         $('#changeMentorModal').modal('hide');
@@ -562,62 +604,76 @@ $(document).ready(function() {
                     var rowsHtml = '';
                     $.each(resp.students, function(i, s) {
                         rowsHtml += '<tr>' +
-                            '<td style="text-align: center;">' + (i + 1) + '</td>' +
-                            '<td><strong>' + $('<div>').text(s.fname).html() + '</strong></td>' +
-                            '<td><code>' + $('<div>').text(s.registration_no).html() + '</code></td>' +
-                            '<td><span class="label label-default">' + $('<div>').text(s.department_name).html() + '</span></td>' +
+                            '<td class="col-center text-muted">' + (i + 1) + '</td>' +
+                            '<td><div class="student-cell-name">' + $('<div>').text(s.fname).html() + '</div><div class="student-cell-reg">' + $('<div>').text(s.registration_no).html() + '</div></td>' +
+                            '<td>' + $('<div>').text(s.department_name).html() + '</td>' +
                             '<td>' + $('<div>').text(s.division_name).html() + '</td>' +
-                            '<td>' + $('<div>').text(s.roll_no).html() + '</td>' +
-                            '<td><span class="label label-info">' + $('<div>').text(s.semester_name).html() + '</span></td>' +
-                            '<td><span class="badge bg-blue">' + $('<div>').text(s.cgpa || 'N/A').html() + '</span></td>' +
+                            '<td><span class="text-mono">' + $('<div>').text(s.roll_no).html() + '</span></td>' +
+                            '<td>' + $('<div>').text(s.semester_name).html() + '</td>' +
+                            '<td class="col-num font-weight-bold">' + (s.cgpa || 'N/A') + '</td>' +
                             '<td><a href="mailto:' + encodeURIComponent(s.email) + '">' + $('<div>').text(s.email).html() + '</a></td>' +
                         '</tr>';
                     });
                     $('#enrolledStudentsTableBody').html(rowsHtml);
                 } else {
-                    $('#enrolledStudentsTableBody').html('<tr><td colspan="9" class="text-center text-muted" style="padding: 25px;">No students currently enrolled in this specialization subject.</td></tr>');
+                    $('#enrolledStudentsTableBody').html('<tr><td colspan="8" class="text-center text-muted" style="padding: 20px;">No students currently enrolled in this specialization subject.</td></tr>');
                 }
             },
             error: function() {
                 $('#enrolledStudentsLoading').hide();
                 $('#enrolledStudentsContent').show();
-                $('#enrolledStudentsTableBody').html('<tr><td colspan="9" class="text-center text-danger" style="padding: 25px;">Error retrieving enrolled student list.</td></tr>');
+                $('#enrolledStudentsTableBody').html('<tr><td colspan="8" class="text-center text-danger" style="padding: 20px;">Error retrieving enrolled student list.</td></tr>');
             }
         });
     });
 
-    // Semester Filter Button Group
-    var activeSemFilter = 'all';
-    $('.sem-filter-btn').on('click', function() {
-        $('.sem-filter-btn').removeClass('active btn-primary').addClass('btn-default');
-        $(this).removeClass('btn-default').addClass('active btn-primary');
-        activeSemFilter = $(this).data('sem-filter');
+    // Multi-Facet Filtering Engine
+    $('#semFilterSelect, #deptFilterSelect, #mentorStatusFilter').on('change', function() {
         filterTable();
     });
 
-    // Live Search Filter
     $('#subjectLiveSearch').on('keyup', function() {
+        filterTable();
+    });
+
+    $('#btnResetFilters').on('click', function() {
+        $('#subjectLiveSearch').val('');
+        $('#semFilterSelect').val('all');
+        $('#deptFilterSelect').val('all');
+        $('#mentorStatusFilter').val('all');
         filterTable();
     });
 
     function filterTable() {
         var query = ($('#subjectLiveSearch').val() || '').toLowerCase().trim();
+        var selectedSem = $('#semFilterSelect').val();
+        var selectedDept = $('#deptFilterSelect').val();
+        var selectedStatus = $('#mentorStatusFilter').val();
+
+        var visibleCount = 0;
 
         $('#mentorAssignmentsTable tbody tr').each(function() {
             var row = $(this);
             var subjectName = (row.data('subject-name') || '').toLowerCase();
             var mentorName = (row.data('mentor-name') || '').toLowerCase();
+            var departments = (row.data('departments') || '').toLowerCase();
             var semIds = (row.data('semester-ids') || '').toString().split(',');
+            var mentorStatus = (row.data('mentor-status') || '').toLowerCase();
 
-            var matchesSearch = !query || subjectName.indexOf(query) !== -1 || mentorName.indexOf(query) !== -1;
-            var matchesSem = activeSemFilter === 'all' || semIds.indexOf(activeSemFilter.toString()) !== -1;
+            var matchesSearch = !query || subjectName.indexOf(query) !== -1 || mentorName.indexOf(query) !== -1 || departments.indexOf(query) !== -1;
+            var matchesSem = selectedSem === 'all' || semIds.indexOf(selectedSem.toString()) !== -1;
+            var matchesDept = selectedDept === 'all' || departments.indexOf(selectedDept) !== -1;
+            var matchesStatus = selectedStatus === 'all' || mentorStatus === selectedStatus;
 
-            if (matchesSearch && matchesSem) {
+            if (matchesSearch && matchesSem && matchesDept && matchesStatus) {
                 row.show();
+                visibleCount++;
             } else {
                 row.hide();
             }
         });
+
+        $('#matchingCountText').text('Showing ' + visibleCount + ' subjects');
     }
 });
 </script>
