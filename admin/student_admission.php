@@ -183,7 +183,6 @@ if (($isEditMode || empty($admissionForm)) && !empty($userid)) {
       },
       success: function(response) {
         $("#data421").val(response);
-        console.log(response);
       },
     });
   }
@@ -201,7 +200,6 @@ if (($isEditMode || empty($admissionForm)) && !empty($userid)) {
         },
         dataType: 'json',
         success: function(response) {
-          console.log(response);
           if (response && response.exists) {
             var fullNameField = document.getElementById('full_name');
             var emailField = document.getElementById('college_email');
@@ -285,8 +283,6 @@ if (($isEditMode || empty($admissionForm)) && !empty($userid)) {
   }
 
   function loadMinorSubjectsByCourse(courseId) {
-    console.log("Loading subjects for course ID:", courseId);
-
     if (courseId && courseId != "") {
       $('#minor_subject_select').empty().append('<option value="">Loading subjects...</option>');
       $('#minor_subject_section').show();
@@ -299,7 +295,6 @@ if (($isEditMode || empty($admissionForm)) && !empty($userid)) {
         },
         dataType: 'json',
         success: function(data) {
-          console.log("Subjects received:", data);
           $('#minor_subject_select').empty().append('<option value="">Select Minor Subject</option>');
 
           if (data && data.success && data.data && data.data.length > 0) {
@@ -313,8 +308,6 @@ if (($isEditMode || empty($admissionForm)) && !empty($userid)) {
           }
         },
         error: function(xhr, status, error) {
-          console.log("AJAX Error - Status:", status);
-          console.log("AJAX Error - Response:", xhr.responseText);
           $('#minor_subject_select').empty().append('<option value="">Error loading subjects</option>');
           $('#minor_subject_section').show();
         }

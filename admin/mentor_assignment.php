@@ -179,411 +179,219 @@ foreach ($subjectAssignments as $sub) {
 require "header/header.php";
 ?>
 
-<style>
-/* Modern Premium Theme Enhancements */
-.st-dashboard-header {
-    background: linear-gradient(135deg, #423cbc 0%, #302b8e 100%);
-    padding: 24px 30px;
-    border-radius: 12px;
-    margin-bottom: 25px;
-    box-shadow: 0 10px 25px rgba(66, 60, 188, 0.2);
-    color: #ffffff;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 15px;
-}
+<div class="content-wrapper">
+    <!-- Content Header (Page header) -->
+    <section class="content-header">
+        <h1>
+            <i class="fa fa-users text-primary"></i> Mentor Assignments
+            <small>Specialization Subject & Faculty Mentor Management</small>
+        </h1>
+        <ol class="breadcrumb">
+            <li><a href="index.php"><i class="fa fa-dashboard"></i> Home</a></li>
+            <li><a href="specialization_subject_manage.php">Coordinator</a></li>
+            <li class="active">Mentor Assignments</li>
+        </ol>
+    </section>
 
-.st-dashboard-title h2 {
-    margin: 0 0 6px 0;
-    font-size: 24px;
-    font-weight: 700;
-    letter-spacing: -0.5px;
-    color: #ffffff;
-}
+    <!-- Main content -->
+    <section class="content">
+        <!-- Info Boxes -->
+        <div class="row">
+            <div class="col-md-3 col-sm-6 col-xs-12">
+                <div class="info-box">
+                    <span class="info-box-icon bg-aqua"><i class="fa fa-book"></i></span>
+                    <div class="info-box-content">
+                        <span class="info-box-text">Subjects</span>
+                        <span class="info-box-number"><?= $totalSubjects ?></span>
+                        <span class="progress-description text-muted">Specialization courses</span>
+                    </div>
+                </div>
+            </div>
 
-.st-dashboard-title p {
-    margin: 0;
-    font-size: 14px;
-    opacity: 0.85;
-}
+            <div class="col-md-3 col-sm-6 col-xs-12">
+                <div class="info-box">
+                    <span class="info-box-icon bg-green"><i class="fa fa-graduation-cap"></i></span>
+                    <div class="info-box-content">
+                        <span class="info-box-text">Enrolled Students</span>
+                        <span class="info-box-number"><?= $totalEnrolled ?></span>
+                        <span class="progress-description text-muted">Across all departments</span>
+                    </div>
+                </div>
+            </div>
 
-.st-stat-card {
-    background: #ffffff;
-    border-radius: 12px;
-    padding: 20px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-    border: 1px solid #edf2f7;
-    transition: all 0.25s ease;
-    position: relative;
-    overflow: hidden;
-    margin-bottom: 20px;
-}
+            <div class="col-md-3 col-sm-6 col-xs-12">
+                <div class="info-box">
+                    <span class="info-box-icon bg-purple"><i class="fa fa-user"></i></span>
+                    <div class="info-box-content">
+                        <span class="info-box-text">Faculty Mentors</span>
+                        <span class="info-box-number"><?= $facultyMentorCount ?></span>
+                        <span class="progress-description text-muted">Assigned staff</span>
+                    </div>
+                </div>
+            </div>
 
-.st-stat-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-}
-
-.st-stat-icon {
-    width: 48px;
-    height: 48px;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 22px;
-    float: right;
-}
-
-.st-stat-value {
-    font-size: 28px;
-    font-weight: 800;
-    color: #1e293b;
-    margin: 4px 0 0 0;
-    line-height: 1.2;
-}
-
-.st-stat-label {
-    font-size: 13px;
-    font-weight: 600;
-    color: #64748b;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin: 0;
-}
-
-.st-filter-tabs {
-    display: flex;
-    gap: 8px;
-    background: #f1f5f9;
-    padding: 6px;
-    border-radius: 10px;
-    margin-bottom: 20px;
-    flex-wrap: wrap;
-}
-
-.st-tab-btn {
-    padding: 8px 18px;
-    border-radius: 8px;
-    font-size: 13px;
-    font-weight: 600;
-    color: #64748b;
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.st-tab-btn:hover {
-    color: #334155;
-    background: rgba(255, 255, 255, 0.6);
-}
-
-.st-tab-btn.active {
-    background: #ffffff;
-    color: #423cbc;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-}
-
-.st-table-container {
-    background: #ffffff;
-    border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
-    border: 1px solid #edf2f7;
-    overflow: hidden;
-}
-
-.st-table thead th {
-    background: #f8fafc;
-    color: #475569;
-    font-size: 12px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.6px;
-    padding: 16px 14px;
-    border-bottom: 2px solid #e2e8f0;
-}
-
-.st-table tbody td {
-    padding: 16px 14px;
-    vertical-align: middle;
-    border-bottom: 1px solid #f1f5f9;
-    font-size: 14px;
-}
-
-.st-table tbody tr:hover {
-    background-color: #f8fafc;
-}
-
-.badge-dept {
-    background: #e0e7ff;
-    color: #4338ca;
-    padding: 4px 8px;
-    border-radius: 6px;
-    font-size: 12px;
-    font-weight: 600;
-    display: inline-block;
-    margin: 2px;
-}
-
-.badge-sem {
-    background: #dbeafe;
-    color: #1d4ed8;
-    padding: 4px 8px;
-    border-radius: 6px;
-    font-size: 12px;
-    font-weight: 600;
-}
-
-.badge-mentor-faculty {
-    background: #dcfce7;
-    color: #15803d;
-    padding: 6px 12px;
-    border-radius: 20px;
-    font-size: 13px;
-    font-weight: 600;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    border: 1px solid #bbf7d0;
-}
-
-.badge-mentor-dummy {
-    background: #fef3c7;
-    color: #b45309;
-    padding: 6px 12px;
-    border-radius: 20px;
-    font-size: 13px;
-    font-weight: 600;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    border: 1px solid #fde68a;
-}
-
-.btn-action-change {
-    background: linear-gradient(135deg, #423cbc 0%, #302b8e 100%);
-    color: #ffffff;
-    border: none;
-    border-radius: 8px;
-    padding: 7px 16px;
-    font-weight: 600;
-    font-size: 13px;
-    transition: all 0.2s ease;
-    box-shadow: 0 2px 8px rgba(66, 60, 188, 0.25);
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.btn-action-change:hover {
-    color: #ffffff;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(66, 60, 188, 0.35);
-}
-
-.btn-roster-view {
-    background: #f1f5f9;
-    color: #334155;
-    border: 1px solid #e2e8f0;
-    border-radius: 20px;
-    padding: 5px 12px;
-    font-weight: 700;
-    font-size: 12px;
-    transition: all 0.2s ease;
-    cursor: pointer;
-}
-
-.btn-roster-view:hover {
-    background: #423cbc;
-    color: #ffffff;
-    border-color: #423cbc;
-}
-</style>
-
-<div class="content-wrapper" style="min-height: 880px; padding: 20px 25px; background: #f8fafc;">
-    <!-- Top Header Banner -->
-    <div class="st-dashboard-header">
-        <div class="st-dashboard-title">
-            <h2><i class="fa fa-users" style="margin-right: 10px;"></i> Mentor Assignments & Specializations</h2>
-            <p>Academic Year 2026-27 &bull; Real-time dynamic mentor resolution for all departmental students</p>
-        </div>
-        <div>
-            <span style="background: rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 30px; font-weight: 600; font-size: 13px;">
-                <i class="fa fa-calendar"></i> AY 2026-27 Active
-            </span>
-        </div>
-    </div>
-
-    <!-- Quick Stats Grid -->
-    <div class="row">
-        <div class="col-md-3 col-sm-6">
-            <div class="st-stat-card">
-                <div class="st-stat-icon" style="background: #e0e7ff; color: #4338ca;"><i class="fa fa-book"></i></div>
-                <p class="st-stat-label">Specialization Subjects</p>
-                <h3 class="st-stat-value"><?= $totalSubjects ?></h3>
+            <div class="col-md-3 col-sm-6 col-xs-12">
+                <div class="info-box">
+                    <span class="info-box-icon bg-yellow"><i class="fa fa-tag"></i></span>
+                    <div class="info-box-content">
+                        <span class="info-box-text">System Mentors</span>
+                        <span class="info-box-number"><?= $dummyMentorCount ?></span>
+                        <span class="progress-description text-muted">Deterministic placeholders</span>
+                    </div>
+                </div>
             </div>
         </div>
-        <div class="col-md-3 col-sm-6">
-            <div class="st-stat-card">
-                <div class="st-stat-icon" style="background: #dcfce7; color: #16a34a;"><i class="fa fa-graduation-cap"></i></div>
-                <p class="st-stat-label">Enrolled Students</p>
-                <h3 class="st-stat-value"><?= $totalEnrolled ?></h3>
-            </div>
-        </div>
-        <div class="col-md-3 col-sm-6">
-            <div class="st-stat-card">
-                <div class="st-stat-icon" style="background: #f3e8ff; color: #9333ea;"><i class="fa fa-user-circle"></i></div>
-                <p class="st-stat-label">Faculty Mentors</p>
-                <h3 class="st-stat-value"><?= $facultyMentorCount ?></h3>
-            </div>
-        </div>
-        <div class="col-md-3 col-sm-6">
-            <div class="st-stat-card">
-                <div class="st-stat-icon" style="background: #fef3c7; color: #d97706;"><i class="fa fa-tags"></i></div>
-                <p class="st-stat-label">Alphabet Dummy Mentors</p>
-                <h3 class="st-stat-value"><?= $dummyMentorCount ?></h3>
-            </div>
-        </div>
-    </div>
 
-    <!-- Filter Toolbar -->
-    <div class="row" style="margin-bottom: 15px;">
-        <div class="col-md-8 col-sm-12">
-            <div class="st-filter-tabs">
-                <button type="button" class="st-tab-btn active" data-sem-filter="all">All Semesters (<?= $totalSubjects ?>)</button>
-                <button type="button" class="st-tab-btn" data-sem-filter="3">Semester III</button>
-                <button type="button" class="st-tab-btn" data-sem-filter="5">Semester V</button>
-                <button type="button" class="st-tab-btn" data-sem-filter="7">Semester VII</button>
+        <!-- Filter & Search Toolbar Box -->
+        <div class="box box-default">
+            <div class="box-body">
+                <div class="row">
+                    <div class="col-md-7 col-sm-12">
+                        <div class="btn-group" role="group" id="semFilterButtonGroup">
+                            <button type="button" class="btn btn-default active sem-filter-btn" data-sem-filter="all">All Semesters (<?= $totalSubjects ?>)</button>
+                            <button type="button" class="btn btn-default sem-filter-btn" data-sem-filter="3">Semester III</button>
+                            <button type="button" class="btn btn-default sem-filter-btn" data-sem-filter="5">Semester V</button>
+                            <button type="button" class="btn btn-default sem-filter-btn" data-sem-filter="7">Semester VII</button>
+                        </div>
+                    </div>
+                    <div class="col-md-5 col-sm-12">
+                        <div class="input-group">
+                            <input type="text" id="subjectLiveSearch" class="form-control" placeholder="Search by subject, mentor, or department...">
+                            <span class="input-group-addon"><i class="fa fa-search"></i></span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
-        <div class="col-md-4 col-sm-12 text-right">
-            <div class="input-group" style="width: 100%;">
-                <span class="input-group-addon" style="background: #ffffff; border-radius: 8px 0 0 8px; border-right: none;"><i class="fa fa-search text-muted"></i></span>
-                <input type="text" id="subjectLiveSearch" class="form-control" placeholder="Search subjects, mentors, or departments..." style="border-radius: 0 8px 8px 0; border-left: none; height: 40px; box-shadow: none;">
-            </div>
-        </div>
-    </div>
 
-    <!-- Main Assignments Table Card -->
-    <div class="st-table-container">
-        <div class="table-responsive">
-            <table id="mentorAssignmentsTable" class="table st-table" style="margin-bottom: 0;">
-                <thead>
-                    <tr>
-                        <th style="width: 60px;">#</th>
-                        <th>Specialization Subject</th>
-                        <th>Applicable Department(s)</th>
-                        <th>Semester</th>
-                        <th>Academic Year</th>
-                        <th style="text-align: center;">Students Enrolled</th>
-                        <th>Assigned Mentor</th>
-                        <th style="text-align: center; width: 160px;">Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($subjectAssignments as $idx => $sub): 
-                        $isDummy = !empty($sub['is_dummy_mentor']);
-                        $mentorBadgeClass = $isDummy ? 'badge-mentor-dummy' : 'badge-mentor-faculty';
-                        $mentorType = $isDummy ? 'dummy' : 'faculty';
-                    ?>
-                        <tr data-subject-id="<?= $sub['subject_id'] ?>" 
-                            data-subject-name="<?= htmlspecialchars($sub['subject_name']) ?>"
-                            data-ay="<?= htmlspecialchars($sub['academic_year']) ?>"
-                            data-semester-ids="<?= htmlspecialchars($sub['semester_ids']) ?>"
-                            data-mentor-type="<?= $mentorType ?>"
-                            data-mentor-name="<?= htmlspecialchars($sub['current_mentor_name']) ?>"
-                            data-mentor-id="<?= intval($sub['current_mentor_id']) ?>">
-                            <td style="color: #94a3b8; font-weight: 700;"><?= $idx + 1 ?></td>
-                            <td>
-                                <span style="font-weight: 700; color: #1e293b; font-size: 15px;"><?= htmlspecialchars($sub['subject_name']) ?></span>
-                            </td>
-                            <td>
-                                <?php 
-                                $depts = explode(', ', $sub['departments']);
-                                foreach ($depts as $d): ?>
-                                    <span class="badge-dept"><?= htmlspecialchars($d) ?></span>
-                                <?php endforeach; ?>
-                            </td>
-                            <td>
-                                <span class="badge-sem"><?= htmlspecialchars($sub['semesters']) ?></span>
-                            </td>
-                            <td style="color: #64748b; font-weight: 500;">
-                                <?= htmlspecialchars($sub['academic_year']) ?>
-                            </td>
-                            <td style="text-align: center;">
-                                <button type="button" class="btn-roster-view btn-view-students" 
-                                        data-subject-id="<?= $sub['subject_id'] ?>" 
-                                        data-subject-name="<?= htmlspecialchars($sub['subject_name']) ?>">
-                                    <i class="fa fa-users" style="margin-right: 4px;"></i> <?= intval($sub['student_count']) ?> Students
-                                </button>
-                            </td>
-                            <td class="mentor-col">
-                                <span class="<?= $mentorBadgeClass ?>">
-                                    <i class="fa <?= $isDummy ? 'fa-tag' : 'fa-check-circle' ?>"></i>
-                                    <span class="mentor-name-text"><?= htmlspecialchars($sub['current_mentor_name']) ?></span>
-                                </span>
-                            </td>
-                            <td style="text-align: center;">
-                                <button type="button" class="btn-action-change btn-change-mentor" 
-                                        data-subject-id="<?= $sub['subject_id'] ?>"
-                                        data-subject-name="<?= htmlspecialchars($sub['subject_name']) ?>"
-                                        data-current-mentor-id="<?= intval($sub['current_mentor_id']) ?>"
-                                        data-current-mentor-name="<?= htmlspecialchars($sub['current_mentor_name']) ?>">
-                                    <i class="fa fa-pencil"></i> Change Mentor
-                                </button>
-                            </td>
+        <!-- Main Assignments Table Card -->
+        <div class="box box-primary">
+            <div class="box-header with-border">
+                <h3 class="box-title"><i class="fa fa-list"></i> Subject-Wise Mentor Allocation Matrix</h3>
+                <div class="box-tools pull-right">
+                    <span class="label label-primary">AY 2026-27</span>
+                </div>
+            </div>
+            <div class="box-body table-responsive no-padding">
+                <table id="mentorAssignmentsTable" class="table table-bordered table-hover table-striped">
+                    <thead>
+                        <tr class="bg-gray-light">
+                            <th style="width: 50px; text-align: center;">#</th>
+                            <th>Specialization Subject</th>
+                            <th>Department(s)</th>
+                            <th>Semester</th>
+                            <th>Academic Year</th>
+                            <th style="text-align: center;">Enrolled Students</th>
+                            <th>Assigned Mentor</th>
+                            <th style="text-align: center; width: 140px;">Action</th>
                         </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($subjectAssignments as $idx => $sub): 
+                            $isDummy = !empty($sub['is_dummy_mentor']);
+                            $mentorLabelClass = $isDummy ? 'label-warning' : 'label-success';
+                            $mentorType = $isDummy ? 'dummy' : 'faculty';
+                        ?>
+                            <tr data-subject-id="<?= $sub['subject_id'] ?>" 
+                                data-subject-name="<?= htmlspecialchars($sub['subject_name']) ?>"
+                                data-ay="<?= htmlspecialchars($sub['academic_year']) ?>"
+                                data-semester-ids="<?= htmlspecialchars($sub['semester_ids']) ?>"
+                                data-mentor-type="<?= $mentorType ?>"
+                                data-mentor-name="<?= htmlspecialchars($sub['current_mentor_name']) ?>"
+                                data-mentor-id="<?= intval($sub['current_mentor_id']) ?>">
+                                <td style="text-align: center;"><?= $idx + 1 ?></td>
+                                <td>
+                                    <strong><?= htmlspecialchars($sub['subject_name']) ?></strong>
+                                </td>
+                                <td>
+                                    <?php 
+                                    $depts = explode(', ', $sub['departments']);
+                                    foreach ($depts as $d): ?>
+                                        <span class="label label-default" style="display:inline-block; margin: 1px;"><?= htmlspecialchars($d) ?></span>
+                                    <?php endforeach; ?>
+                                </td>
+                                <td>
+                                    <span class="label label-info"><?= htmlspecialchars($sub['semesters']) ?></span>
+                                </td>
+                                <td>
+                                    <?= htmlspecialchars($sub['academic_year']) ?>
+                                </td>
+                                <td style="text-align: center;">
+                                    <button type="button" class="btn btn-default btn-xs btn-view-students" 
+                                            data-subject-id="<?= $sub['subject_id'] ?>" 
+                                            data-subject-name="<?= htmlspecialchars($sub['subject_name']) ?>"
+                                            title="View enrolled students roster">
+                                        <i class="fa fa-users text-primary"></i> <strong><?= intval($sub['student_count']) ?></strong> Students
+                                    </button>
+                                </td>
+                                <td class="mentor-col">
+                                    <span class="label <?= $mentorLabelClass ?>" style="font-size: 12px; padding: 4px 8px;">
+                                        <i class="fa <?= $isDummy ? 'fa-tag' : 'fa-check' ?>"></i>
+                                        <span class="mentor-name-text"><?= htmlspecialchars($sub['current_mentor_name']) ?></span>
+                                    </span>
+                                </td>
+                                <td style="text-align: center;">
+                                    <button type="button" class="btn btn-primary btn-xs btn-change-mentor" 
+                                            data-subject-id="<?= $sub['subject_id'] ?>" 
+                                            data-subject-name="<?= htmlspecialchars($sub['subject_name']) ?>"
+                                            data-current-mentor-id="<?= intval($sub['current_mentor_id']) ?>"
+                                            data-current-mentor-name="<?= htmlspecialchars($sub['current_mentor_name']) ?>">
+                                        <i class="fa fa-edit"></i> Change Mentor
+                                    </button>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+            <div class="box-footer clearfix text-muted" style="font-size: 12px;">
+                <i class="fa fa-info-circle text-primary"></i> Reassigning a mentor here dynamically propagates across all enrolled student records, reports, and dashboards.
+            </div>
         </div>
-    </div>
+    </section>
 </div>
 
 <!-- CHANGE MENTOR MODAL -->
 <div class="modal fade" id="changeMentorModal" tabindex="-1" role="dialog" aria-labelledby="changeMentorModalLabel">
-    <div class="modal-dialog" role="document" style="max-width: 520px; margin-top: 80px;">
-        <div class="modal-content" style="border-radius: 14px; box-shadow: 0 20px 50px rgba(0,0,0,0.25); border: none; overflow: hidden;">
-            <div class="modal-header" style="background: linear-gradient(135deg, #423cbc, #302b8e); color: #ffffff; padding: 20px 24px; border-bottom: none;">
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close" style="color: #ffffff; opacity: 0.9; font-size: 26px;"><span aria-hidden="true">&times;</span></button>
-                <h4 class="modal-title" id="changeMentorModalLabel" style="font-weight: 700; font-size: 18px;">
-                    <i class="fa fa-user-plus" style="margin-right: 8px;"></i> Change Subject Mentor
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-primary">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title" id="changeMentorModalLabel">
+                    <i class="fa fa-edit"></i> Change Specialization Mentor
                 </h4>
             </div>
             <form id="changeMentorForm">
-                <div class="modal-body" style="padding: 24px;">
+                <div class="modal-body">
                     <input type="hidden" name="action" value="change_mentor">
                     <input type="hidden" name="subject_id" id="modal_subject_id">
 
                     <div id="modalAlert" style="display: none;"></div>
 
-                    <div class="form-group" style="margin-bottom: 18px;">
-                        <label style="font-weight: 600; color: #475569; font-size: 13px;">Specialization Subject</label>
-                        <div id="modal_subject_name_display" style="padding: 12px 16px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; font-weight: 700; color: #1e293b; font-size: 15px;"></div>
+                    <div class="form-group">
+                        <label>Specialization Subject</label>
+                        <div id="modal_subject_name_display" class="well well-sm" style="margin-bottom: 0; font-weight: bold;"></div>
                     </div>
 
-                    <div class="form-group" style="margin-bottom: 18px;">
-                        <label style="font-weight: 600; color: #475569; font-size: 13px;">Current Assigned Mentor</label>
-                        <div id="modal_current_mentor_display" style="padding: 12px 16px; background: #fffaf0; border: 1px solid #feebc8; border-radius: 8px; color: #b45309; font-weight: 600; font-size: 14px;">
-                            <i class="fa fa-user" style="margin-right: 6px;"></i> <span id="modal_current_mentor_text"></span>
+                    <div class="form-group">
+                        <label>Current Assigned Mentor</label>
+                        <div id="modal_current_mentor_display" class="well well-sm text-yellow" style="margin-bottom: 0; font-weight: bold;">
+                            <i class="fa fa-user"></i> <span id="modal_current_mentor_text"></span>
                         </div>
                     </div>
 
-                    <div class="form-group" style="margin-bottom: 10px;">
-                        <label style="font-weight: 600; color: #475569; font-size: 13px;">Select New Faculty / Mentor <span style="color: #ef4444;">*</span></label>
-                        <select name="new_mentor_id" id="modal_new_mentor_select" class="form-control" style="width: 100%; border-radius: 8px; height: 42px;" required>
-                            <option value="">-- Choose Faculty or Dummy Mentor --</option>
-                            <optgroup label="👨‍🏫 Actual Faculty Members">
+                    <div class="form-group">
+                        <label>Select New Mentor <span class="text-danger">*</span></label>
+                        <select name="new_mentor_id" id="modal_new_mentor_select" class="form-control" required>
+                            <option value="">-- Select Faculty or Dummy Mentor --</option>
+                            <optgroup label="Faculty Members">
                                 <?php foreach ($allMentors as $m): if (empty($m['is_dummy'])): ?>
                                     <option value="<?= $m['mentor_id'] ?>">
                                         <?= htmlspecialchars($m['mentor_name']) ?> (<?= htmlspecialchars($m['department_name']) ?> &bull; <?= htmlspecialchars($m['email_id']) ?>)
                                     </option>
                                 <?php endif; endforeach; ?>
                             </optgroup>
-                            <optgroup label="🔤 Alphabet Dummy Mentors">
+                            <optgroup label="System Placeholder Mentors">
                                 <?php foreach ($allMentors as $m): if (!empty($m['is_dummy'])): ?>
                                     <option value="<?= $m['mentor_id'] ?>">
                                         <?= htmlspecialchars($m['mentor_name']) ?> (<?= htmlspecialchars($m['email_id']) ?>)
@@ -591,15 +399,13 @@ require "header/header.php";
                                 <?php endif; endforeach; ?>
                             </optgroup>
                         </select>
-                        <small style="color: #64748b; margin-top: 6px; display: block;">
-                            <i class="fa fa-info-circle text-primary"></i> Updating this mentor will automatically update all students taking this subject.
-                        </small>
+                        <p class="help-block"><i class="fa fa-info-circle text-primary"></i> All enrolled students taking this subject will immediately resolve to the selected mentor.</p>
                     </div>
                 </div>
-                <div class="modal-footer" style="background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 16px 24px;">
-                    <button type="button" class="btn btn-default" data-dismiss="modal" style="border-radius: 8px; font-weight: 600;">Cancel</button>
-                    <button type="submit" id="btnSaveMentorChange" class="btn btn-primary" style="background: #423cbc; border-color: #423cbc; border-radius: 8px; font-weight: 600; padding: 8px 22px;">
-                        <i class="fa fa-save"></i> Save Mentor
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                    <button type="submit" id="btnSaveMentorChange" class="btn btn-primary">
+                        <i class="fa fa-save"></i> Save Mentor Assignment
                     </button>
                 </div>
             </form>
@@ -609,24 +415,24 @@ require "header/header.php";
 
 <!-- ENROLLED STUDENTS LIST MODAL -->
 <div class="modal fade" id="enrolledStudentsModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-lg" role="document" style="margin-top: 60px;">
-        <div class="modal-content" style="border-radius: 14px; overflow: hidden; border: none; box-shadow: 0 20px 50px rgba(0,0,0,0.25);">
-            <div class="modal-header" style="background: linear-gradient(135deg, #1e293b, #334155); color: #ffffff; padding: 18px 24px;">
-                <button type="button" class="close" data-dismiss="modal" style="color: #fff; opacity: 0.85;">&times;</button>
-                <h4 class="modal-title" style="font-weight: 700;">
-                    <i class="fa fa-graduation-cap text-info"></i> Enrolled Students in <span id="enrolledSubjectTitle" style="color: #38bdf8;"></span>
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-primary">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title">
+                    <i class="fa fa-graduation-cap"></i> Enrolled Students &mdash; <span id="enrolledSubjectTitle"></span>
                 </h4>
             </div>
-            <div class="modal-body" style="padding: 24px;">
-                <div id="enrolledStudentsLoading" style="text-align: center; padding: 30px;">
-                    <i class="fa fa-spinner fa-spin fa-2x" style="color: #423cbc;"></i>
-                    <p style="margin-top: 10px; color: #64748b;">Loading student roster...</p>
+            <div class="modal-body">
+                <div id="enrolledStudentsLoading" class="text-center" style="padding: 30px;">
+                    <i class="fa fa-spinner fa-spin fa-2x text-primary"></i>
+                    <p class="text-muted" style="margin-top: 10px;">Loading student roster...</p>
                 </div>
                 <div id="enrolledStudentsContent" style="display: none;" class="table-responsive">
-                    <table class="table table-hover table-striped" style="font-size: 13px;">
+                    <table class="table table-bordered table-hover table-striped">
                         <thead>
-                            <tr style="background: #f8fafc; color: #475569;">
-                                <th>#</th>
+                            <tr class="bg-gray-light">
+                                <th style="width: 40px; text-align: center;">#</th>
                                 <th>Student Name</th>
                                 <th>ERP ID / Reg No</th>
                                 <th>Dept</th>
@@ -641,8 +447,8 @@ require "header/header.php";
                     </table>
                 </div>
             </div>
-            <div class="modal-footer" style="background: #f8fafc; padding: 14px 24px;">
-                <button type="button" class="btn btn-default" data-dismiss="modal" style="border-radius: 8px; font-weight: 600;">Close</button>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
@@ -684,7 +490,7 @@ $(document).ready(function() {
                 btn.prop('disabled', false).html(originalBtnHtml);
                 if (response && response.success) {
                     $('#modalAlert').html(
-                        '<div class="alert alert-success" style="border-radius: 8px; padding: 10px 14px; margin-bottom: 15px;">' +
+                        '<div class="alert alert-success alert-dismissable">' +
                         '<i class="fa fa-check-circle"></i> ' + response.message +
                         '</div>'
                     ).fadeIn();
@@ -692,11 +498,11 @@ $(document).ready(function() {
                     // Update row in table immediately
                     var row = $('tr[data-subject-id="' + response.subject_id + '"]');
                     var isDummy = response.new_mentor_name.indexOf('Mentor ') === 0;
-                    var badgeClass = isDummy ? 'badge-mentor-dummy' : 'badge-mentor-faculty';
-                    var icon = isDummy ? 'fa-tag' : 'fa-check-circle';
+                    var labelClass = isDummy ? 'label-warning' : 'label-success';
+                    var icon = isDummy ? 'fa-tag' : 'fa-check';
 
                     row.find('.mentor-col').html(
-                        '<span class="' + badgeClass + '">' +
+                        '<span class="label ' + labelClass + '" style="font-size: 12px; padding: 4px 8px;">' +
                         '<i class="fa ' + icon + '"></i> ' +
                         '<span class="mentor-name-text">' + $('<div>').text(response.new_mentor_name).html() + '</span>' +
                         '</span>'
@@ -716,7 +522,7 @@ $(document).ready(function() {
                 } else {
                     var errorMsg = response && response.message ? response.message : 'Unable to update mentor assignment.';
                     $('#modalAlert').html(
-                        '<div class="alert alert-danger" style="border-radius: 8px; padding: 10px 14px; margin-bottom: 15px;">' +
+                        '<div class="alert alert-danger alert-dismissable">' +
                         '<i class="fa fa-exclamation-triangle"></i> ' + errorMsg +
                         '</div>'
                     ).fadeIn();
@@ -726,7 +532,7 @@ $(document).ready(function() {
                 btn.prop('disabled', false).html(originalBtnHtml);
                 var err = xhr.status === 403 ? 'Access Denied: You do not have permission to change mentor assignments.' : 'Server error processing request.';
                 $('#modalAlert').html(
-                    '<div class="alert alert-danger" style="border-radius: 8px; padding: 10px 14px; margin-bottom: 15px;">' +
+                    '<div class="alert alert-danger alert-dismissable">' +
                     '<i class="fa fa-exclamation-triangle"></i> ' + err +
                     '</div>'
                 ).fadeIn();
@@ -756,35 +562,35 @@ $(document).ready(function() {
                     var rowsHtml = '';
                     $.each(resp.students, function(i, s) {
                         rowsHtml += '<tr>' +
-                            '<td style="color: #94a3b8; font-weight: 600;">' + (i + 1) + '</td>' +
-                            '<td><strong style="color: #1e293b;">' + $('<div>').text(s.fname).html() + '</strong></td>' +
-                            '<td><code style="background: #f1f5f9; color: #475569;">' + $('<div>').text(s.registration_no).html() + '</code></td>' +
-                            '<td><span class="badge-dept">' + $('<div>').text(s.department_name).html() + '</span></td>' +
+                            '<td style="text-align: center;">' + (i + 1) + '</td>' +
+                            '<td><strong>' + $('<div>').text(s.fname).html() + '</strong></td>' +
+                            '<td><code>' + $('<div>').text(s.registration_no).html() + '</code></td>' +
+                            '<td><span class="label label-default">' + $('<div>').text(s.department_name).html() + '</span></td>' +
                             '<td>' + $('<div>').text(s.division_name).html() + '</td>' +
                             '<td>' + $('<div>').text(s.roll_no).html() + '</td>' +
-                            '<td><span class="badge-sem">' + $('<div>').text(s.semester_name).html() + '</span></td>' +
-                            '<td><span style="background: #dbeafe; color: #1e40af; padding: 3px 8px; border-radius: 4px; font-weight: 700;">' + $('<div>').text(s.cgpa || 'N/A').html() + '</span></td>' +
-                            '<td><a href="mailto:' + encodeURIComponent(s.email) + '" style="color: #423cbc;">' + $('<div>').text(s.email).html() + '</a></td>' +
+                            '<td><span class="label label-info">' + $('<div>').text(s.semester_name).html() + '</span></td>' +
+                            '<td><span class="badge bg-blue">' + $('<div>').text(s.cgpa || 'N/A').html() + '</span></td>' +
+                            '<td><a href="mailto:' + encodeURIComponent(s.email) + '">' + $('<div>').text(s.email).html() + '</a></td>' +
                         '</tr>';
                     });
                     $('#enrolledStudentsTableBody').html(rowsHtml);
                 } else {
-                    $('#enrolledStudentsTableBody').html('<tr><td colspan="9" style="text-align: center; color: #94a3b8; padding: 25px;">No students currently enrolled in this specialization subject.</td></tr>');
+                    $('#enrolledStudentsTableBody').html('<tr><td colspan="9" class="text-center text-muted" style="padding: 25px;">No students currently enrolled in this specialization subject.</td></tr>');
                 }
             },
             error: function() {
                 $('#enrolledStudentsLoading').hide();
                 $('#enrolledStudentsContent').show();
-                $('#enrolledStudentsTableBody').html('<tr><td colspan="9" style="text-align: center; color: #ef4444; padding: 25px;">Error retrieving enrolled student list.</td></tr>');
+                $('#enrolledStudentsTableBody').html('<tr><td colspan="9" class="text-center text-danger" style="padding: 25px;">Error retrieving enrolled student list.</td></tr>');
             }
         });
     });
 
-    // Semester Tabs Filter
+    // Semester Filter Button Group
     var activeSemFilter = 'all';
-    $('.st-tab-btn').on('click', function() {
-        $('.st-tab-btn').removeClass('active');
-        $(this).addClass('active');
+    $('.sem-filter-btn').on('click', function() {
+        $('.sem-filter-btn').removeClass('active btn-primary').addClass('btn-default');
+        $(this).removeClass('btn-default').addClass('active btn-primary');
         activeSemFilter = $(this).data('sem-filter');
         filterTable();
     });

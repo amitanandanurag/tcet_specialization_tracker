@@ -194,16 +194,10 @@ function DOMPDF_autoload($class) {
   require_once(DOMPDF_INC_DIR . "/$filename");
 }
 
-if ( !function_exists("__autoload") ) {
-  /**
-   * Default __autoload() function
-   *
-   * @param string $class
-   */
-  function __autoload($class) {
-    DOMPDF_autoload($class);
-  }
+if (function_exists('spl_autoload_register')) {
+  spl_autoload_register('DOMPDF_autoload');
 }
+
 
 // ### End of user-configurable options ###
 

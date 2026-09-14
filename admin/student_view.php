@@ -584,9 +584,4 @@ $is_research = strpos($specialization_name, 'research') !== false;
     </div>
 </div>
 <?php endif; ?>
-
-<script>
-    $(document).ready(function() {
-        console.log("Student view loaded for ID: <?php echo $student_id; ?>");
-    });
-</script>
+

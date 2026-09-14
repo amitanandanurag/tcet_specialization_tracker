@@ -317,7 +317,6 @@ $(document).ready(function(){
       dataType: 'html'
     })
     .done(function(data){
-      console.log(data);  
       $('#dynamic-content').html('');    
       $('#dynamic-content').html(data); // load response 
       $('#modal-loader').hide();      // hide ajax loader 
@@ -459,7 +458,6 @@ $(document).ready(function(){
             url :"all_allocated_class_ajax.php",
             type: "post",
             error: function(response){
-              console.log(response);
               $(".all_admin_ajax-error").html("");
               $("#all_admin_ajax").append('<tbody class="all_admin_ajax-error"><tr><th colspan="3">No data found in the server </th></tr></tbody>');
               $("#all_admin_ajax_processing").css("display","none");

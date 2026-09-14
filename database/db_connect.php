@@ -1,4 +1,5 @@
 <?php
+if (!class_exists('DBController')) {
 class DBController
 {
     /*public $host = "localhost";
@@ -940,5 +941,6 @@ class DBController
     return false;
   }
 
+}
 }
 ?>

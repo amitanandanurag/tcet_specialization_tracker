@@ -564,7 +564,6 @@ function loadMinorSubjectsByCourse(courseId) {
                 }
             },
             error: function(xhr, status, error) {
-                console.log('AJAX Error:', error);
                 $('#minor_subject_select').empty().append('<option value="">Error loading subjects</option>');
             }
         });

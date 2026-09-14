@@ -60,9 +60,6 @@
         type: 'POST', 
         data: formData, 
         success: function (response) {
-           console.log(response);
-            
-
                if(response == 1)
                    {
            

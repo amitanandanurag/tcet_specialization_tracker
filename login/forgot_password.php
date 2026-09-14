@@ -263,7 +263,6 @@ if (isset($_POST['reset_btn'])) {
                         try {
                             parent.closeForgotPasswordPopup();
                         } catch(e) {
-                            console.log("Parent close not available, reloading parent");
                             parent.location.reload();
                         }
                     }, 2000);
