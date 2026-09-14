@@ -305,6 +305,6 @@ $dashboardRoute = ($usertype === 5) ? 'student_dashboard.php' : 'index.php';
 					</div>
 				</div>
 				<br />
-				<?php include "side_menu.php"; ?>
+				<?php include_once "side_menu.php"; ?>
 				<!-- /.sidebar -->
 		</aside>

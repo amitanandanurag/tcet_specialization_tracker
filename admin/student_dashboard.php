@@ -29,12 +29,19 @@ if ($linkedStudentId > 0) {
                           s.cgpa, s.fname, s.mobile, s.email, s.status, s.created_at,
                           c.class_name, sec.sections AS division_name, d.department_name,
                           sp.specialization_name, sub.subject_name, current_history_subject.subject_name AS current_history_subject_name, ay.session_name
-                                  , sem.semester_name AS current_semester_name
-                                  , (SELECT um.user_name FROM st_mentor_student_mapping mm
-                                      INNER JOIN st_user_master um ON um.user_id = mm.mentor_id
-                                      WHERE mm.student_id = s.student_id AND mm.semester_id = s.current_semester_id
-                                      ORDER BY mm.mapping_id DESC LIMIT 1) AS current_mentor_name
-                                  , (SELECT h.progress_percent FROM st_student_semester_history h
+                                   , sem.semester_name AS current_semester_name
+                                   , COALESCE(
+                                       (SELECT NULLIF(TRIM(um.user_name), '') 
+                                        FROM st_mentor_subject_mapping msm 
+                                        JOIN st_user_master um ON um.user_id = msm.mentor_id 
+                                        WHERE msm.subject_id = COALESCE(NULLIF(current_history.specialization_subject_id, 0), NULLIF(s.specialization_subject_id, 0)) 
+                                        LIMIT 1),
+                                       (SELECT um.user_name FROM st_mentor_student_mapping mm
+                                        INNER JOIN st_user_master um ON um.user_id = mm.mentor_id
+                                        WHERE mm.student_id = s.student_id AND mm.semester_id = s.current_semester_id
+                                        ORDER BY mm.mapping_id DESC LIMIT 1)
+                                     ) AS current_mentor_name
+                                   , (SELECT h.progress_percent FROM st_student_semester_history h
                                       WHERE h.student_id = s.student_id AND h.semester_id = s.current_semester_id
                                       LIMIT 1) AS current_progress
                    FROM st_student_master s

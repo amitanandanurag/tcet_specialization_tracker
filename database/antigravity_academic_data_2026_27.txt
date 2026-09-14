@@ -1,0 +1,198 @@
+ANTIGRAVITY ACADEMIC DATA — AY 2026-27
+================================================================================
+Purpose: Seed/import reference for the existing application.
+Important: Preserve subject→mentor as a separate relationship. Initially assign deterministic dummy alphabet mentors; later mentors must be changeable from the Admin UI without editing individual students.
+
+WORKBOOK: _Specialization Data AY 2026- 27 SEM  V and SEM VII.xlsx
+--------------------------------------------------------------------------------
+
+SHEET: SEM V
+HEADER_ROW_IN_SOURCE: 606
+DATA_ROWS: 4
+
+115	Vrishketu Mishra	BE B	23	IT	Data Science	College ESE	New added
+	AKASH VISHWAKARMA	24-AI&DSC47-28	Quantum Technology				
+	VIRAJ KAPANI	24-MME22-28	Quantum Technology				
+	ARNAV KUMAR	24-ITA05-28	Quantum Technology				
+	VEDANT DUSANE	24-ITA25-28	Quantum Technology				
+
+================================================================================
+
+SHEET: SEM VII NPTEL STUDENTS
+HEADER_ROW_IN_SOURCE: 2
+DATA_ROWS: 19
+
+Sr. No	Name of a student	Division	Roll No	Dept	Name of a specialisation
+1	Mamta Rajpurohit	BE	56	IT	COMP - Data Science
+2	Vaishnavi Ranjan	BE	58	IT	COMP - Data Science
+3	Devashree Raut	BE	61	IT	COMP - Data Science
+4	Shivangi Pradhan	B	43	Comp	COMP-Artificial Intelligence
+5	Akhila Prabhukeluskar	B	42	Comp	COMP-Artificial Intelligence
+6	Shreya Rajput	B	54	Comp	COMP-Artificial Intelligence
+7	Shivani Shanbhag	B	63	Comp	COMP-Artificial Intelligence
+8	Chinmay Dilip Takke	C	31	Comp	COMP-Artificial Intelligence
+9	Yash Sunil Mane	B	21	Comp	COMP-Artificial Intelligence
+10	Shreya Jadhav	B	1	Comp	COMP-Artificial Intelligence
+11	ARYAN GOUD	A	48	Comp	COMP-Artificial Intelligence
+12	GAURAV GAUTAM	A	44	Comp	COMP-Artificial Intelligence
+13	HADAGALI RISHABH RAJESH SHILPA		11	CSE	COMP - Artificial Intelligence
+14	Kshitij Yadav		62	CSE	COMP - Artificial Intelligence
+15	Janhvi Kushwaha		19	IoT	Cyber Security
+16	Sawant Yash	B	19	E&TC	Cyber Security
+17	Kamble Shubham	B	34	E&TC	Cyber Security
+18	Deepanshu Aggarwal	BE	1	COMP	Data Science
+19	Anjali Prajapati	BE	44	COMP	Data Science
+
+================================================================================
+
+SHEET: SEM VII
+HEADER_ROW_IN_SOURCE: 294
+DATA_ROWS: 15
+
+306	Manav Gupta	A	29	E&TC	COMP-Artificial Intelligence	College ESE	Name Spelling mistake corrected
+307	Nishchay Sahoo	TE B	11	E&TC	COMP-Artificial Intelligence	College ESE	
+308	Dhanraj Shetty	TE A	24	E&TC	COMP-Artificial Intelligence	College ESE	
+309	Nihira Shinde	TE B	32	E&TC	COMP-Artificial Intelligence	College ESE	
+310	Arth Singh	TE B	41	E&TC	COMP-Artificial Intelligence	College ESE	
+311	Saloni Nandkishor Kadam	T. T.	12	IoT	COMP-Artificial Intelligence	College ESE	
+312	Dhruv Kotian	TT	18	IoT	COMP-Artificial Intelligence	College ESE	
+313	Yash Parab	A	23	IoT	COMP-Artificial Intelligence	College ESE	
+314	Atul Gupta	TT	5	IoT	COMP-Artificial Intelligence	College ESE	
+315	Daksh Kotian	TT	17	IoT	COMP-Artificial Intelligence	College ESE	
+316	Akshay Yadav	TE C	54	IT	COMP-Artificial Intelligence	College ESE	
+317	Shivam Pal	TE	29	Mechanical	COMP-Artificial Intelligence	College ESE	
+318	Akash Jaiswar	TE	15	MME	COMP-Artificial Intelligence	College ESE	
+321	Anjali Verma	BE B	56	EXTC	Data Science	College ESE	New added
+322	Vikas Tiwari	BE C	42	Comp	COMP-Artificial Intelligence	College ESE	New added
+	Apeksha Pardeshi	BE	64	EXTC	COMP-Artificial Intelligence		
+
+================================================================================
+WORKBOOK: AY 2026-27 SEM III Registrations (quantum and Space Technology).xlsx
+--------------------------------------------------------------------------------
+
+SHEET: Quantum Technology and Applicat
+HEADER_ROW_IN_SOURCE: 3
+DATA_ROWS: 54
+
+Anand chauhan	A	20	COMP	1032250554@tcetmumbai.in	7.925	Opted out
+Saima bhan	A	20	AI&DS	1032251678	7.3	
+Vedant Rajeev Kushwaha	B	41	AI&DS	1032251825	8.05	
+Aryan Vilas Patil	C	17	AI&DS	S1032251864	9.3	
+Nishit Patel	C	15	AI&DS	S1032251862	7.29	
+Aman Brijeshkumar Pandey	C	8	AI&DS	S1032251855	9	
+Pal Shivam Rajesh	C	1	AI&ML	1032252037	9.86 and 9.71	
+Sayan	A	13	AI&DS	S1032251671	8.14	
+Vivek prasad	C	33	AI&ML	S1032252069	8.82 and 9.62	
+Vedant Mali	A	52	E&TC	1032251090	8.75	
+Ankita Khare	B	34	AI&DS	1032251818	8.71 - sem 1, 10 - sem 2	
+Aditi Abhijit Karangutkar	B	25	AI&DS	S1032251809	9.75	
+Suraj Ramji Varma	D	41	AI&DS	1032251951	9.63	
+Aditya Rajesh Chauhan	A	31	AI&DS	1032251689	9.93	
+Shubham Sudhilal Gupta	A	59	AI&DS	1032251717	9.36	
+Puneet Ram Gupta	A	53	AI&DS	1032251711	8.435	
+Ansari Ammar Mustaq Ahmed	A	10	AI&DS	S1032251668	9.315	
+Furkan Shamim Ansari	A	11	AI&DS	S1032251669	8.715	
+Pithawa Ghanashyam R	C	24	COMP	1032250684	9.41	
+Manas Nandu Gite	A	47	AI&DS	1032251705	8.36	
+Guruprasad Dubey	A	38	AI&ML	S1032251759	7.5	
+Rohit Gupta	A	59	AI&ML	S1032251780	8.64	
+JAYANT SUDHEER SINGH	D	11	AI&DS	1032251921	9.06	
+Maitreyee Prakash Kadam	B	22	AI&DS	1032251806	9.1	
+Shivam Gupta	A	57	AI&DS	S1032251715	.	
+Abhishek jha	B	13	AI&DS	1032251797	6.87	
+Bhumi Jain	B	5	AI&DS	1032251789	7.32	
+Shivali Mantri	B	49	AI&DS	1032251833@tcetmumbai.in	9.3	
+Daksh jain	Aids B	6	AI&DS	S1032251790	8.77	
+Yash Dubey	A	42	AI&DS	1032251700	8.64	
+Mayukh Minesh Rangnekar	C	30	COMP	S1032250690	9.09	
+Navam Kamal Buswal	A	26	AI&DS	S1032251684	9.82	
+Mahak Devendra Jain	B	8	AI&DS	1032251792	9.86	
+Ankita Jha	B	15	AI&DS	1032251799	9.8	
+Ananya Kainattil Binu	B	23	AI&DS	S1032251807	8.45	
+Mithil Khose	-	21	MECH	S1032250370	8.19	
+Chandan Choudhary	A	26	COMP	1032250560	8.2	Opted out
+Yuvraj Rushikesh Bhattacharya	A	12	COMP	1032250546	8.2 & 7.45	Opted out
+Dhyana Sagarkumar Kansara	B	24	AI&DS	1032251808	9.285	
+Atharva Ganeshkar	A	45	COMP	S1032250579	7.14	Opted out
+Jagrut Sagar Chonkar	A	21	AI&ML	1032251742	9.35	
+Aniruddh Anil Audichya	A	6	AI&ML	1032251727	9.2	
+Sristi Vishwakarma	D	46	AI&ML	1032252145	6.9	
+Jagannath Ramankumar Ganji	A	46	AI&ML	1032251767	7	
+Ifra Ansari	A	5	AI&ML	1032251726	9.38	
+FARZAAN MOHAMMAD FAROOQUE SHAIKH	A	44	COMP	1032250578	Sem1:- 8.67 and sem 2:- 7.95	Opted out
+Krutika Hemant Agrawal	A	5	AI&DS	1032251663@tcetmumbai.in	9.82	
+Seher Ahmed	A	6	AI&DS	1032251664@tcetmumbai.in	9.73	
+Narayan Mishra	B	57	AI&DS	1032251841	8.27	
+Nishant Choudhary	A	22	AI&ML	S1032251743	8.71	
+Atharva Dhule	A	32	AI&ML	S1032251753	9.42	
+Shardul Sunil Chindarkar	A	18	AI&ML	S1032251739	8.12	
+kshitij bisht	A	22	AI&DS	S1032251680	7.73	
+Vedika jayaswal	B	12	AI&DS	1032251796	8.8	
+Akshit Negi	C	5	AI&DS	S1032251852	8	
+
+================================================================================
+
+SHEET: Quantum Tech final count AY 26-
+HEADER_ROW_IN_SOURCE: 1
+DATA_ROWS: 25
+
+Name of student	Class	Roll no	Registration done on Nptel Yes/No	Unnamed_5	CGPA
+Aditi Karangutkar	AIDS-B	25	yes		9.765
+Dhyana Sagarkumar Kansara	AIDS-B	24	Yes		9.285
+Rudra Mayekar	EXTC-A	55	yes		8.12
+Vedant Mali	EXTC-A	52	Yes	8.76	
+Ananya Kainattil Binu	AIDS-B	23	yes		8.2
+Vedant Rajeev Kushwaha	AI&DS-B	41			
+Yash Nitesh Shahu	AIML-C	47		7.68	6.52
+Abbas mistry	E&TC-A	62	yes		7.61
+Narayan Mishra	AIDS-B	57	Yes		8.4
+Dhruv Suthar	CSE CS C	30	yes		9.645
+Abhay Sharma	CSE CS C	1	yes		8.78
+Aditya Singh	CSE CS C	16	yes		8.79
+Mahak Jain	AIDS-B	8	yes		9.86
+Ankita Khare	AIDS B	34	yes		9.355
+Guruprasad Dubey	AIML A	38			
+Maitreyee Kadam	AIDS B	22	yes		9.175
+Akshit Negi	AIDS C	5			
+Shraddha Shukla	CSE CS C	11	yes		8.82
+Shraddha Kadam	AIML B	19	Yes		8.86
+Aryan pandey	AIMLC	7	Yes		8.05
+Rohit Gupta	AIML A	59	Yes		8.64
+Yash Singh	AIML D	19	Yes	8.875	
+Payal Yadav	CSE CS C	55			9.18
+Ankita Jha	AIDS-B	15	Yes		9.8
+Saurabh Vishwakarma	CSE CS C	43			8
+
+================================================================================
+
+SHEET: Space Technology AY 26-27 sem I
+HEADER_ROW_IN_SOURCE: 1
+DATA_ROWS: 26
+
+Sr. No.	Name of Student	Roll no.	Branch	DIV	Official Email Address	Year	CGPA   sem I	CGPA sem II	MOBILE:
+1	Diya Dinesh	37	AI&DS	A	1032251695@tcetmumbai.in	ST	8.9	9.82	8097827198
+2	Shubham Shravan Gupta	58	AIDS	A	1032251716@tcetmumbai.in	ST	8.68	8.58	9324170168
+3	Arnav Pal	62	AI&ML	B	1032252035@tcetmumbai.in	ST	6.8		7020894698
+4	Yash Shahu	47	AI&ML	C	1032252083@tcetmumbai.in	ST	7.68	6.52	9175890344
+5	Harshnath Dewra	30	AI&ML	A	1032251751@tcetmumbai.in	ST	8.73	7.95	9833139437
+6	Krishna Rameshchandra Pusola	34	AI&ML	C	1032252070@tcetmumbai.in	ST	8.95	9.1	7506952958
+7	Yug Gaglani	45	AI&ML	A	1032251766@tcetmumbai.in	ST	7.09	8.14	8104850764
+8	Saksham dubey	40	AI&ML	A	1032251761@tcetmumbai.in	ST	9.1	8	9324027432
+9	Rajib Das	27	AI&ML	A	1032251748@tcetmumbai.in	ST	7.18	8.14	9702770161
+10	Soham Prashant Bashte	11	AI&ML	A	1032251732@tcetmumbai.in	ST	7.32	6.86	9970523068
+11	Aditya Gupta	53	AI&ML	A	1032251774@tcetmumbai.in	ST	7.37	6.95	9370947102
+12	PATRH JITENDRA ANGARE	4	AI&ML	A	1032251725@tcetmumbai.in	ST	6.86	6.86	9594971961
+13	Arya Adhikari	2	AI&ML	A	1032251723@tcetmumbai.in	ST	7.09	7.19	8698773110
+14	Vanessa Navin D'Souza	25	AI&ML	A	1032251746@tcetmumbai.in	ST	8.5	8	8097315848
+15	Om Dubey	39	AI&ML	A	1032251760@tcetmumbai.in	ST	6.5		9323656586
+16	Vedant Jadhav	54	CSE	A	1032251211@tcetmumbai.in	ST	9.29	9.14	9371989387
+17	Gaurav Chaubey	22	CSE	A	1032251179@tcetmumbai.in	ST	8.62	8.41	9324157172
+18	AAYUSH SANTOSH KADAM	43	E&TC	A	1032251081@tcetmumbai.in	ST	8.77	9.43	9284264807
+19	Yashnil Girase	29	E&TC	A	1032251067@tcetmumbai.in	ST	8	7.72	7021980609
+20	Arin Deshmukh	16	E&TC	A	1032251054@tcetmumbai.in	ST	8	7.24	9870415881
+21	Ekanshi Deshmukh	17	E&TC	A	1032251055@tectmumbai.in	ST	7.91	8.52	8291516284
+22	Gargi Chavan	11	MECH	A	1032250360@tcetmumbai.in	ST	8.05	7.76	9987986590
+23	Niyati Shah	49	MECH	A	1032250398@tcetmumbai.in	ST	9.73	9.9	7977441041
+24	Saachi Potam	43	MME	A	1032251515@tcetmumbai.in	ST	7.7	7.95	8169670498
+25	Bansri Shroff	46	MME	-	1032251518@tcetmumbai.in	ST	7.14	8.24	9833160650
+26	Parul Kumawat	30	MME	A	1032251502@tcetmumbai.in	ST	7.09	7.6	7304289023

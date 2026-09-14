@@ -213,6 +213,15 @@ function formatValue($value) {
                             <div class="detail-label">Specialization Subject</div>
                             <div class="detail-value"><?php echo formatValue($student['subject_name'] ?: ($student['history_subject_name'] ?? '')); ?></div>
                         </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Assigned Mentor</div>
+                            <div class="detail-value">
+                                <?php 
+                                    $resolvedMentor = $db_handle->getResolvedMentorForStudent($student_id);
+                                    echo $resolvedMentor ? htmlspecialchars($resolvedMentor['mentor_name']) : 'Not Assigned';
+                                ?>
+                            </div>
+                        </div>
                     </div>
                 </div>
 

@@ -813,5 +813,132 @@ class DBController
     return true;
   }
 
+  public function getResolvedMentorForSubject($subjectId)
+  {
+    if (!($this->conn instanceof mysqli) || intval($subjectId) <= 0) {
+      return null;
+    }
+    $subjectId = intval($subjectId);
+    $sql = "SELECT u.user_id AS mentor_id,
+                   COALESCE(NULLIF(TRIM(u.user_name), ''), u.email_id) AS mentor_name,
+                   u.email_id,
+                   u.phone_number,
+                   u.department_id,
+                   d.department_name
+            FROM st_mentor_subject_mapping msm
+            JOIN st_user_master u ON u.user_id = msm.mentor_id
+            LEFT JOIN st_department_master d ON d.department_id = u.department_id
+            WHERE msm.subject_id = ?
+            LIMIT 1";
+    $stmt = mysqli_prepare($this->conn, $sql);
+    if (!$stmt) {
+      return null;
+    }
+    mysqli_stmt_bind_param($stmt, "i", $subjectId);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+    $mentor = ($result && ($row = mysqli_fetch_assoc($result))) ? $row : null;
+    mysqli_stmt_close($stmt);
+    return $mentor;
+  }
+
+  public function getResolvedMentorForStudent($studentId, $semesterId = null)
+  {
+    if (!($this->conn instanceof mysqli) || intval($studentId) <= 0) {
+      return null;
+    }
+    $studentId = intval($studentId);
+
+    // Dynamic resolution through Student -> Subject -> Mentor Mapping -> Mentor User
+    $sql = "SELECT u.user_id AS mentor_id,
+                   COALESCE(NULLIF(TRIM(u.user_name), ''), u.email_id) AS mentor_name,
+                   u.email_id,
+                   u.phone_number,
+                   u.department_id,
+                   d.department_name,
+                   ssm.subject_id,
+                   ssm.subject_name
+            FROM st_student_master sm
+            LEFT JOIN st_student_semester_history h ON h.student_id = sm.student_id " . ($semesterId !== null ? "AND h.semester_id = " . intval($semesterId) : "AND h.semester_id = sm.current_semester_id") . "
+            JOIN st_specialization_subject_master ssm ON ssm.subject_id = COALESCE(NULLIF(h.specialization_subject_id, 0), NULLIF(sm.specialization_subject_id, 0))
+            JOIN st_mentor_subject_mapping msm ON msm.subject_id = ssm.subject_id
+            JOIN st_user_master u ON u.user_id = msm.mentor_id
+            LEFT JOIN st_department_master d ON d.department_id = u.department_id
+            WHERE sm.student_id = ?
+            LIMIT 1";
+
+    $stmt = mysqli_prepare($this->conn, $sql);
+    if (!$stmt) {
+      return null;
+    }
+    mysqli_stmt_bind_param($stmt, "i", $studentId);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+    $mentor = ($result && ($row = mysqli_fetch_assoc($result))) ? $row : null;
+    mysqli_stmt_close($stmt);
+    return $mentor;
+  }
+
+  public function assignSubjectMentor($subjectId, $mentorId, $changedByUserId = 1)
+  {
+    if (!($this->conn instanceof mysqli) || intval($subjectId) <= 0 || intval($mentorId) <= 0) {
+      return false;
+    }
+    $subjectId = intval($subjectId);
+    $mentorId = intval($mentorId);
+
+    // Get previous mentor details for audit
+    $prevMentor = $this->getResolvedMentorForSubject($subjectId);
+    $prevMentorName = $prevMentor ? $prevMentor['mentor_name'] : 'None';
+
+    // Get subject name
+    $subName = 'Unknown Subject';
+    $subRes = mysqli_query($this->conn, "SELECT subject_name FROM st_specialization_subject_master WHERE subject_id = $subjectId LIMIT 1");
+    if ($subRes && ($sRow = mysqli_fetch_assoc($subRes))) {
+      $subName = $sRow['subject_name'];
+    }
+
+    // Get new mentor name
+    $newMentorName = 'Unknown Mentor';
+    $mRes = mysqli_query($this->conn, "SELECT COALESCE(NULLIF(TRIM(user_name), ''), email_id) AS mentor_name FROM st_user_master WHERE user_id = $mentorId LIMIT 1");
+    if ($mRes && ($mRow = mysqli_fetch_assoc($mRes))) {
+      $newMentorName = $mRow['mentor_name'];
+    }
+
+    // Upsert mapping in st_mentor_subject_mapping
+    $sql = "INSERT INTO st_mentor_subject_mapping (mentor_id, subject_id)
+            VALUES (?, ?)
+            ON DUPLICATE KEY UPDATE mentor_id = VALUES(mentor_id), updated_at = CURRENT_TIMESTAMP";
+    $stmt = mysqli_prepare($this->conn, $sql);
+    if (!$stmt) {
+      return false;
+    }
+    mysqli_stmt_bind_param($stmt, "ii", $mentorId, $subjectId);
+    $res = mysqli_stmt_execute($stmt);
+    mysqli_stmt_close($stmt);
+
+    if ($res) {
+      // Sync legacy mappings / history table if present
+      mysqli_query($this->conn, "
+        UPDATE st_student_semester_history h
+        JOIN st_student_master s ON s.student_id = h.student_id
+        SET h.mentor_id = $mentorId
+        WHERE COALESCE(NULLIF(h.specialization_subject_id, 0), s.specialization_subject_id) = $subjectId
+          AND h.status = 'Active'
+      ");
+
+      // Write audit log
+      $this->writeAuditLog(
+        $changedByUserId,
+        'MENTOR_ASSIGNMENT_CHANGED',
+        'st_mentor_subject_mapping',
+        $subjectId,
+        "Subject '{$subName}' mentor changed from '{$prevMentorName}' to '{$newMentorName}'"
+      );
+      return true;
+    }
+    return false;
+  }
+
 }
 ?>

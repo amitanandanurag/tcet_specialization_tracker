@@ -1,4 +1,5 @@
 <?php
+if (!function_exists('sidebar_has_column')) {
 function sidebar_has_column($conn, $table, $column)
 {
 	$escapedColumn = mysqli_real_escape_string($conn, $column);
@@ -10,6 +11,7 @@ function sidebar_has_column($conn, $table, $column)
 	}
 
 	return $exists;
+}
 }
 
 $menuHasIconColumn = sidebar_has_column($db_handle->conn, 'st_menu_master', 'menu_icon');
@@ -148,6 +150,7 @@ function sidebar_seed_mentor_menu($db_handle)
 		array('Register Mentor', 'fa fa-plus', 'mentor_register.php', array(1, 2)),
 		array('Mentor Info', 'fa fa-info-circle', 'mentor_info.php', array(1, 2)),
 		array('Mentor Allocation', 'fa fa-exchange', 'mentor_allocation.php', array(1, 2, 3)),
+		array('Mentor Assignments', 'fa fa-users', 'mentor_assignment.php', array(1, 2, 3)),
 		array('Offline Marks Entry', 'fa fa-pencil-square-o', 'offline_marks_entry.php', array(1, 2, 3, 4))
 	);
 
