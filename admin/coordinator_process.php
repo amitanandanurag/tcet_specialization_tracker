@@ -45,9 +45,22 @@ try {
         $sql = "UPDATE st_user_master SET user_name='$userNameEsc', email_id='$emailEsc', phone_number='$phoneEsc', department_id=$departmentId WHERE user_id=$userId AND role_id=$roleId";
         $db_handle->query($sql);
         
-        // Also update the username in st_login if email changed
-        $updateLoginSql = "UPDATE st_login SET username='$emailEsc' WHERE user_id=$userId";
-        $db_handle->query($updateLoginSql);
+        // Also update the username in st_login if email changed, or create if not exists
+        $checkLogin = mysqli_query($db_handle->conn, "SELECT login_id FROM st_login WHERE user_id = $userId LIMIT 1");
+        if ($checkLogin && mysqli_num_rows($checkLogin) > 0) {
+            $updateLoginSql = "UPDATE st_login SET username='$emailEsc' WHERE user_id=$userId";
+            $db_handle->query($updateLoginSql);
+        } else {
+            $passwordEsc = mysqli_real_escape_string($db_handle->conn, "123456"); 
+            $loginSql = "INSERT INTO st_login (username, password, user_id) VALUES ('$emailEsc', '$passwordEsc', $userId)";
+            $db_handle->query($loginSql);
+            $loginId = $db_handle->conn->insert_id;
+            
+            $coordCheck = mysqli_query($db_handle->conn, "SELECT 1 FROM st_coordinator WHERE login_id = $loginId LIMIT 1");
+            if ($coordCheck && mysqli_num_rows($coordCheck) === 0) {
+                mysqli_query($db_handle->conn, "INSERT INTO st_coordinator (login_id) VALUES ($loginId)");
+            }
+        }
     } else {
         // Insert new coordinator into st_user_master
         $sql = "INSERT INTO st_user_master (user_name, email_id, phone_number, department_id, role_id, student_id) VALUES ('$userNameEsc', '$emailEsc', '$phoneEsc', $departmentId, $roleId, 0)";
@@ -56,13 +69,14 @@ try {
         
         // Ensure data is inserted into st_login
         $passwordEsc = mysqli_real_escape_string($db_handle->conn, "123456"); 
-        $loginSql = "INSERT INTO st_login (username, password, user_id) VALUES ('$emailEsc', '$passwordEsc', $newUserId)";
-        $db_handle->query($loginSql);
-        $loginId = $db_handle->conn->insert_id;
-        
-        // Ensure data is inserted into st_coordinator table using generated login_id
-        $coordSql = "INSERT INTO st_coordinator (login_id) VALUES ($loginId)";
-        $db_handle->query($coordSql);
+        $checkLogin = mysqli_query($db_handle->conn, "SELECT login_id FROM st_login WHERE user_id = $newUserId LIMIT 1");
+        if ($checkLogin && mysqli_num_rows($checkLogin) === 0) {
+            $loginSql = "INSERT INTO st_login (username, password, user_id) VALUES ('$emailEsc', '$passwordEsc', $newUserId)";
+            $db_handle->query($loginSql);
+            $loginId = $db_handle->conn->insert_id;
+            
+            mysqli_query($db_handle->conn, "INSERT INTO st_coordinator (login_id) VALUES ($loginId)");
+        }
     }
     
     mysqli_commit($db_handle->conn);

@@ -14,59 +14,11 @@ $net_balance = 7000;
 <script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.2/main.min.js'></script>
 
 <style>
-  .table thead th {
-    background-color: #0DF387;
-    /* Green background for headers */
-    color: #000;
-    /* Black text for visibility */
-  }
-
-  .table tbody td {
-    color: #000;
-    /* Ensuring black text for data cells */
-  }
-
   .table-responsive {
     width: 100%;
     overflow-x: auto;
     overflow-y: auto;
     max-height: 500px;
-    /* Adjust this value as needed */
-  }
-
-  /* Custom styling for pagination controls */
-  .dataTables_wrapper .dataTables_paginate .paginate_button {
-    padding: 2px 8px;
-    /* Adjust padding to shrink button size */
-    margin: 2px;
-    /* Adjust margin between buttons */
-    font-size: 0.85em;
-    /* Adjust font size */
-    border: 1px solid #ddd;
-    /* Add border */
-    background-color: #f9f9f9;
-    /* Background color */
-    color: #333;
-    /* Text color */
-  }
-
-  .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
-    background-color: #e9e9e9;
-    /* Background color on hover */
-  }
-
-  .dataTables_wrapper .dataTables_paginate .paginate_button.current {
-    background-color: #007bff;
-    /* Background color for current page */
-    color: white;
-    /* Text color for current page */
-  }
-
-  .dataTables_wrapper .dataTables_paginate .paginate_button.disabled {
-    background-color: #e9ecef;
-    /* Background color for disabled button */
-    color: #6c757d;
-    /* Text color for disabled button */
   }
 </style>
 <?php

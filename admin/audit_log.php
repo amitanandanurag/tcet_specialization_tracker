@@ -205,301 +205,161 @@ function audit_session_status($logRow)
 ?>
 
 <div class="content-wrapper">
-<style>
-	.audit-shell {
-		background: #f6f8fb;
-	}
+  <section class="content-header">
+    <div class="row align-items-center">
+      <div class="col-xs-12 col-sm-8">
+        <h1 style="margin: 0; font-size: 20px; font-weight: 700; color: #1e293b; letter-spacing: -0.01em;">
+          <i class="fa fa-shield text-muted" style="margin-right: 8px;"></i>System Audit & Session Ledger
+        </h1>
+        <p style="margin: 3px 0 0 0; font-size: 13px; color: #64748b;">Comprehensive security audit log of user authentications, activity timestamps, and administrative actions</p>
+      </div>
+      <div class="col-xs-12 col-sm-4 text-right">
+        <ol class="breadcrumb" style="position: static; float: none; background: transparent; padding: 0; margin: 5px 0 0 0; font-size: 12px;">
+          <li><a href="index.php" style="color: #64748b;"><i class="fa fa-home"></i> Home</a></li>
+          <li class="active" style="color: #423cbc; font-weight: 600;">Audit Ledger</li>
+        </ol>
+      </div>
+    </div>
+  </section>
 
-	.audit-hero {
-		background: #fff;
-		border: 1px solid #e6ebf2;
-		border-radius: 8px;
-		padding: 18px 20px;
-		margin-bottom: 16px;
-		box-shadow: 0 8px 20px rgba(31, 45, 61, 0.05);
-	}
+  <section class="content" style="padding-top: 15px;">
+    <!-- ERP Metric Summary Strip -->
+    <div class="erp-summary-bar" style="margin-bottom: 18px;">
+      <div class="erp-metric-item">
+        <span class="erp-metric-num"><?php echo number_format($totalCount); ?></span>
+        <span class="erp-metric-label">Total Log Records</span>
+      </div>
+      <div class="erp-metric-item">
+        <span class="erp-metric-num" style="color: #166534;"><?php echo number_format($logoutCount); ?></span>
+        <span class="erp-metric-label">Completed Sessions</span>
+      </div>
+      <div class="erp-metric-item">
+        <span class="erp-metric-num" style="color: #ca8a04;"><?php echo number_format($activeCount); ?></span>
+        <span class="erp-metric-label">Active / In-Progress</span>
+      </div>
+      <div class="erp-metric-item">
+        <span class="erp-metric-num" style="color: #dc2626;"><?php echo number_format(max(0, $totalCount - $loginCount)); ?></span>
+        <span class="erp-metric-label">Failed / Legacy Logs</span>
+      </div>
+    </div>
 
-	.audit-title {
-		margin: 0;
-		font-size: 24px;
-		font-weight: 700;
-		color: #1f2d3d;
-	}
+    <div class="box box-default" style="border-top: 3px solid #423cbc; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border-radius: 4px;">
+      <div class="box-body" style="padding: 16px;">
+        <!-- Filter Toolbar -->
+        <div class="erp-toolbar" style="margin-bottom: 16px;">
+          <form method="get" class="row">
+            <div class="col-sm-4 col-md-3" style="margin-bottom: 8px;">
+              <label class="erp-filter-label">Search User / IP / ID</label>
+              <input type="text" name="search" class="form-control input-sm" placeholder="Enter username, IP, or ID..." value="<?php echo htmlspecialchars($search); ?>" style="border-radius: 3px;">
+            </div>
+            <div class="col-sm-4 col-md-3" style="margin-bottom: 8px;">
+              <label class="erp-filter-label">Action / Status</label>
+              <select name="action_type" class="form-control input-sm" style="border-radius: 3px;">
+                <option value="">All Action Types</option>
+                <?php foreach ($auditTypes as $typeName) { ?>
+                  <option value="<?php echo htmlspecialchars($typeName); ?>" <?php echo $actionType === $typeName ? 'selected' : ''; ?>><?php echo htmlspecialchars(str_replace('_', ' ', $typeName)); ?></option>
+                <?php } ?>
+              </select>
+            </div>
+            <div class="col-sm-4 col-md-2" style="margin-bottom: 8px;">
+              <label class="erp-filter-label">From Date</label>
+              <input type="date" name="from_date" class="form-control input-sm" value="<?php echo htmlspecialchars($fromDate); ?>" style="border-radius: 3px;">
+            </div>
+            <div class="col-sm-4 col-md-2" style="margin-bottom: 8px;">
+              <label class="erp-filter-label">To Date</label>
+              <input type="date" name="to_date" class="form-control input-sm" value="<?php echo htmlspecialchars($toDate); ?>" style="border-radius: 3px;">
+            </div>
+            <div class="col-sm-4 col-md-2" style="margin-top: 22px; margin-bottom: 8px; display:flex; gap:6px;">
+              <button type="submit" class="btn-erp-primary" style="padding: 5px 12px; font-size: 12px;">
+                <i class="fa fa-filter"></i> Apply
+              </button>
+              <a href="audit_log.php" class="btn-erp-secondary" style="padding: 5px 12px; font-size: 12px;">
+                <i class="fa fa-refresh"></i> Reset
+              </a>
+            </div>
+          </form>
+        </div>
 
-	.audit-subtitle {
-		margin-top: 4px;
-		color: #6b778c;
-	}
+        <div style="margin-bottom: 12px; font-size: 11px; color: #64748b;">
+          <strong style="color: #475569;">Status Legend:</strong>
+          <span style="display: inline-block; margin-left: 8px; padding: 2px 6px; border-radius: 2px; background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; font-weight: 600;">Completed</span> Normal Session
+          <span style="display: inline-block; margin-left: 8px; padding: 2px 6px; border-radius: 2px; background: #fefce8; color: #854d0e; border: 1px solid #fef08a; font-weight: 600;">Logged In</span> Active Session
+          <span style="display: inline-block; margin-left: 8px; padding: 2px 6px; border-radius: 2px; background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; font-weight: 600;">Failed</span> Invalid Authentication
+          <span style="display: inline-block; margin-left: 8px; padding: 2px 6px; border-radius: 2px; background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; font-weight: 600;">Never Logged In</span> Inactive User
+        </div>
 
-	.audit-metric {
-		background: #fff;
-		border: 1px solid #e6ebf2;
-		border-left: 4px solid #3c8dbc;
-		border-radius: 8px;
-		padding: 16px;
-		margin-bottom: 14px;
-		min-height: 92px;
-		box-shadow: 0 6px 16px rgba(31, 45, 61, 0.04);
-	}
-
-	.audit-metric h3 {
-		margin: 0 0 6px;
-		font-size: 30px;
-		font-weight: 700;
-		color: #1f2d3d;
-	}
-
-	.audit-metric p {
-		margin: 0;
-		color: #6b778c;
-		font-weight: 600;
-	}
-
-	.audit-metric.completed { border-left-color: #00a65a; }
-	.audit-metric.active { border-left-color: #f39c12; }
-	.audit-metric.failed { border-left-color: #dd4b39; }
-
-	.audit-panel {
-		background: #fff;
-		border: 1px solid #e6ebf2;
-		border-radius: 8px;
-		box-shadow: 0 8px 20px rgba(31, 45, 61, 0.05);
-	}
-
-	.audit-panel-header {
-		padding: 16px 18px;
-		border-bottom: 1px solid #edf1f5;
-	}
-
-	.audit-panel-title {
-		margin: 0;
-		font-size: 18px;
-		font-weight: 700;
-		color: #1f2d3d;
-	}
-
-	.audit-filter {
-		padding: 16px 18px 8px;
-		border-bottom: 1px solid #edf1f5;
-	}
-
-	.audit-filter .form-control,
-	.audit-filter .btn {
-		margin-bottom: 8px;
-	}
-
-	.audit-legend {
-		padding: 0 18px 14px;
-		color: #6b778c;
-	}
-
-	.audit-legend .label {
-		margin-right: 5px;
-	}
-
-	.audit-table {
-		margin-bottom: 0;
-	}
-
-	.audit-table > thead > tr > th {
-		background: #f8fafc;
-		border-bottom: 1px solid #e6ebf2;
-		color: #52616f;
-		font-size: 12px;
-		text-transform: uppercase;
-		letter-spacing: .03em;
-	}
-
-	.audit-table > tbody > tr > td {
-		vertical-align: middle;
-		border-top: 1px solid #edf1f5;
-	}
-
-	.audit-user {
-		font-weight: 700;
-		color: #1f2d3d;
-	}
-
-	.audit-muted {
-		color: #7b8794;
-		font-size: 12px;
-	}
-
-	.audit-time {
-		line-height: 1.5;
-	}
-
-	.audit-duration {
-		font-weight: 700;
-		color: #1f2d3d;
-		white-space: nowrap;
-	}
-
-	.audit-browser {
-		max-width: 360px;
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
-	}
-
-	.audit-status {
-		display: inline-block;
-		min-width: 88px;
-		text-align: center;
-		padding: 5px 8px;
-		border-radius: 12px;
-	}
-</style>
-<section class="content-header">
-	<h1>
-		Login Activity
-
-	</h1>
-
-</section>
-
-<section class="content audit-shell">
-
-
-	<div class="row">
-		<div class="col-sm-6 col-md-3">
-			<div class="audit-metric">
-				<h3><?php echo $totalCount; ?></h3>
-				<p>Total Records</p>
-			</div>
-		</div>
-		<div class="col-sm-6 col-md-3">
-			<div class="audit-metric completed">
-				<h3><?php echo $logoutCount; ?></h3>
-				<p>Completed Sessions</p>
-			</div>
-		</div>
-		<div class="col-sm-6 col-md-3">
-			<div class="audit-metric active">
-				<h3><?php echo $activeCount; ?></h3>
-				<p>Currently Logged In</p>
-			</div>
-		</div>
-		<div class="col-sm-6 col-md-3">
-			<div class="audit-metric failed">
-				<h3><?php echo max(0, $totalCount - $loginCount); ?></h3>
-				<p>Failed / Old Records</p>
-			</div>
-		</div>
-	</div>
-
-	<div class="audit-panel">
-		<div class="audit-panel-header">
-			<h3 class="audit-panel-title">Session History</h3>
-		</div>
-
-		<div class="audit-filter">
-			<form method="get" class="row">
-				<div class="col-sm-4 col-md-3">
-					<input type="text" name="search" class="form-control" placeholder="Search user or IP" value="<?php echo htmlspecialchars($search); ?>">
-				</div>
-				<div class="col-sm-4 col-md-2">
-					<select name="action_type" class="form-control">
-						<option value="">All Status</option>
-						<?php foreach ($auditTypes as $typeName) { ?>
-							<option value="<?php echo htmlspecialchars($typeName); ?>" <?php echo $actionType === $typeName ? 'selected' : ''; ?>><?php echo htmlspecialchars(str_replace('_', ' ', $typeName)); ?></option>
-						<?php } ?>
-					</select>
-				</div>
-				<div class="col-sm-4 col-md-2">
-					<input type="date" name="from_date" class="form-control" value="<?php echo htmlspecialchars($fromDate); ?>">
-				</div>
-				<div class="col-sm-4 col-md-2">
-					<input type="date" name="to_date" class="form-control" value="<?php echo htmlspecialchars($toDate); ?>">
-				</div>
-				<div class="col-sm-4 col-md-3">
-					<button type="submit" class="btn btn-primary">
-						<i class="fa fa-filter"></i> Apply
-					</button>
-					<a href="audit_log.php" class="btn btn-default">
-						<i class="fa fa-refresh"></i> Reset
-					</a>
-				</div>
-			</form>
-		</div>
-
-		<div class="audit-legend">
-			<span class="label label-success">Completed</span> login and logout recorded
-			&nbsp;&nbsp;
-			<span class="label label-warning">Logged In</span> logout pending
-			&nbsp;&nbsp;
-			<span class="label label-danger">Failed Login</span> invalid attempt
-			&nbsp;&nbsp;
-			<span class="label label-default">Never Logged In</span> user created but no website entry
-		</div>
-
-		<div class="table-responsive">
-						<table class="table audit-table table-hover">
-							<thead>
-								<tr>
-									<th>User</th>
-									<th>Status</th>
-									<th>Login</th>
-									<th>Logout</th>
-									<th>Duration</th>
-									<th>Location</th>
-									<th>Browser</th>
-								</tr>
-							</thead>
-							<tbody>
-								<?php if (!empty($auditLogs)) { ?>
-									<?php foreach ($auditLogs as $logRow) { ?>
-										<?php
-										$statusData = audit_session_status($logRow);
-										$statusText = $statusData[0];
-										$statusClass = $statusData[1];
-										$statusDetail = $statusData[2];
-										$actionType = (string) ($logRow['action_type'] ?? '');
-										$isLegacyLogout = $actionType === 'LOGOUT_SUCCESS';
-										$loginTime = $isLegacyLogout ? '-' : audit_format_datetime($logRow['performed_at'] ?? '');
-										$logoutTime = $isLegacyLogout ? audit_format_datetime($logRow['performed_at'] ?? '') : audit_format_datetime($logRow['logout_at'] ?? '');
-										$browser = trim((string) ($logRow['browser_user_agent'] ?? ''));
-										?>
-										<tr>
-											<td>
-												<div class="audit-user"><?php echo htmlspecialchars(trim((string) ($logRow['username'] ?? '')) !== '' ? $logRow['username'] : 'User #' . (int) $logRow['user_id']); ?></div>
-												<div class="audit-muted">User ID: <?php echo (int) $logRow['user_id']; ?> · Log #<?php echo (int) $logRow['audit_id']; ?></div>
-											</td>
-											<td><span class="label audit-status <?php echo htmlspecialchars($statusClass); ?>"><?php echo htmlspecialchars($statusText); ?></span></td>
-											<td><div class="audit-time"><?php echo htmlspecialchars($loginTime); ?></div></td>
-											<td><div class="audit-time"><?php echo htmlspecialchars($logoutTime); ?></div></td>
-											<td class="audit-duration">
-												<?php
-												$duration = $logRow['session_duration_seconds'];
-												echo $duration !== null ? gmdate('H:i:s', (int) $duration) : '-';
-												?>
-											</td>
-											<td>
-												<?php
-												$locationIp = trim((string) ($logRow['ip_address'] ?? ''));
-												echo htmlspecialchars($locationIp !== '' ? $locationIp : '-');
-												?>
-											</td>
-											<td>
-												<?php if ($browser !== '') { ?>
-													<div class="audit-browser" title="<?php echo htmlspecialchars($browser); ?>"><?php echo htmlspecialchars($browser); ?></div>
-													<div class="audit-muted"><?php echo htmlspecialchars($statusDetail); ?></div>
-												<?php } else { ?>
-													<span class="audit-muted"><?php echo htmlspecialchars($statusDetail); ?></span>
-												<?php } ?>
-											</td>
-										</tr>
-									<?php } ?>
-								<?php } else { ?>
-									<tr>
-										<td colspan="7" class="text-center text-muted">No audit log entries found.</td>
-									</tr>
-								<?php } ?>
-							</tbody>
-						</table>
-					</div>
-	</div>
-</section>
+        <div class="table-responsive" style="border: 1px solid #e2e8f0; border-radius: 4px;">
+          <table class="table table-bordered table-hover table-striped erp-table" style="margin-bottom: 0;">
+            <thead>
+              <tr style="background: #f8fafc;">
+                <th>USER ACCOUNT</th>
+                <th style="width: 130px; text-align: center;">STATUS</th>
+                <th>LOGIN TIMESTAMP</th>
+                <th>LOGOUT TIMESTAMP</th>
+                <th style="width: 90px; text-align: right;">DURATION</th>
+                <th>IP ADDRESS</th>
+                <th>ENVIRONMENT / DETAIL</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php if (!empty($auditLogs)) { ?>
+                <?php foreach ($auditLogs as $logRow) { ?>
+                  <?php
+                  $statusData = audit_session_status($logRow);
+                  $statusText = $statusData[0];
+                  $statusClass = $statusData[1];
+                  $statusDetail = $statusData[2];
+                  $actionType = (string) ($logRow['action_type'] ?? '');
+                  $isLegacyLogout = $actionType === 'LOGOUT_SUCCESS';
+                  $loginTime = $isLegacyLogout ? '-' : audit_format_datetime($logRow['performed_at'] ?? '');
+                  $logoutTime = $isLegacyLogout ? audit_format_datetime($logRow['performed_at'] ?? '') : audit_format_datetime($logRow['logout_at'] ?? '');
+                  $browser = trim((string) ($logRow['browser_user_agent'] ?? ''));
+                  ?>
+                  <tr>
+                    <td>
+                      <div style="font-weight: 600; color: #1e293b;"><?php echo htmlspecialchars(trim((string) ($logRow['username'] ?? '')) !== '' ? $logRow['username'] : 'User #' . (int) $logRow['user_id']); ?></div>
+                      <div style="font-size: 11px; color: #64748b; font-family: monospace;">UID: <?php echo (int) $logRow['user_id']; ?> · LOG: #<?php echo (int) $logRow['audit_id']; ?></div>
+                    </td>
+                    <td class="text-center">
+                      <span class="label <?php echo htmlspecialchars($statusClass); ?>" style="font-size: 11px; padding: 3px 6px; font-weight: 600;">
+                        <?php echo htmlspecialchars($statusText); ?>
+                      </span>
+                    </td>
+                    <td style="font-size: 12px; color: #334155;"><?php echo htmlspecialchars($loginTime); ?></td>
+                    <td style="font-size: 12px; color: #334155;"><?php echo htmlspecialchars($logoutTime); ?></td>
+                    <td class="col-num" style="font-family: monospace; font-size: 12px; font-weight: 600; text-align: right;">
+                      <?php
+                      $duration = $logRow['session_duration_seconds'];
+                      echo $duration !== null ? gmdate('H:i:s', (int) $duration) : '-';
+                      ?>
+                    </td>
+                    <td style="font-family: monospace; font-size: 11px; color: #475569;">
+                      <?php
+                      $locationIp = trim((string) ($logRow['ip_address'] ?? ''));
+                      echo htmlspecialchars($locationIp !== '' ? $locationIp : '-');
+                      ?>
+                    </td>
+                    <td style="font-size: 11px;">
+                      <?php if ($browser !== '') { ?>
+                        <div style="max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #475569;" title="<?php echo htmlspecialchars($browser); ?>"><?php echo htmlspecialchars($browser); ?></div>
+                        <div style="color: #64748b;"><?php echo htmlspecialchars($statusDetail); ?></div>
+                      <?php } else { ?>
+                        <span style="color: #64748b;"><?php echo htmlspecialchars($statusDetail); ?></span>
+                      <?php } ?>
+                    </td>
+                  </tr>
+                <?php } ?>
+              <?php } else { ?>
+                <tr>
+                  <td colspan="7" class="text-center text-muted" style="padding: 24px;">No audit log records found for the selected criteria.</td>
+                </tr>
+              <?php } ?>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
 </div>
 
 <?php require "header/footer.php"; ?>

@@ -15,6 +15,9 @@ $deleteSql = "DELETE FROM st_user_master WHERE user_id = $userId";
 $ok = $db_handle->query($deleteSql);
 
 if ($ok) {
+  mysqli_query($db_handle->conn, "DELETE FROM st_login WHERE user_id = $userId");
+  mysqli_query($db_handle->conn, "DELETE FROM st_mentor_subject_mapping WHERE mentor_id = $userId");
+  mysqli_query($db_handle->conn, "DELETE FROM st_mentor_student_mapping WHERE mentor_id = $userId");
   echo json_encode(array('success' => true));
 } else {
   echo json_encode(array('success' => false, 'message' => 'Unable to delete record.'));

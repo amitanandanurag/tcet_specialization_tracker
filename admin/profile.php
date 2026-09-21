@@ -204,84 +204,90 @@ if ($currentUserId > 0 && $currentRoleId > 0) {
 
 <style>
   .profile-summary-card {
-    border: 0;
-    border-radius: 12px;
+    border: 1px solid var(--erp-border, #e2e8f0);
+    border-radius: var(--erp-radius-md, 6px);
     overflow: hidden;
-    box-shadow: 0 12px 28px rgba(18, 36, 66, 0.14);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+    background: #ffffff;
   }
 
   .profile-summary-head {
-    height: 74px;
-    background: linear-gradient(120deg, #273c8e 0%, #1aa7cf 100%);
+    height: 60px;
+    background: var(--erp-primary, #423cbc);
   }
 
   .profile-summary-body {
-    margin-top: -44px;
+    margin-top: -36px;
     padding: 0 18px 18px;
+    text-align: center;
   }
 
   .profile-avatar {
-    width: 108px;
-    height: 108px;
+    width: 80px;
+    height: 80px;
     border-radius: 50%;
-    border: 4px solid #fff;
-    box-shadow: 0 8px 18px rgba(18, 36, 66, 0.22);
+    border: 3px solid #fff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
     object-fit: cover;
   }
 
   .profile-avatar-wrap {
-    width: 120px;
+    width: 86px;
     margin: 0 auto;
     position: relative;
   }
 
   .profile-avatar-edit-tag {
     position: absolute;
-    right: 6px;
-    bottom: 4px;
-    width: 28px;
-    height: 28px;
+    right: 0px;
+    bottom: 0px;
+    width: 24px;
+    height: 24px;
     border-radius: 50%;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(120deg, #1aa7cf 0%, #44c4e8 100%);
+    background: var(--erp-primary, #423cbc);
     color: #fff;
-    box-shadow: 0 6px 14px rgba(30, 167, 207, 0.35);
+    border: 2px solid #ffffff;
+    font-size: 11px;
   }
 
   .profile-display-name {
-    margin: 12px 0 6px;
-    font-size: 34px;
+    margin: 10px 0 4px;
+    font-size: 20px;
     font-weight: 700;
-    color: #1f2937;
-    letter-spacing: 0.2px;
+    color: var(--erp-text-main, #0f172a);
   }
 
   .profile-role-pill {
     display: inline-block;
-    padding: 4px 12px;
-    border-radius: 999px;
-    background: #eaf4ff;
-    color: #1f5ea8;
-    font-weight: 700;
-    font-size: 13px;
+    padding: 2px 10px;
+    border-radius: 12px;
+    background: var(--erp-primary-light, #eef2ff);
+    color: var(--erp-primary, #423cbc);
+    border: 1px solid var(--erp-primary-border, #c7d2fe);
+    font-weight: 600;
+    font-size: 11px;
     margin-bottom: 14px;
+    text-transform: uppercase;
   }
 
   .profile-meta-box {
-    border: 1px solid #e7ebf2;
-    border-radius: 10px;
+    border: 1px solid var(--erp-border, #e2e8f0);
+    border-radius: var(--erp-radius-sm, 4px);
     overflow: hidden;
+    text-align: left;
   }
 
   .profile-meta-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px 14px;
-    border-bottom: 1px solid #edf1f6;
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--erp-border, #e2e8f0);
     background: #fff;
+    font-size: 12px;
   }
 
   .profile-meta-row:last-child {
@@ -289,134 +295,136 @@ if ($currentUserId > 0 && $currentRoleId > 0) {
   }
 
   .profile-meta-label {
-    color: #374151;
-    font-weight: 700;
+    color: var(--erp-text-secondary, #475569);
+    font-weight: 600;
   }
 
   .profile-meta-value {
-    color: #111827;
-    font-weight: 600;
+    color: var(--erp-text-main, #0f172a);
+    font-weight: 500;
     text-align: right;
   }
 
   .profile-online-pill {
     display: inline-block;
-    padding: 2px 10px;
-    border-radius: 999px;
-    background: #e8f8ee;
-    color: #18794e;
-    font-weight: 700;
-    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: #f0fdf4;
+    color: #15803d;
+    border: 1px solid #bbf7d0;
+    font-weight: 600;
+    font-size: 11px;
   }
 
   .profile-form-card {
-    border: 0;
-    border-radius: 12px;
+    border: 1px solid var(--erp-border, #e2e8f0);
+    border-radius: var(--erp-radius-md, 6px);
     overflow: hidden;
-    box-shadow: 0 12px 28px rgba(18, 36, 66, 0.1);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+    background: #ffffff;
   }
 
   .profile-form-card .box-header {
-    background: linear-gradient(120deg, #273c8e 0%, #1aa7cf 100%);
-    color: #fff;
-    border-bottom: 0;
-    padding: 14px 18px;
+    background: #ffffff;
+    border-bottom: 1px solid var(--erp-border, #e2e8f0);
+    padding: 12px 16px;
   }
 
   .profile-form-card .box-title {
-    color: #fff;
+    color: var(--erp-text-main, #0f172a);
+    font-size: 14px;
     font-weight: 700;
-    letter-spacing: 0.2px;
   }
 
   .profile-form-card .box-body {
-    padding: 18px 18px 8px;
+    padding: 16px;
     background: #fff;
   }
 
   .profile-form-card .control-label {
-    color: #1f2937;
-    font-weight: 700;
-    padding-top: 10px;
+    color: var(--erp-text-secondary, #475569);
+    font-size: 12px;
+    font-weight: 600;
   }
 
   .profile-input-group .input-group-addon {
-    border-radius: 8px 0 0 8px;
-    border: 1px solid #dbe3ec;
+    border-radius: var(--erp-radius-sm, 4px) 0 0 var(--erp-radius-sm, 4px);
+    border: 1px solid var(--erp-border-dark, #cbd5e1);
     border-right: 0;
     background: #f8fafc;
-    color: #4b5563;
-    min-width: 40px;
+    color: var(--erp-text-muted, #64748b);
+    min-width: 38px;
     text-align: center;
   }
 
   .profile-input-group .form-control {
-    height: 42px;
-    border-radius: 0 8px 8px 0;
-    border: 1px solid #dbe3ec;
+    height: 36px;
+    border-radius: 0 var(--erp-radius-sm, 4px) var(--erp-radius-sm, 4px) 0;
+    border: 1px solid var(--erp-border-dark, #cbd5e1);
     box-shadow: none;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
   }
 
   .profile-input-group .form-control:focus {
-    border-color: #1aa7cf;
-    box-shadow: 0 0 0 3px rgba(26, 167, 207, 0.16);
+    border-color: var(--erp-primary, #423cbc);
+    box-shadow: 0 0 0 3px rgba(66, 60, 188, 0.12);
   }
 
   .profile-form-card .box-footer {
-    border-top: 1px solid #edf1f6;
-    background: #fbfdff;
-    padding: 12px 18px;
+    border-top: 1px solid var(--erp-border, #e2e8f0);
+    background: #f8fafc;
+    padding: 12px 16px;
   }
 
   .profile-form-card .profile-save-btn {
-    display: inline-block;
-    border: 0;
-    border-radius: 8px;
-    padding: 10px 18px;
-    background: linear-gradient(120deg, #1aa7cf 0%, #44c4e8 100%) !important;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid var(--erp-primary-hover, #352fa1);
+    border-radius: var(--erp-radius-sm, 4px);
+    padding: 6px 14px;
+    background: var(--erp-primary, #423cbc) !important;
     color: #fff !important;
-    font-weight: 700;
-    letter-spacing: 0.2px;
-    box-shadow: 0 8px 18px rgba(30, 167, 207, 0.28);
+    font-size: 12px;
+    font-weight: 600;
     cursor: pointer;
+    box-shadow: 0 1px 2px rgba(66, 60, 188, 0.2);
   }
 
   .profile-form-card .profile-save-btn:hover,
-  .profile-form-card .profile-save-btn:focus,
-  .profile-form-card .profile-save-btn:active {
+  .profile-form-card .profile-save-btn:focus {
+    background: var(--erp-primary-hover, #352fa1) !important;
     color: #fff !important;
-    background: linear-gradient(120deg, #1596ba 0%, #38b6d8 100%) !important;
   }
 
   .profile-photo-upload-card {
-    border: 1px dashed #a6d6eb;
-    border-radius: 12px;
-    padding: 14px;
-    background: linear-gradient(180deg, #f8fdff 0%, #f2f9ff 100%);
+    border: 1px dashed var(--erp-border-dark, #cbd5e1);
+    border-radius: var(--erp-radius-sm, 4px);
+    padding: 12px;
+    background: #f8fafc;
   }
 
   .profile-photo-preview {
-    width: 78px;
-    height: 78px;
-    border-radius: 12px;
+    width: 60px;
+    height: 60px;
+    border-radius: var(--erp-radius-sm, 4px);
     object-fit: cover;
-    border: 2px solid #d8ecf7;
+    border: 1px solid var(--erp-border, #e2e8f0);
     background: #fff;
   }
 
   .profile-photo-upload-card .help-block {
-    margin: 6px 0 0;
-    color: #556372;
-    font-size: 12px;
+    margin: 4px 0 0;
+    color: var(--erp-text-muted, #64748b);
+    font-size: 11px;
   }
 
   .profile-file-input {
-    border-radius: 8px;
-    border: 1px solid #dbe3ec;
+    border-radius: var(--erp-radius-sm, 4px);
+    border: 1px solid var(--erp-border-dark, #cbd5e1);
     background: #fff;
-    padding: 7px 10px;
+    padding: 5px 8px;
     width: 100%;
+    font-size: 12px;
   }
 </style>
 

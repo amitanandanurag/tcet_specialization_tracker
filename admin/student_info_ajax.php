@@ -8,21 +8,26 @@ require "../database/db_connect.php";
 $db_handle = new DBController();
 
 // Get current user's role and department
-$user_id = $_SESSION['user_id'] ?? 0;
-$user_role = $_SESSION['user_type'] ?? ($_SESSION['role_id'] ?? 0);
+$user_id   = $_SESSION['user_id'] ?? 0;
+$user_role = $_SESSION['role_id'] ?? 0;
 
-// Get mentor's department if user is a mentor
-$mentor_department_id = null;
-$is_mentor = false;
+$department_id = '';
 
 if ($user_role == 3) {
-    $is_mentor = true;
-    $mentor_query = "SELECT department_id FROM st_user_master WHERE user_id = '$user_id'";
-    $mentor_result = $db_handle->query($mentor_query);
-    if ($mentor_result && $row = $mentor_result->fetch_assoc()) {
-        $mentor_department_id = $row['department_id'];
+
+    $qry = "
+        SELECT department_id
+        FROM st_user_master
+        WHERE user_id='$user_id'
+    ";
+
+    $res = $db_handle->conn->query($qry);
+
+    if($res && $res->num_rows){
+        $department_id = $res->fetch_assoc()['department_id'];
     }
 }
+
 
 $requestData = $_REQUEST;
 
@@ -30,9 +35,41 @@ $requestData = $_REQUEST;
 $select_class = $_POST['select_class'] ?? '';
 $select_section = $_POST['select_section'] ?? '';
 $select_session = $_POST['select_session'] ?? '';
-$select_academic_year = $_POST['select_academic_year'] ?? '';
+$select_batch = $_POST['select_batch'] ?? '';
 $select_semester = $_POST['select_semester'] ?? '';
 $select_department = $_POST['select_department'] ?? '';
+
+// Calculate total data count (before filters)
+$totalData = 0;
+$totalSql = "SELECT COUNT(DISTINCT sm.student_id) total FROM st_student_master sm
+LEFT JOIN st_student_semester_history h_current
+    ON h_current.student_id = sm.student_id AND h_current.semester_id = sm.current_semester_id
+LEFT JOIN st_mentor_student_mapping msm
+    ON msm.student_id=sm.student_id AND msm.semester_id=sm.current_semester_id WHERE 1=1";
+if($user_role==3){
+
+    $totalSql .= " AND sm.department_id='$department_id'";
+
+}
+elseif($user_role==4){
+
+    $totalSql .= " AND sm.status = 1 AND EXISTS (
+                SELECT 1 FROM st_mentor_subject_mapping msub
+                        JOIN st_specialization_subject_master current_subject ON current_subject.subject_id = msub.subject_id
+                        JOIN st_user_master current_mentor ON current_mentor.user_id = msub.mentor_id
+        WHERE msub.mentor_id = '$user_id'
+                      AND msub.subject_id = COALESCE(NULLIF(sm.specialization_subject_id, 0), h_current.specialization_subject_id)
+                            AND current_subject.semester_id = sm.current_semester_id
+                            AND current_subject.department_id = sm.department_id
+                            AND current_mentor.department_id = sm.department_id
+        )";
+
+}
+
+$totalResult = $db_handle->query($totalSql);
+if ($totalResult && $totalRow = $totalResult->fetch_assoc()) {
+    $totalData = intval($totalRow['total']);
+}
 
 // Build the main query with proper joins for both honors and minor subjects
 $sql = "SELECT
@@ -56,39 +93,99 @@ $sql = "SELECT
     sm.status,
     sm.created_at,
     sm.current_semester_id,
-    IFNULL(cl.class_name, '') AS class_display,
-    IFNULL(sec.sections, '') AS section_display,
-    IFNULL(dep.department_name, '') AS department_name,
-    IFNULL(sp.specialization_name, '') AS specialization_name,
-    -- Show honors subject if exists, otherwise show minor subject
-    CASE 
-        WHEN sm.specialization_subject_id IS NOT NULL AND sm.specialization_subject_id != 0 
-            THEN IFNULL(ssb.subject_name, '')
-        WHEN sm.minor_subject_id IS NOT NULL AND sm.minor_subject_id != 0 
-            THEN IFNULL(ms.subject_name, '')
+
+    IFNULL(cl.class_name,'') AS class_display,
+    IFNULL(sec.sections,'') AS section_display,
+    IFNULL(dep.department_name,'') AS department_name,
+    IFNULL(sp.specialization_name,'') AS specialization_name,
+
+    CASE
+           WHEN COALESCE(NULLIF(sm.specialization_subject_id, 0), h_current.specialization_subject_id) IS NOT NULL
+               AND COALESCE(NULLIF(sm.specialization_subject_id, 0), h_current.specialization_subject_id) <> 0
+        THEN IFNULL(ssb.subject_name,'')
+
+        WHEN sm.minor_subject_id IS NOT NULL
+             AND sm.minor_subject_id <> 0
+        THEN IFNULL(ms.subject_name,'')
+
         ELSE ''
     END AS specialization_subject_name,
-    -- Add minor course name separately
-    IFNULL(mc.course_name, '') AS minor_course_name,
-    IFNULL(ms.subject_name, '') AS minor_subject_name,
-    IFNULL(sess.session_name, '') AS academic_year_name,
-    IFNULL(sem.semester_name, '') AS semester_name
+
+    IFNULL(mc.course_name,'') AS minor_course_name,
+    IFNULL(ms.subject_name,'') AS minor_subject_name,
+    IFNULL(sess.session_name,'') AS academic_year_name,
+    IFNULL(sem.semester_name,'') AS semester_name,
+
+    msm.mentor_id,
+    msm.assigned_at
+
 FROM st_student_master sm
-LEFT JOIN st_class_master cl ON cl.class_id = sm.class_id
-LEFT JOIN st_section_master sec ON sec.id = sm.division_id
-LEFT JOIN st_department_master dep ON dep.department_id = sm.department_id
-LEFT JOIN st_specialization_master sp ON sp.specialization_id = sm.specialization_id
-LEFT JOIN st_specialization_subject_master ssb ON ssb.subject_id = sm.specialization_subject_id
-LEFT JOIN st_minorcourse mc ON mc.course_id = sm.minor_course_id
-LEFT JOIN st_minorsubject ms ON ms.subject_id = sm.minor_subject_id
-LEFT JOIN st_session_master sess ON sess.session_id = sm.academic_year_id
-LEFT JOIN st_semester_master sem ON sem.semester_id = sm.current_semester_id
+
+LEFT JOIN st_mentor_student_mapping msm
+ON msm.student_id = sm.student_id
+AND msm.semester_id = sm.current_semester_id
+
+LEFT JOIN st_student_semester_history h_current
+ON h_current.student_id = sm.student_id
+AND h_current.semester_id = sm.current_semester_id
+
+LEFT JOIN st_class_master cl
+       ON cl.class_id = sm.class_id
+
+LEFT JOIN st_section_master sec
+       ON sec.id = sm.division_id
+
+LEFT JOIN st_department_master dep
+       ON dep.department_id = sm.department_id
+
+LEFT JOIN st_specialization_master sp
+       ON sp.specialization_id = sm.specialization_id
+
+LEFT JOIN st_specialization_subject_master ssb
+    ON ssb.subject_id = COALESCE(NULLIF(sm.specialization_subject_id, 0), h_current.specialization_subject_id)
+
+LEFT JOIN st_minorcourse mc
+       ON mc.course_id = sm.minor_course_id
+
+LEFT JOIN st_minorsubject ms
+       ON ms.subject_id = sm.minor_subject_id
+
+LEFT JOIN st_session_master sess
+       ON sess.session_id = sm.academic_year_id
+
+LEFT JOIN st_semester_master sem
+       ON sem.semester_id = sm.current_semester_id
+
 WHERE 1=1";
 
-// RESTRICTION FOR MENTORS
-if ($is_mentor && $mentor_department_id) {
-    $sql .= " AND sm.department_id = '" . mysqli_real_escape_string($db_handle->conn, $mentor_department_id) . "'";
-    $select_department = $mentor_department_id;
+if($user_role==1 || $user_role==2){
+
+    // No restriction
+
+}
+
+// Role 3 HOD
+elseif($user_role==3){
+
+    $select_department=$department_id;
+
+}
+
+// Role 4 Mentor
+elseif($user_role==4){
+
+        $sql .= " AND sm.status = 1
+                            AND EXISTS (
+                                SELECT 1 FROM st_mentor_subject_mapping msub
+                                JOIN st_specialization_subject_master current_subject ON current_subject.subject_id = msub.subject_id
+                                JOIN st_user_master current_mentor ON current_mentor.user_id = msub.mentor_id
+                                WHERE msub.mentor_id = '" . mysqli_real_escape_string($db_handle->conn, $user_id) . "'
+                                    AND msub.subject_id = COALESCE(NULLIF(sm.specialization_subject_id, 0), h_current.specialization_subject_id)
+                                    AND current_subject.semester_id = sm.current_semester_id
+                                    AND current_subject.department_id = sm.department_id
+                                    AND current_mentor.department_id = sm.department_id
+                            )";
+
 }
 
 // Apply filters
@@ -98,11 +195,17 @@ if (!empty($select_class)) {
 if (!empty($select_section)) {
     $sql .= " AND sm.division_id = '" . mysqli_real_escape_string($db_handle->conn, $select_section) . "'";
 }
-if (!empty($select_academic_year)) {
-    $sql .= " AND sm.academic_year_id = '" . mysqli_real_escape_string($db_handle->conn, $select_academic_year) . "'";
+if (!empty($select_batch)) {
+    $sql .= " AND sm.grad_year = '" . mysqli_real_escape_string($db_handle->conn, $select_batch) . "'";
 }
 if (!empty($select_semester)) {
     $sql .= " AND sm.current_semester_id = '" . mysqli_real_escape_string($db_handle->conn, $select_semester) . "'";
+}
+if (!empty($select_session)) {
+    $sql .= " AND sm.academic_year_id = '" . mysqli_real_escape_string($db_handle->conn, $select_session) . "'";
+}
+if (!empty($select_department)) {
+    $sql .= " AND sm.department_id = '" . mysqli_real_escape_string($db_handle->conn, $select_department) . "'";
 }
 
 if (!empty($searchValue)) {
@@ -137,14 +240,34 @@ if (!empty($requestData['search']['value'])) {
 }
 
 $filteredResult = $db_handle->query($sql);
-$totalFiltered = mysqli_num_rows($filteredResult);
+$totalFiltered = 0;
+if ($filteredResult) {
+    $filteredIds = array();
+    while ($filteredRow = $filteredResult->fetch_assoc()) {
+        $filteredIds[(int) $filteredRow['student_id']] = true;
+    }
+    $totalFiltered = count($filteredIds);
+}
 
 // Ordering
 $orderColumn = 'sm.student_id';
 $orderDir = 'DESC';
 
 if (isset($requestData['order'][0]['column'])) {
-    $columns = [0 => 'sm.student_id', 1 => 'sm.registration_no', 2 => 'sm.fname', 3 => 'class_display', 4 => 'section_display', 5 => 'academic_year_name', 6 => 'semester_name', 7 => 'department_name', 8 => 'specialization_name', 9 => 'specialization_subject_name', 10 => 'sm.cgpa', 11 => 'sm.mobile', 12 => 'sm.roll_no', 13 => 'sm.email', 14 => 'sm.grad_year', 15 => 'minor_course_name', 16 => 'minor_subject_name'];
+    $columns = [
+        0 => 'sm.student_id',
+        1 => 'sm.roll_no',
+        2 => 'sm.fname',
+        3 => 'cl.class_name',
+        4 => 'sec.sections',
+        5 => 'sess.session_name',
+        6 => 'sem.semester_name',
+        7 => 'dep.department_name',
+        8 => 'specialization_subject_name',
+        9 => 'sm.cgpa',
+        10 => 'sm.mobile',
+        11 => 'sm.student_id'
+    ];
     $colIndex = intval($requestData['order'][0]['column']);
     if (isset($columns[$colIndex])) {
         $orderColumn = $columns[$colIndex];
@@ -165,42 +288,84 @@ $counter = $start + 1;
 
 while ($row = mysqli_fetch_assoc($result)) {
     $nestedData = [];
-    $nestedData[] = "<input type='checkbox' class='selectRow' value='{$row['student_id']}' />";
-    $nestedData[] = $counter++;
+    $studentId = intval($row['student_id']);
+    $nestedData[] = "<input type='checkbox' class='selectRow' value='{$studentId}' style='cursor: pointer;' />";
 
-    $full_name = $row['fname'] ?? '';
-    $mobile = $row['mobile'];
-    $reg_no = $row['registration_no'];
-    $student_name = urlencode($full_name);
-    $message = "Dear%20" . $student_name . "%2C%20Welcome%20to%20Thakur%20College.%20Your%20Reg%20No%3A%20" . $reg_no;
+    // 1. Roll No
+    $rollNo = !empty($row['roll_no']) ? htmlspecialchars($row['roll_no']) : '-';
+    $nestedData[] = "<span class='text-mono' style='font-weight: 600; color: #1e293b;'>{$rollNo}</span>";
 
-    if (!empty($mobile)) {
-        $nestedData[] = "<a href='https://wa.me/91$mobile?text=$message' target='_blank' class='btn btn-success btn-sm'><i class='fa fa-whatsapp'></i></a>";
-    } else {
-        $nestedData[] = "-";
+    // 2. Student Name & ERP ID (Two-line cell)
+    $fullName = trim($row['fname'] ?? '');
+    $regNo = trim($row['registration_no'] ?? '');
+    $studentCell = "<div class='student-cell'>";
+    $studentCell .= "<span class='student-cell-name'>" . htmlspecialchars($fullName !== '' ? $fullName : 'Unknown Student') . "</span>";
+    if ($regNo !== '') {
+        $studentCell .= "<span class='student-cell-reg'>ERP: " . htmlspecialchars($regNo) . "</span>";
     }
+    $studentCell .= "</div>";
+    $nestedData[] = $studentCell;
 
-    $nestedData[] = "<strong>" . htmlspecialchars($row['registration_no']) . "</strong>";
-    $nestedData[] = "<div align='left'><strong>" . htmlspecialchars($full_name) . "</strong></div>";
-    $nestedData[] = !empty($row['class_display']) ? $row['class_display'] : '-';
-    $nestedData[] = !empty($row['section_display']) ? $row['section_display'] : '-';
-    $nestedData[] = !empty($row['academic_year_name']) ? $row['academic_year_name'] : '-';
-    $nestedData[] = !empty($row['semester_name']) ? $row['semester_name'] : '-';
-    $nestedData[] = !empty($row['department_name']) ? $row['department_name'] : '-';
-    $nestedData[] = !empty($row['specialization_name']) ? $row['specialization_name'] : '-';
-    
-    // Show subject name (honors OR minor)
-    $subject_display = !empty($row['specialization_subject_name']) ? $row['specialization_subject_name'] : '-';
-    $nestedData[] = $subject_display;
-    
-    $nestedData[] = !empty($row['grad_year']) ? $row['grad_year'] : '-';
-    $nestedData[] = !empty($row['cgpa']) ? number_format($row['cgpa'], 2) : '-';
-    $nestedData[] = !empty($row['mobile']) ? $row['mobile'] : '-';
-    $nestedData[] = !empty($row['roll_no']) ? $row['roll_no'] : '-';
-    $nestedData[] = !empty($row['email']) ? "<a href='mailto:{$row['email']}'>" . htmlspecialchars($row['email']) . "</a>" : '-';
-    $nestedData[] = "<button class='btn btn-primary btn-sm student_view' data-id='{$row['student_id']}'><i class='fa fa-eye'></i></button>";
-    $nestedData[] = "<button class='btn bg-olive btn-sm student_edit' data-id='{$row['student_id']}'><i class='fa fa-pencil'></i></button>";
-    $nestedData[] = "<button class='btn btn-danger btn-sm' onclick='delete_user({$row['student_id']}, \"st_student_master\")'><i class='fa fa-trash'></i></button>";
+    // 3. Class
+    $nestedData[] = !empty($row['class_display']) ? htmlspecialchars($row['class_display']) : '-';
+
+    // 4. Division
+    $nestedData[] = !empty($row['section_display']) ? htmlspecialchars($row['section_display']) : '-';
+
+    // 5. Academic Year
+    $nestedData[] = !empty($row['academic_year_name']) ? '<span style="color: #475569;">' . htmlspecialchars($row['academic_year_name']) . '</span>' : '-';
+
+    // 6. Semester
+    $semName = !empty($row['semester_name']) ? htmlspecialchars($row['semester_name']) : '-';
+    $nestedData[] = "<span style='font-weight: 600; color: #1e293b;'>{$semName}</span>";
+
+    // 7. Department
+    $deptName = !empty($row['department_name']) ? htmlspecialchars($row['department_name']) : '-';
+    $nestedData[] = "<span style='display: inline-block; font-size: 11px; font-weight: 600; color: #334155; padding: 2px 6px; background: #f1f5f9; border-radius: 3px; border: 1px solid #e2e8f0;'>{$deptName}</span>";
+
+    // 8. Specialization & Subject
+    $specName = trim($row['specialization_name'] ?? '');
+    $subName = trim($row['specialization_subject_name'] ?? '');
+    $subjectDisplay = '-';
+    if ($subName !== '') {
+        $subjectDisplay = "<div style='line-height: 1.3;'>";
+        $subjectDisplay .= "<span style='font-weight: 600; color: #1e293b; font-size: 12px;'>" . htmlspecialchars($subName) . "</span>";
+        if ($specName !== '') {
+            $subjectDisplay .= "<div style='font-size: 11px; color: #64748b; margin-top: 1px;'>" . htmlspecialchars($specName) . "</div>";
+        }
+        $subjectDisplay .= "</div>";
+    } elseif ($specName !== '') {
+        $subjectDisplay = "<span style='color: #475569; font-size: 12px;'>" . htmlspecialchars($specName) . "</span>";
+    }
+    $nestedData[] = $subjectDisplay;
+
+    // 9. CGPA
+    $cgpa = !empty($row['cgpa']) ? number_format(floatval($row['cgpa']), 2) : '-';
+    $nestedData[] = "<span class='text-mono col-num' style='font-weight: 600; color: #0f172a;'>{$cgpa}</span>";
+
+    // 10. Contact (Mobile & WhatsApp & Email)
+    $mobile = trim($row['mobile'] ?? '');
+    $email = trim($row['email'] ?? '');
+    $contactHtml = "<div style='display: flex; align-items: center; gap: 6px;'>";
+    if ($mobile !== '') {
+        $waMsg = "Dear%20" . urlencode($fullName) . "%2C%20Welcome%20to%20Thakur%20College.";
+        $contactHtml .= "<a href='https://wa.me/91{$mobile}?text={$waMsg}' target='_blank' class='btn-erp-icon' style='color: #16a34a; border-color: #bbf7d0;' title='WhatsApp: {$mobile}'><i class='fa fa-whatsapp'></i></a>";
+        $contactHtml .= "<span class='text-mono' style='font-size: 11px; color: #475569;'>{$mobile}</span>";
+    } elseif ($email !== '') {
+        $contactHtml .= "<a href='mailto:{$email}' class='btn-erp-icon' title='Email: {$email}'><i class='fa fa-envelope-o'></i></a>";
+    } else {
+        $contactHtml .= "<span class='text-muted'>-</span>";
+    }
+    $contactHtml .= "</div>";
+    $nestedData[] = $contactHtml;
+
+    // 11. Actions
+    $actionHtml = "<div style='display: flex; align-items: center; justify-content: center; gap: 4px;'>";
+    $actionHtml .= "<button type='button' class='btn-erp-icon view-btn student_view' data-id='{$studentId}' title='View Student Record'><i class='fa fa-eye'></i></button>";
+    $actionHtml .= "<button type='button' class='btn-erp-icon edit-btn student_edit' data-id='{$studentId}' title='Edit Information'><i class='fa fa-pencil'></i></button>";
+    $actionHtml .= "<button type='button' class='btn-erp-icon del-btn' onclick='delete_user({$studentId}, \"st_student_master\")' title='Delete Record'><i class='fa fa-trash'></i></button>";
+    $actionHtml .= "</div>";
+    $nestedData[] = $actionHtml;
 
     $data[] = $nestedData;
 }

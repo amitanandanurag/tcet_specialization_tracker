@@ -166,7 +166,6 @@
 
       success: function(response) {
         $("#data421").val(response);
-        console.log(response);
       },
 
     });
@@ -187,9 +186,6 @@
           "register1": register,
         },
         success: function(response) {
-
-          console.log(response);
-
           if (response == 1) {
 
             $('#registration_no').val("");

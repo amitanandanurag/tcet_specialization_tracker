@@ -110,11 +110,33 @@ $customMasters = array(
     'pk' => 'subject_id',
     'formFields' => array(
       array(
+        'name' => 'subject_code',
+        'label' => 'Subject Code',
+        'type' => 'text',
+        'required' => true,
+        'unique' => true
+      ),
+      array(
         'name' => 'subject_name',
         'label' => 'Subject Name',
         'type' => 'text',
         'required' => true,
-        'unique' => true
+        'unique' => false
+      ),
+      array(
+        'name' => 'semester_id',
+        'label' => 'Semester',
+        'type' => 'select',
+        'lookupTable' => 'st_semester_master',
+        'lookupKey' => 'semester_id',
+        'lookupLabel' => 'semester_name',
+        'required' => true
+      ),
+      array(
+        'name' => 'subject_type',
+        'label' => 'Subject Type',
+        'type' => 'text',
+        'required' => true
       ),
       array(
         'name' => 'specialization_id',
@@ -124,9 +146,39 @@ $customMasters = array(
         'lookupKey' => 'specialization_id',
         'lookupLabel' => 'specialization_name',
         'required' => true
+      ),
+      array(
+        'name' => 'is_open_elective',
+        'label' => 'Is Open Elective?',
+        'type' => 'boolean_select',
+        'required' => true
+      ),
+      array(
+        'name' => 'is_research_component',
+        'label' => 'Is Research Component?',
+        'type' => 'boolean_select',
+        'required' => true
+      ),
+      array(
+        'name' => 'academic_year_id',
+        'label' => 'Academic Year',
+        'type' => 'select',
+        'lookupTable' => 'st_session_master',
+        'lookupKey' => 'session_id',
+        'lookupLabel' => 'session_name',
+        'required' => false
+      ),
+      array(
+        'name' => 'batch_id',
+        'label' => 'Batch',
+        'type' => 'select',
+        'lookupTable' => 'st_batch_master',
+        'lookupKey' => 'batch_id',
+        'lookupLabel' => 'batch_name',
+        'required' => false
       )
     ),
-    'displayFields' => array('subject_name', 'specialization_id')
+    'displayFields' => array('subject_code', 'subject_name', 'semester_id', 'subject_type', 'specialization_id', 'is_open_elective', 'is_research_component', 'academic_year_id', 'batch_id')
   ),
   'minor_course' => array(
     'title' => 'Minor Course',

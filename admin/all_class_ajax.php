@@ -35,8 +35,8 @@ while ($row = $result->fetch_assoc()) {
     $nestedData = array();
     $nestedData[] = $requestData['start'] = $requestData['start'] + 1; 
     $nestedData[] = $row["class_name"];
-    $nestedData[] = " <a data-toggle='modal' data-target='#edit' data-id='" . $row["class_id"] . "' id='class_edit'><button class='btn bg-olive btn-sm' type='button'> <i class='fa fa-pencil'></i> </button></a>";
-    $nestedData[] = "<a onclick='delete_class(" . $row["class_id"] . ")'><button class='btn btn-danger btn-sm' type='button'> <i class='fa fa-trash'></i> </button></a>";
+    $nestedData[] = " <a data-toggle='modal' data-target='#edit' data-id='" . $row["class_id"] . "' id='class_edit'><button class='btn-erp-icon edit-btn' type='button' title='Edit'> <i class='fa fa-pencil'></i> </button></a>";
+    $nestedData[] = "<a onclick='delete_class(" . $row["class_id"] . ")'><button class='btn-erp-icon del-btn' type='button' title='Delete'> <i class='fa fa-trash'></i> </button></a>";
     $data[] = $nestedData;
 }
 

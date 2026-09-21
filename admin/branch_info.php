@@ -46,26 +46,27 @@ $total_branches = count($branches);
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.5.0/css/font-awesome.min.css">
     <style>
         :root {
-            --primary: #667eea;
-            --primary-dark: #764ba2;
-            --success: #4caf50;
-            --warning: #ff9800;
-            --danger: #f44336;
-            --info: #00bcd4;
-            --bg-light: #f8f9fc;
-            --card-shadow: 0 10px 20px rgba(0,0,0,0.08), 0 6px 6px rgba(0,0,0,0.1);
-            --hover-shadow: 0 20px 25px -12px rgba(0,0,0,0.15);
+            --primary: #423cbc;
+            --primary-dark: #352fa1;
+            --success: #16a34a;
+            --warning: #d97706;
+            --danger: #dc2626;
+            --info: #0284c7;
+            --bg-light: #f8fafc;
+            --card-shadow: 0 1px 3px rgba(0,0,0,0.03);
+            --hover-shadow: 0 4px 12px rgba(0,0,0,0.06);
         }
 
         .content-wrapper { background: var(--bg-light); min-height: 100vh; padding: 20px; }
 
         /* Page Header */
         .page-header {
-            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-            color: white;
-            padding: 30px;
-            border-radius: 12px;
-            margin-bottom: 25px;
+            background: #ffffff;
+            color: #0f172a;
+            padding: 16px 20px;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+            margin-bottom: 20px;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -74,31 +75,35 @@ $total_branches = count($branches);
 
         .page-header h1 {
             margin: 0;
-            font-size: 28px;
+            font-size: 20px;
             font-weight: 700;
+            color: #0f172a;
         }
 
         .page-header p {
-            margin: 5px 0 0 0;
-            opacity: 0.9;
+            margin: 3px 0 0 0;
+            font-size: 12px;
+            color: #64748b;
         }
 
         .back-btn {
-            background: rgba(255,255,255,0.2);
-            color: white;
-            border: 1px solid rgba(255,255,255,0.3);
-            padding: 10px 20px;
-            border-radius: 8px;
+            background: #ffffff;
+            color: #475569;
+            border: 1px solid #cbd5e1;
+            padding: 6px 14px;
+            border-radius: 4px;
             text-decoration: none;
             display: inline-flex;
             align-items: center;
-            gap: 8px;
-            transition: all 0.3s ease;
+            gap: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.15s ease;
         }
 
         .back-btn:hover {
-            background: rgba(255,255,255,0.3);
-            color: white;
+            background: #f8fafc;
+            color: #0f172a;
             text-decoration: none;
         }
 
@@ -106,94 +111,101 @@ $total_branches = count($branches);
         .stats-bar {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin-bottom: 25px;
+            gap: 16px;
+            margin-bottom: 20px;
         }
 
         .stat-item {
             background: white;
-            padding: 20px;
-            border-radius: 10px;
+            padding: 16px;
+            border-radius: 6px;
+            border: 1px solid var(--erp-border, #e2e8f0);
             box-shadow: var(--card-shadow);
             text-align: center;
-            transition: transform 0.3s ease;
+            transition: all 0.15s ease;
         }
 
-        .stat-item:hover { transform: translateY(-3px); }
+        .stat-item:hover { transform: translateY(-2px); }
 
         .stat-number {
-            font-size: 32px;
+            font-size: 26px;
             font-weight: 700;
             color: var(--primary);
-            margin-bottom: 5px;
+            margin-bottom: 2px;
         }
 
         .stat-label {
-            color: #666;
-            font-size: 14px;
+            color: #64748b;
+            font-size: 11px;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.4px;
+            font-weight: 600;
         }
 
         /* Branch Cards Grid */
         .branches-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-            gap: 25px;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 16px;
         }
 
         .branch-card {
             background: white;
-            border-radius: 12px;
+            border-radius: 6px;
             overflow: hidden;
+            border: 1px solid var(--erp-border, #e2e8f0);
             box-shadow: var(--card-shadow);
-            transition: all 0.3s ease;
+            transition: all 0.15s ease;
         }
 
         .branch-card:hover {
-            transform: translateY(-5px);
+            transform: translateY(-2px);
             box-shadow: var(--hover-shadow);
         }
 
         .branch-header {
-            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-            color: white;
-            padding: 25px;
+            background: #f8fafc;
+            color: #0f172a;
+            padding: 14px 18px;
             position: relative;
+            border-bottom: 1px solid var(--erp-border, #e2e8f0);
         }
 
         .branch-header .branch-code {
             position: absolute;
-            top: 15px;
-            right: 15px;
-            background: rgba(255,255,255,0.2);
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-size: 14px;
+            top: 12px;
+            right: 14px;
+            background: var(--erp-primary-light, #eef2ff);
+            color: var(--primary);
+            border: 1px solid var(--erp-primary-border, #c7d2fe);
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
             font-weight: 600;
         }
 
         .branch-header h3 {
-            margin: 0 0 5px 0;
-            font-size: 20px;
-            font-weight: 600;
+            margin: 0 0 2px 0;
+            font-size: 15px;
+            font-weight: 700;
+            color: #0f172a;
         }
 
         .branch-header .branch-id {
-            font-size: 12px;
-            opacity: 0.8;
+            font-size: 11px;
+            color: #64748b;
         }
 
         .branch-body {
-            padding: 25px;
+            padding: 16px 18px;
         }
 
         .metric-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 12px 0;
-            border-bottom: 1px solid #f0f0f0;
+            padding: 9px 0;
+            border-bottom: 1px solid #f1f5f9;
         }
 
         .metric-row:last-child { border-bottom: none; }
@@ -201,19 +213,19 @@ $total_branches = count($branches);
         .metric-label {
             display: flex;
             align-items: center;
-            gap: 10px;
-            color: #555;
-            font-size: 14px;
+            gap: 8px;
+            color: #475569;
+            font-size: 13px;
         }
 
         .metric-label i {
-            width: 30px;
-            height: 30px;
-            border-radius: 8px;
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 14px;
+            font-size: 12px;
         }
 
         .metric-value {
@@ -227,9 +239,9 @@ $total_branches = count($branches);
 
         /* Status Badge */
         .status-badge {
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 12px;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 11px;
             font-weight: 600;
         }
 

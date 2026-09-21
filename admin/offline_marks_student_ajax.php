@@ -44,6 +44,7 @@ $details = array(
     'ise1_marks' => '',
     'ise2_marks' => '',
     'ese_written_marks' => '',
+    'current_semester_id' => '',
     'remarks' => ''
 );
 
@@ -88,7 +89,7 @@ function deriveSemesterFromClass($className)
 }
 
 $studentSql = "SELECT sm.student_id, sm.registration_no, sm.fname, sm.department_id, sm.class_id,
-                      sm.specialization_id, sm.specialization_subject_id,
+                      sm.specialization_id, sm.specialization_subject_id, sm.current_semester_id,
                       dm.department_name, cm.class_name, ssm.subject_name AS current_course_name
                FROM st_student_master sm
                LEFT JOIN st_department_master dm ON dm.department_id = sm.department_id
@@ -111,6 +112,7 @@ if ($studentStmt) {
         $details['specialization_id'] = (string)($studentRow['specialization_id'] ?? '');
         $details['specialization_subject_id'] = (string)($studentRow['specialization_subject_id'] ?? '');
         $details['current_course_name'] = (string)($studentRow['current_course_name'] ?? '');
+        $details['current_semester_id'] = (string)($studentRow['current_semester_id'] ?? '');
     }
     mysqli_stmt_close($studentStmt);
 }
@@ -231,6 +233,21 @@ if ($details['course_name'] === '' && $details['semester_id'] !== '') {
             $details['course_name'] = (string)($subjectRow['subject_name'] ?? '');
         }
         mysqli_stmt_close($subjectStmt);
+    }
+}
+
+$details['certificate_file_path'] = '';
+if ($details['course_name'] !== '') {
+    $certSql = "SELECT file_path FROM st_minor_certificates WHERE student_id = ? AND course_name = ? ORDER BY id DESC LIMIT 1";
+    $certStmt = mysqli_prepare($db_handle->conn, $certSql);
+    if ($certStmt) {
+        mysqli_stmt_bind_param($certStmt, 'is', $studentId, $details['course_name']);
+        mysqli_stmt_execute($certStmt);
+        $certRes = mysqli_stmt_get_result($certStmt);
+        if ($certRes && ($certRow = mysqli_fetch_assoc($certRes))) {
+            $details['certificate_file_path'] = (string)$certRow['file_path'];
+        }
+        mysqli_stmt_close($certStmt);
     }
 }
 

@@ -36,11 +36,46 @@ if ($dupResult && $dupResult->num_rows > 0) {
 
 if ($userId > 0) {
   $sql = "UPDATE st_user_master SET user_name='$userNameEsc', email_id='$emailEsc', phone_number='$phoneEsc', department_id=$departmentId WHERE user_id=$userId AND role_id=" . intval($roleId);
+  $db_handle->query($sql);
+  
+  // Also update the login username or create if not exists
+  $checkLogin = mysqli_query($db_handle->conn, "SELECT login_id FROM st_login WHERE user_id = $userId LIMIT 1");
+  if ($checkLogin && mysqli_num_rows($checkLogin) > 0) {
+      mysqli_query($db_handle->conn, "UPDATE st_login SET username = '$emailEsc' WHERE user_id = $userId");
+  } else {
+      mysqli_query($db_handle->conn, "INSERT INTO st_login (username, password, user_id) VALUES ('$emailEsc', 'Amit@1234', $userId)");
+  }
 } else {
   $sql = "INSERT INTO st_user_master (user_name, email_id, phone_number, department_id, role_id, student_id) VALUES ('$userNameEsc', '$emailEsc', '$phoneEsc', $departmentId, " . intval($roleId) . ", 0)";
+  $db_handle->query($sql);
+  $userId = mysqli_insert_id($db_handle->conn);
+  
+  // Automatically create a login row
+  $checkLogin = mysqli_query($db_handle->conn, "SELECT login_id FROM st_login WHERE user_id = $userId LIMIT 1");
+  if ($checkLogin && mysqli_num_rows($checkLogin) === 0) {
+      mysqli_query($db_handle->conn, "INSERT INTO st_login (username, password, user_id) VALUES ('$emailEsc', 'Amit@1234', $userId)");
+  }
 }
 
-$db_handle->query($sql);
+if (intval($roleId) === 4 && isset($_POST['subject_id'])) {
+  $subjectId = intval($_POST['subject_id']);
+  if ($subjectId > 0 && $userId > 0) {
+    mysqli_begin_transaction($db_handle->conn);
+    try {
+      mysqli_query($db_handle->conn, "DELETE FROM st_mentor_subject_mapping WHERE mentor_id = $userId");
+      $insert = mysqli_query($db_handle->conn, "INSERT INTO st_mentor_subject_mapping (mentor_id, subject_id) VALUES ($userId, $subjectId)");
+      if (!$insert) {
+        throw new Exception("Database error mapping subject.");
+      }
+      
+      $db_handle->recalculateMentorStudents($userId);
+      mysqli_commit($db_handle->conn);
+    } catch (Throwable $e) {
+      mysqli_rollback($db_handle->conn);
+    }
+  }
+}
+
 header('Location: ' . $infoFile);
 exit;
 ?>

@@ -66,8 +66,12 @@ if (isset($_POST['save'])) {
             }
         } else {
             // For other specializations (Honours, etc.): Use specialization_subject_id
-            if (!empty($_POST['specialization_subject_id']) && is_numeric($_POST['specialization_subject_id'])) {
-                $specialization_subject_id = "'" . mysqli_real_escape_string($conn, $_POST['specialization_subject_id']) . "'";
+            $submittedSubjectId = trim((string) ($_POST['specialization_subject_id'] ?? ''));
+            if ($submittedSubjectId === '') {
+                $submittedSubjectId = trim((string) ($_POST['unaided_subject'] ?? ''));
+            }
+            if (!empty($submittedSubjectId) && is_numeric($submittedSubjectId)) {
+                $specialization_subject_id = "'" . mysqli_real_escape_string($conn, $submittedSubjectId) . "'";
             }
         }
     }
@@ -78,6 +82,16 @@ if (isset($_POST['save'])) {
         $cgpa_val = floatval($_POST['cgpa']);
         $cgpa_val = number_format($cgpa_val, 2);
         $cgpa = "'" . $cgpa_val . "'";
+    }
+
+    // Enforce Honors eligibility (CGPA >= 7.5)
+    if (isset($specialization_name) && (strpos($specialization_name, 'honour') !== false || strpos($specialization_name, 'honor') !== false)) {
+        $cgpa_val = floatval($_POST['cgpa'] ?? 0);
+        if ($cgpa_val < 7.5) {
+            echo '<script type="text/javascript">alert("Error: Student is not eligible for Honors. Minimum CGPA must be 7.5.");</script>';
+            echo "<script>window.open('student-info.php','_self')</script>";
+            exit;
+        }
     }
     
     // Handle mobile
@@ -90,6 +104,27 @@ if (isset($_POST['save'])) {
     $email = 'NULL';
     if (!empty($_POST['email'])) {
         $email = "'" . mysqli_real_escape_string($conn, $_POST['email']) . "'";
+    }
+
+    // Handle research components
+    $research_component_i_id = 'NULL';
+    if (!empty($_POST['research_component_i_id']) && is_numeric($_POST['research_component_i_id'])) {
+        $research_component_i_id = intval($_POST['research_component_i_id']);
+    }
+    
+    $research_core_vii = 'NULL';
+    if (!empty($_POST['research_core_vii'])) {
+        $research_core_vii = "'" . mysqli_real_escape_string($conn, $_POST['research_core_vii']) . "'";
+    }
+    
+    $research_component_ii_id = 'NULL';
+    if (!empty($_POST['research_component_ii_id']) && is_numeric($_POST['research_component_ii_id'])) {
+        $research_component_ii_id = intval($_POST['research_component_ii_id']);
+    }
+    
+    $research_core_viii = 'NULL';
+    if (!empty($_POST['research_core_viii'])) {
+        $research_core_viii = "'" . mysqli_real_escape_string($conn, $_POST['research_core_viii']) . "'";
     }
     
     // Handle status
@@ -112,6 +147,33 @@ if (isset($_POST['save'])) {
         exit;
     }
     
+    // Freeze the previous semester before changing the legacy current-state
+    // columns. The transaction prevents a half-completed promotion.
+    $previousSemesterId = 0;
+    $promotionTransaction = false;
+    $oldResult = mysqli_query($conn, "SELECT current_semester_id FROM st_student_master WHERE student_id = " . intval($student_id) . " LIMIT 1");
+    if ($oldResult && ($oldRow = mysqli_fetch_assoc($oldResult))) {
+        $previousSemesterId = intval($oldRow['current_semester_id']);
+    }
+    if ($previousSemesterId > 0 && $previousSemesterId !== intval($current_semester_id)) {
+        mysqli_begin_transaction($conn);
+        $promotionTransaction = true;
+        $historyPrepared = $database->syncStudentSemesterHistory($student_id, $previousSemesterId);
+        $historyPrepared = $historyPrepared && $database->finalizeStudentSemester($student_id, $previousSemesterId);
+        if (!$historyPrepared) {
+            mysqli_rollback($conn);
+            echo 'Unable to preserve the previous semester. Promotion cancelled; run the semester-history migration first.';
+            exit;
+        }
+    }
+
+    if ($specialization_subject_id !== 'NULL' && !$database->isSubjectAvailable(
+        intval(trim($specialization_subject_id, "'")), intval($_POST['department_id'] ?? 0),
+        intval($current_semester_id), intval($_POST['specialization_id'] ?? 0))) {
+        echo 'Selected specialization subject is not active for this department and semester.';
+        exit;
+    }
+
     // Build the UPDATE query
     $sql = "UPDATE `st_student_master` SET
         `academic_year_id` = '$academic_year_id',
@@ -127,10 +189,11 @@ if (isset($_POST['save'])) {
         `mobile` = $mobile,
         `email` = $email,
         `status` = $status,
-        `m_sem1` = $m_sem1,
-        `m_sem2` = $m_sem2,
-        `m_sem3` = $m_sem3,
-        `current_semester_id` = '$current_semester_id'
+        `current_semester_id` = '$current_semester_id',
+        `research_component_i_id` = $research_component_i_id,
+        `research_core_vii` = $research_core_vii,
+        `research_component_ii_id` = $research_component_ii_id,
+        `research_core_viii` = $research_core_viii
     WHERE `student_id` = $student_id";
     
     // For debugging - uncomment to see the query
@@ -140,6 +203,27 @@ if (isset($_POST['save'])) {
     $result = mysqli_query($conn, $sql);
     
     if ($result === TRUE) {
+        $database->removeInvalidStudentMentorAllocation($student_id);
+        $database->syncStudentSemesterHistory($student_id, $current_semester_id);
+        if (isset($specialization_subject_id) && $specialization_subject_id !== 'NULL') {
+            $clean_subject_id = intval(trim($specialization_subject_id, "'"));
+            $clean_semester_id = intval($current_semester_id);
+            if ($clean_subject_id > 0 && $clean_semester_id > 0) {
+                $database->autoAllocateMentor($student_id, $clean_subject_id, $clean_semester_id);
+            }
+        }
+        // Persist the new semester after mentor allocation; prior snapshots are
+        // protected by the finalized status.
+        $newHistorySaved = $database->syncStudentSemesterHistory($student_id, $current_semester_id);
+        if ($promotionTransaction) {
+            if (!$newHistorySaved) {
+                mysqli_rollback($conn);
+                echo 'Unable to create the new semester record. Promotion cancelled.';
+                exit;
+            }
+            mysqli_commit($conn);
+        }
+        
         // Handle file uploads if needed
         if (!empty($_FILES)) {
             $upload_dir = "uploads/marklists/";
@@ -185,6 +269,9 @@ if (isset($_POST['save'])) {
         echo '<script type="text/javascript">alert("Student updated successfully!");</script>';
         echo "<script>window.open('student-info.php','_self')</script>";
     } else {
+        if ($promotionTransaction) {
+            mysqli_rollback($conn);
+        }
         echo "Error: " . mysqli_error($conn);
         echo "<br><br>SQL Query: <pre>" . htmlspecialchars($sql) . "</pre>";
     }

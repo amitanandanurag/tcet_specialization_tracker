@@ -47,9 +47,9 @@ while ($row = $result->fetch_assoc()) {
   $nestedData[] = htmlspecialchars($row['phone_number'] ?? '');
   $nestedData[] = htmlspecialchars($row['department_name'] ?? '');
   $nestedData[] = htmlspecialchars($row['role_name'] ?? '');
-  $nestedData[] = "<button class='btn btn-primary btn-sm role-view-btn' data-id='" . $userId . "'><i class='fa fa-eye'></i></button>";
-  $nestedData[] = "<button class='btn bg-olive btn-sm role-edit-btn' data-id='" . $userId . "'><i class='fa fa-pencil'></i></button>";
-  $nestedData[] = "<button class='btn btn-danger btn-sm' onclick='deleteRoleUser(" . $userId . ")'><i class='fa fa-trash'></i></button>";
+  $nestedData[] = "<button class='btn-erp-icon view-btn role-view-btn' data-id='" . $userId . "' title='View details'><i class='fa fa-eye'></i></button>";
+  $nestedData[] = "<button class='btn-erp-icon edit-btn role-edit-btn' data-id='" . $userId . "' title='Edit record'><i class='fa fa-pencil'></i></button>";
+  $nestedData[] = "<button class='btn-erp-icon del-btn' onclick='deleteRoleUser(" . $userId . ")' title='Remove record'><i class='fa fa-trash'></i></button>";
   $data[] = $nestedData;
 }
 
