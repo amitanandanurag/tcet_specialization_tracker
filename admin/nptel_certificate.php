@@ -94,7 +94,10 @@ $errorMsg = '';
 
 // Handle NPTEL result and course submission by student
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $resultStatus = $_POST['result_status'] ?? 'Pass';
+    if (!DBController::validateCsrfToken()) {
+        $errorMsg = 'Security validation failed (CSRF token expired). Please refresh and try again.';
+    } else {
+        $resultStatus = $_POST['result_status'] ?? 'Pass';
     $courseName = trim($_POST['course_name'] ?? '');
     if ($courseName === 'Other' && !empty($_POST['custom_course_name'])) {
         $courseName = trim($_POST['custom_course_name']);
@@ -217,6 +220,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
     }
+  }
 }
 
 // Fetch uploaded certificates
@@ -269,6 +273,7 @@ if ($cancelRes) {
                         <h3 class="box-title"><i class="fa fa-edit"></i> Submit NPTEL Course Result</h3>
                     </div>
                     <form method="POST" enctype="multipart/form-data">
+                        <?php echo DBController::getCsrfInputField(); ?>
                         <div class="box-body">
                             <!-- NPTEL Course Dropdown -->
                             <div class="form-group">

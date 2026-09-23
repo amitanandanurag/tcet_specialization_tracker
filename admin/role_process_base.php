@@ -8,6 +8,11 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
   exit;
 }
 
+if (!DBController::validateCsrfToken()) {
+  echo "<script>alert('Invalid security token (CSRF). Please refresh and try again.'); window.history.back();</script>";
+  exit;
+}
+
 $userId = intval($_POST['user_id'] ?? 0);
 $userName = trim($_POST['user_name'] ?? '');
 $emailId = trim($_POST['email_id'] ?? '');
@@ -34,6 +39,8 @@ if ($dupResult && $dupResult->num_rows > 0) {
   exit;
 }
 
+$defaultHashedPassword = DBController::hashPassword('Tcet@1234');
+
 if ($userId > 0) {
   $sql = "UPDATE st_user_master SET user_name='$userNameEsc', email_id='$emailEsc', phone_number='$phoneEsc', department_id=$departmentId WHERE user_id=$userId AND role_id=" . intval($roleId);
   $db_handle->query($sql);
@@ -43,17 +50,23 @@ if ($userId > 0) {
   if ($checkLogin && mysqli_num_rows($checkLogin) > 0) {
       mysqli_query($db_handle->conn, "UPDATE st_login SET username = '$emailEsc' WHERE user_id = $userId");
   } else {
-      mysqli_query($db_handle->conn, "INSERT INTO st_login (username, password, user_id) VALUES ('$emailEsc', 'Amit@1234', $userId)");
+      mysqli_query($db_handle->conn, "INSERT INTO st_login (username, password, user_id) VALUES ('$emailEsc', '$defaultHashedPassword', $userId)");
+  }
+  if (method_exists($db_handle, 'writeAuditLog')) {
+    $db_handle->writeAuditLog($_SESSION['user_id'] ?? 0, 'USER_UPDATED', 'st_user_master', $userId, "Updated {$roleLabel} user {$userNameEsc} ({$emailEsc})");
   }
 } else {
   $sql = "INSERT INTO st_user_master (user_name, email_id, phone_number, department_id, role_id, student_id) VALUES ('$userNameEsc', '$emailEsc', '$phoneEsc', $departmentId, " . intval($roleId) . ", 0)";
   $db_handle->query($sql);
   $userId = mysqli_insert_id($db_handle->conn);
   
-  // Automatically create a login row
+  // Automatically create a login row with hashed password
   $checkLogin = mysqli_query($db_handle->conn, "SELECT login_id FROM st_login WHERE user_id = $userId LIMIT 1");
   if ($checkLogin && mysqli_num_rows($checkLogin) === 0) {
-      mysqli_query($db_handle->conn, "INSERT INTO st_login (username, password, user_id) VALUES ('$emailEsc', 'Amit@1234', $userId)");
+      mysqli_query($db_handle->conn, "INSERT INTO st_login (username, password, user_id) VALUES ('$emailEsc', '$defaultHashedPassword', $userId)");
+  }
+  if (method_exists($db_handle, 'writeAuditLog')) {
+    $db_handle->writeAuditLog($_SESSION['user_id'] ?? 0, 'USER_CREATED', 'st_user_master', $userId, "Created new {$roleLabel} user {$userNameEsc} ({$emailEsc})");
   }
 }
 

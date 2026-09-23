@@ -42,9 +42,9 @@ include "header/header.php";
           <button type="button" id="btnResetFilters" class="btn-erp-secondary" title="Reset all filters">
             <i class="fa fa-refresh"></i> Reset Filters
           </button>
-          <button type="button" onclick="fnExcelReport();" class="btn-erp-secondary" style="color: #15803d; border-color: #bbf7d0;" title="Export displayed students to Excel">
-            <i class="fa fa-file-excel-o"></i> Export Excel
-          </button>
+          <a href="export_service.php?type=students" id="btnExportCsv" class="btn-erp-secondary" style="color: #15803d; border-color: #bbf7d0;" title="Download complete student dataset as CSV">
+            <i class="fa fa-download"></i> Download CSV
+          </a>
           <button type="button" onclick="bulkDelete()" class="btn-erp-danger" title="Delete selected students">
             <i class="fa fa-trash"></i> Bulk Delete
           </button>
@@ -377,7 +377,17 @@ include "header/header.php";
     });
 
     // Filter changes
+    function updateExportUrl() {
+      var dept = $('#select_department').val() || '';
+      var sem = $('#select_semester').val() || '';
+      var url = 'export_service.php?type=students';
+      if (dept) url += '&department_id=' + encodeURIComponent(dept);
+      if (sem) url += '&semester_id=' + encodeURIComponent(sem);
+      $('#btnExportCsv').attr('href', url);
+    }
+
     $('#select_class, #select_section, #select_session, #select_batch, #select_semester, #select_department').change(function() {
+      updateExportUrl();
       dataTable.ajax.reload();
     });
 

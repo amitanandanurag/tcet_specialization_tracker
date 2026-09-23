@@ -17,52 +17,73 @@ if ($currentUserId <= 0 || $currentRoleId <= 0) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_password']) && $currentUserId > 0 && $currentRoleId > 0) {
-  $currentPassword = (string) ($_POST['current_password'] ?? '');
-  $newPassword = (string) ($_POST['new_password'] ?? '');
-  $confirmPassword = (string) ($_POST['confirm_password'] ?? '');
-
-  if ($currentPassword === '' || $newPassword === '' || $confirmPassword === '') {
-    $passwordAlertType = 'warning';
-    $passwordAlertMessage = 'All password fields are required.';
-  } elseif ($newPassword !== $confirmPassword) {
-    $passwordAlertType = 'warning';
-    $passwordAlertMessage = 'New password and confirm password must match.';
+  if (!DBController::validateCsrfToken()) {
+    $passwordAlertType = 'danger';
+    $passwordAlertMessage = 'Invalid security token (CSRF). Please refresh and try again.';
   } else {
-      $loginSql = "SELECT password FROM st_login WHERE user_id = ? LIMIT 1";
-    $loginStmt = mysqli_prepare($db_handle->conn, $loginSql);
+    $currentPassword = (string) ($_POST['current_password'] ?? '');
+    $newPassword = (string) ($_POST['new_password'] ?? '');
+    $confirmPassword = (string) ($_POST['confirm_password'] ?? '');
 
-    if ($loginStmt) {
+    if ($currentPassword === '' || $newPassword === '' || $confirmPassword === '') {
+      $passwordAlertType = 'warning';
+      $passwordAlertMessage = 'All password fields are required.';
+    } elseif ($newPassword !== $confirmPassword) {
+      $passwordAlertType = 'warning';
+      $passwordAlertMessage = 'New password and confirm password must match.';
+    } elseif (strlen($newPassword) < 6) {
+      $passwordAlertType = 'warning';
+      $passwordAlertMessage = 'New password must be at least 6 characters long.';
+    } else {
+        $loginSql = "SELECT password FROM st_login WHERE user_id = ? LIMIT 1";
+      $loginStmt = mysqli_prepare($db_handle->conn, $loginSql);
+
+      if ($loginStmt) {
         mysqli_stmt_bind_param($loginStmt, 'i', $currentUserId);
-      mysqli_stmt_execute($loginStmt);
-      $loginResult = mysqli_stmt_get_result($loginStmt);
-      $loginRow = $loginResult ? mysqli_fetch_assoc($loginResult) : null;
-      mysqli_stmt_close($loginStmt);
+        mysqli_stmt_execute($loginStmt);
+        $loginResult = mysqli_stmt_get_result($loginStmt);
+        $loginRow = $loginResult ? mysqli_fetch_assoc($loginResult) : null;
+        mysqli_stmt_close($loginStmt);
 
-      $storedPassword = (string) ($loginRow['password'] ?? '');
-      if ($storedPassword !== $currentPassword) {
-        $passwordAlertType = 'danger';
-        $passwordAlertMessage = 'Current password is incorrect.';
-      } else {
+        $storedPassword = (string) ($loginRow['password'] ?? '');
+        if (!DBController::verifyPassword($currentPassword, $storedPassword)) {
+          $passwordAlertType = 'danger';
+          $passwordAlertMessage = 'Current password is incorrect.';
+        } else {
+          $hashedNewPassword = DBController::hashPassword($newPassword);
           $updateSql = "UPDATE st_login SET password = ? WHERE user_id = ?";
-        $updateStmt = mysqli_prepare($db_handle->conn, $updateSql);
-        if ($updateStmt) {
-            mysqli_stmt_bind_param($updateStmt, 'si', $newPassword, $currentUserId);
-          if (mysqli_stmt_execute($updateStmt)) {
-            $passwordAlertType = 'success';
-            $passwordAlertMessage = 'Password updated successfully.';
+          $updateStmt = mysqli_prepare($db_handle->conn, $updateSql);
+          if ($updateStmt) {
+            mysqli_stmt_bind_param($updateStmt, 'si', $hashedNewPassword, $currentUserId);
+            if (mysqli_stmt_execute($updateStmt)) {
+              // Mark first login as completed
+              $updFirst = mysqli_prepare($db_handle->conn, "UPDATE st_user_master SET is_first_login = 0 WHERE user_id = ?");
+              if ($updFirst) {
+                mysqli_stmt_bind_param($updFirst, 'i', $currentUserId);
+                mysqli_stmt_execute($updFirst);
+                mysqli_stmt_close($updFirst);
+              }
+
+              if (method_exists($db_handle, 'writeAuditLog')) {
+                $db_handle->writeAuditLog($currentUserId, 'PASSWORD_CHANGE', 'st_login', $currentUserId, "User updated their password");
+              }
+
+              $passwordAlertType = 'success';
+              $passwordAlertMessage = 'Password updated successfully.';
+            } else {
+              $passwordAlertType = 'danger';
+              $passwordAlertMessage = 'Unable to update password right now.';
+            }
+            mysqli_stmt_close($updateStmt);
           } else {
             $passwordAlertType = 'danger';
-            $passwordAlertMessage = 'Unable to update password right now.';
+            $passwordAlertMessage = 'Unable to prepare password update.';
           }
-          mysqli_stmt_close($updateStmt);
-        } else {
-          $passwordAlertType = 'danger';
-          $passwordAlertMessage = 'Unable to prepare password update.';
         }
+      } else {
+        $passwordAlertType = 'danger';
+        $passwordAlertMessage = 'Unable to verify current password.';
       }
-    } else {
-      $passwordAlertType = 'danger';
-      $passwordAlertMessage = 'Unable to verify current password.';
     }
   }
 }
@@ -276,6 +297,7 @@ if ($currentUserId > 0 && $currentRoleId > 0) {
           <?php } ?>
 
           <form class="form-horizontal" method="POST">
+            <?php echo DBController::getCsrfInputField(); ?>
             <div class="box-body">
               <div class="form-group">
                 <label class="col-sm-4 control-label">Current Password</label>

@@ -9,6 +9,11 @@ $database = new DBController();
 $userid = intval($_SESSION['user_id'] ?? $_SESSION['user_session'] ?? 0);
 
 if (isset($_POST['save'])) {
+    if (!DBController::validateCsrfToken()) {
+        $_SESSION['student_admission_error'] = 'Invalid or expired security token. Please try again.';
+        header('Location: student_admission.php');
+        exit();
+    }
     $conn = $database->conn;
 
     $_SESSION['student_admission_form'] = [
@@ -180,6 +185,9 @@ if (isset($_POST['save'])) {
     }
     
     $mark_list_files = [];
+    $allowed_extensions = ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx'];
+    $max_file_size = 5 * 1024 * 1024; // 5MB limit
+    
     // Accept any uploaded file whose input name starts with 'mark-list'
     $semester_fields = [];
     foreach (array_keys($_FILES) as $f) {
@@ -189,14 +197,18 @@ if (isset($_POST['save'])) {
     }
 
     foreach ($semester_fields as $field) {
-        if (isset($_FILES[$field]) && $_FILES[$field]['error'] == 0 && !empty($_FILES[$field]['name'])) {
-            $file_ext = pathinfo($_FILES[$field]['name'], PATHINFO_EXTENSION);
-            $safe_reg_no = preg_replace('/[^a-zA-Z0-9]/', '_', $registration_no);
-            $file_name = time() . '_' . $safe_reg_no . '_' . $field . '.' . $file_ext;
-            $target_path = $upload_dir . $file_name;
+        if (isset($_FILES[$field]) && $_FILES[$field]['error'] == UPLOAD_ERR_OK && !empty($_FILES[$field]['name'])) {
+            $file_ext = strtolower(pathinfo($_FILES[$field]['name'], PATHINFO_EXTENSION));
+            $file_size = intval($_FILES[$field]['size'] ?? 0);
+            
+            if (in_array($file_ext, $allowed_extensions, true) && $file_size > 0 && $file_size <= $max_file_size) {
+                $safe_reg_no = preg_replace('/[^a-zA-Z0-9]/', '_', $registration_no);
+                $file_name = time() . '_' . $safe_reg_no . '_' . preg_replace('/[^a-zA-Z0-9_-]/', '', $field) . '.' . $file_ext;
+                $target_path = $upload_dir . $file_name;
 
-            if (move_uploaded_file($_FILES[$field]['tmp_name'], $target_path)) {
-                $mark_list_files[] = $file_name;
+                if (move_uploaded_file($_FILES[$field]['tmp_name'], $target_path)) {
+                    $mark_list_files[] = $file_name;
+                }
             }
         }
     }

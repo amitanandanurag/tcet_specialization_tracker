@@ -37,6 +37,7 @@ if ($roleId === 4) {
 ?>
 
 <form method="post" action="<?php echo htmlspecialchars($processFile); ?>" autocomplete="off">
+	<?php echo DBController::getCsrfInputField(); ?>
 	<input type="hidden" name="user_id" value="<?php echo intval($userId); ?>">
 	<input type="hidden" name="role_id" value="<?php echo intval($roleId); ?>">
 

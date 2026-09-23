@@ -55,19 +55,37 @@ if (!$row) {
     exit();
 }
 
-/* ---------------- WRONG PASSWORD ---------------- */
-if ($row['password'] != $user_password) {
+/* ---------------- VERIFY PASSWORD ---------------- */
+$isPasswordValid = DBController::verifyPassword($user_password, $row['password']);
+if (!$isPasswordValid) {
     echo "email or password does not exist.";
     exit();
 }
 
+/* ---------------- AUTO-UPGRADE TO BCRYPT ---------------- */
+if (!password_get_info($row['password'])['algo']) {
+    $newHashedPassword = DBController::hashPassword($user_password);
+    $updStmt = mysqli_prepare($db_handle->conn, "UPDATE st_login SET password = ? WHERE login_id = ?");
+    if ($updStmt) {
+        $loginIdInt = intval($row['login_id']);
+        mysqli_stmt_bind_param($updStmt, "si", $newHashedPassword, $loginIdInt);
+        mysqli_stmt_execute($updStmt);
+        mysqli_stmt_close($updStmt);
+    }
+}
+
 /* ---------------- LOGIN SUCCESS ---------------- */
+session_regenerate_id(true);
 $_SESSION['user_session'] = $row['login_id'];
 $_SESSION['user_login_id'] = $row['login_id'];
 $_SESSION['user_id'] = $row['user_id'];
 $_SESSION['user_type'] = $row['role_id'];
 $_SESSION['role_id'] = $row['role_id'];
 $_SESSION['login_time'] = time();
+
+if (method_exists($db_handle, 'writeAuditLog')) {
+    $db_handle->writeAuditLog($row['user_id'], 'LOGIN_SUCCESS', 'st_login', $row['login_id'], "User {$row['username']} logged in successfully", $row['username'], $ipAddress, $userAgent);
+}
 
 /* ---------------- FIRST LOGIN CHECK ---------------- */
 if ($row['role_id'] == 5) {

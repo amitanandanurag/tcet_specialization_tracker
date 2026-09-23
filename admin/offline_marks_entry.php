@@ -52,7 +52,11 @@ if ($semesterResult) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_offline_marks'])) {
-    $studentId = intval($_POST['student_id'] ?? 0);
+    if (!DBController::validateCsrfToken()) {
+        $alertType = 'danger';
+        $alertMessage = 'Security validation failed (CSRF token expired). Please refresh and try again.';
+    } else {
+        $studentId = intval($_POST['student_id'] ?? 0);
     $semesterId = intval($_POST['semester_id'] ?? 0);
     $courseName = trim((string)($_POST['course_name'] ?? ''));
     $nptelStatus = trim((string)($_POST['nptel_status'] ?? 'Pass'));
@@ -272,6 +276,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_offline_marks'])
         $alertType = 'warning';
         $alertMessage = implode(' ', $validationErrors);
     }
+    }
 }
 
 $recentEntries = array();
@@ -362,6 +367,7 @@ if ($recentResult) {
                         <h3 class="box-title"><i class="fa fa-edit"></i> Enter Student Marks</h3>
                     </div>
                     <form method="POST" action="">
+                        <?php echo DBController::getCsrfInputField(); ?>
                         <div class="box-body">
                             <div class="row">
                                 <div class="col-md-6">

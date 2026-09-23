@@ -31,6 +31,12 @@ if (!in_array($loginRole, [1, 2, 3], true)) {
 // Handle AJAX Mentor Assignment Update
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && $_POST['action'] === 'change_mentor') {
     header('Content-Type: application/json');
+
+    if (!DBController::validateCsrfToken()) {
+        echo json_encode(['success' => false, 'message' => 'Security token expired. Please refresh the page.']);
+        exit();
+    }
+
     $subjectId = intval($_POST['subject_id'] ?? 0);
     $newMentorId = intval($_POST['new_mentor_id'] ?? 0);
     $semesterId = intval($_POST['semester_id'] ?? 0);

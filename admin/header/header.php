@@ -2,7 +2,7 @@
 if (session_status() !== PHP_SESSION_ACTIVE) {
 	session_start();
 }
-include_once("../database/db_connect.php");
+require_once __DIR__ . "/../../database/db_connect.php";
 if (isset($_SESSION['user_session'])) {
 } else {
 	header("location: ../index.php");
@@ -88,7 +88,126 @@ if ($stmt) {
 	mysqli_stmt_close($stmt);
 }
 
-$dashboardRoute = ($usertype === 5) ? 'student_dashboard.php' : 'index.php';
+	$dashboardRoute = ($usertype === 5) ? 'student_dashboard.php' : 'index.php';
+
+	// =========================================================================
+	// CENTRALIZED RBAC ROUTE GUARD
+	// =========================================================================
+	if (!function_exists('checkUserRouteAuthorization')) {
+		function checkUserRouteAuthorization($conn, $userId, $roleId, $scriptName) {
+			if ($roleId === 1) {
+				return true;
+			}
+			$universal = array(
+				'index.php', 'dashboard.php', 'student_dashboard.php',
+				'profile.php', 'setting_profile.php', 'change_password.php',
+				'logout.php', 'branch_info.php'
+			);
+			if (in_array($scriptName, $universal)) {
+				return true;
+			}
+			$routeAliases = array(
+				'student-edit.php' => 'student-info.php',
+				'student-update.php' => 'student-info.php',
+				'student_process.php' => 'student_admission.php',
+				'student_view.php' => 'student-info.php',
+				'student_admission_view.php' => 'student-info.php',
+				'student_delete.php' => 'student-info.php',
+				'student_bulk_delete.php' => 'student-info.php',
+				'student_info_ajax.php' => 'student-info.php',
+				'student_monitor_ajax.php' => 'student_monitor.php',
+				'student_concise_details_ajax.php' => 'student_concise_details.php',
+				'offline_marks_student_ajax.php' => 'offline_marks_entry.php',
+				'admin_edit.php' => 'admin_info.php',
+				'admin_process.php' => 'admin_register.php',
+				'admin_view.php' => 'admin_info.php',
+				'admin_delete.php' => 'admin_info.php',
+				'admin_info_ajax.php' => 'admin_info.php',
+				'coordinator_edit.php' => 'coordinator_info.php',
+				'coordinator_process.php' => 'coordinator_register.php',
+				'coordinator_view.php' => 'coordinator_info.php',
+				'coordinator_delete.php' => 'coordinator_info.php',
+				'coordinator_info_ajax.php' => 'coordinator_info.php',
+				'mentor_edit.php' => 'mentor_info.php',
+				'mentor_process.php' => 'mentor_register.php',
+				'mentor_view.php' => 'mentor_info.php',
+				'mentor_delete.php' => 'mentor_info.php',
+				'mentor_info_ajax.php' => 'mentor_info.php',
+				'class_edit_new.php' => 'class_crud_new.php',
+				'class_edit_new_ajax.php' => 'class_crud_new.php',
+				'class_manage.php' => 'class_crud_new.php',
+				'class_manage_new.php' => 'class_crud_new.php',
+				'user_register.php' => 'user-info.php',
+				'user_edit.php' => 'user-info.php',
+				'user_delete.php' => 'user-info.php',
+				'user_info_ajax.php' => 'user-info.php',
+				'user_process.php' => 'user-info.php',
+				'batch_promotion.php' => 'student_monitor.php',
+				'export_service.php' => 'student-info.php'
+			);
+			if ($roleId === 5 && ($scriptName === 'student_admission_view.php' || $scriptName === 'student.php')) {
+				return true;
+			}
+			$checkScript = $routeAliases[$scriptName] ?? $scriptName;
+			$sql = "SELECT 1 
+					FROM st_menu_allocation_master a
+					JOIN st_sub_menu_master sm ON a.sub_menu_id = sm.sub_menu_id
+					WHERE (a.role_id = ? OR a.user_id = ?)
+					  AND (sm.sub_menu_route LIKE ? OR sm.sub_menu_route LIKE ?)
+					LIMIT 1";
+			$stmt = mysqli_prepare($conn, $sql);
+			if ($stmt) {
+				$pattern1 = $checkScript . '%';
+				$pattern2 = '%' . $checkScript . '%';
+				mysqli_stmt_bind_param($stmt, 'iiss', $roleId, $userId, $pattern1, $pattern2);
+				mysqli_stmt_execute($stmt);
+				$res = mysqli_stmt_get_result($stmt);
+				$hasPerm = ($res && mysqli_num_rows($res) > 0);
+				mysqli_stmt_close($stmt);
+				return $hasPerm;
+			}
+			return false;
+		}
+	}
+
+	$currentScript = basename($_SERVER['SCRIPT_NAME'] ?? $_SERVER['PHP_SELF'] ?? '');
+	if (!checkUserRouteAuthorization($db_handle->conn, $userid, $usertype, $currentScript)) {
+		if (method_exists($db_handle, 'writeAuditLog')) {
+			$db_handle->writeAuditLog($userid, 'UNAUTHORIZED_ACCESS_ATTEMPT', null, null, "User role {$usertype} attempted to access restricted route: {$currentScript}");
+		}
+		if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
+			http_response_code(403);
+			header('Content-Type: application/json');
+			echo json_encode(array('status' => 'error', 'message' => 'Access Denied: You do not have permission to access this resource.'));
+			exit;
+		}
+		echo '<!DOCTYPE html>
+		<html lang="en">
+		<head>
+			<meta charset="utf-8">
+			<title>403 Access Denied - TCET ERP</title>
+			<link rel="stylesheet" href="bootstrap/css/bootstrap.min.css">
+			<link rel="stylesheet" href="css/erp-theme.css">
+			<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.5.0/css/font-awesome.min.css">
+			<style>
+				body { background: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+				.denied-card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 40px; max-width: 480px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+				.denied-icon { font-size: 48px; color: #dc2626; margin-bottom: 16px; }
+				.denied-title { font-size: 20px; font-weight: 700; color: #0f172a; margin-bottom: 8px; }
+				.denied-text { font-size: 13px; color: #64748b; margin-bottom: 24px; line-height: 1.5; }
+			</style>
+		</head>
+		<body>
+			<div class="denied-card">
+				<div class="denied-icon"><i class="fa fa-shield"></i></div>
+				<h1 class="denied-title">Access Restricted</h1>
+				<p class="denied-text">You do not have administrative permission to access <strong>' . htmlspecialchars($currentScript) . '</strong>. If you believe this is an error, please contact your ERP administrator.</p>
+				<a href="' . htmlspecialchars($dashboardRoute) . '" class="btn-erp-primary"><i class="fa fa-arrow-left"></i> Return to Dashboard</a>
+			</div>
+		</body>
+		</html>';
+		exit;
+	}
 ?>
 <!DOCTYPE html>
 <html>
@@ -127,6 +246,16 @@ $dashboardRoute = ($usertype === 5) ? 'student_dashboard.php' : 'index.php';
 		src="https://code.jquery.com/jquery-3.3.1.js"
 		integrity="sha256-2Kok7MbOyxpgUVvAk/HJ2jigOSYS2auK4Pfzbm7uH60="
 		crossorigin="anonymous"></script>
+	<meta name="csrf-token" content="<?php echo DBController::getCsrfToken(); ?>">
+	<script>
+		if (window.jQuery) {
+			$.ajaxSetup({
+				headers: {
+					'X-CSRF-Token': '<?php echo DBController::getCsrfToken(); ?>'
+				}
+			});
+		}
+	</script>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.2/FileSaver.min.js"></script>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>

@@ -6,6 +6,11 @@ require_once "../database/db_connect.php";
 $database = new DBController();
 
 if (isset($_POST['save'])) {
+    if (!DBController::validateCsrfToken()) {
+        echo '<script type="text/javascript">alert("Invalid security token. Please try again.");</script>';
+        echo "<script>window.open('student-info.php','_self')</script>";
+        exit;
+    }
     $conn = $database->conn;
     
     // Get the student ID from the form
@@ -232,17 +237,23 @@ if (isset($_POST['save'])) {
             }
             
             $existing_mark_list = [];
+            $allowed_extensions = ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx'];
+            $max_file_size = 5 * 1024 * 1024; // 5MB
             $semester_fields = ['mark-list1', 'mark-list2', 'mark-list3', 'mark-list4', 'mark-list6'];
             
             foreach ($semester_fields as $field) {
-                if (isset($_FILES[$field]) && $_FILES[$field]['error'] == 0 && !empty($_FILES[$field]['name'])) {
-                    $file_ext = pathinfo($_FILES[$field]['name'], PATHINFO_EXTENSION);
-                    $safe_reg_no = preg_replace('/[^a-zA-Z0-9]/', '_', $registration_no);
-                    $file_name = time() . '_' . $safe_reg_no . '_' . $field . '.' . $file_ext;
-                    $target_path = $upload_dir . $file_name;
+                if (isset($_FILES[$field]) && $_FILES[$field]['error'] == UPLOAD_ERR_OK && !empty($_FILES[$field]['name'])) {
+                    $file_ext = strtolower(pathinfo($_FILES[$field]['name'], PATHINFO_EXTENSION));
+                    $file_size = intval($_FILES[$field]['size'] ?? 0);
                     
-                    if (move_uploaded_file($_FILES[$field]['tmp_name'], $target_path)) {
-                        $existing_mark_list[] = $file_name;
+                    if (in_array($file_ext, $allowed_extensions, true) && $file_size > 0 && $file_size <= $max_file_size) {
+                        $safe_reg_no = preg_replace('/[^a-zA-Z0-9]/', '_', $registration_no);
+                        $file_name = time() . '_' . $safe_reg_no . '_' . preg_replace('/[^a-zA-Z0-9_-]/', '', $field) . '.' . $file_ext;
+                        $target_path = $upload_dir . $file_name;
+                        
+                        if (move_uploaded_file($_FILES[$field]['tmp_name'], $target_path)) {
+                            $existing_mark_list[] = $file_name;
+                        }
                     }
                 }
             }

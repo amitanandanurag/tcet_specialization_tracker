@@ -1,0 +1,158 @@
+{
+    "admin\/academic_import.php": {
+        "exists": true,
+        "size": 127,
+        "lines": 6,
+        "preview": "<?php\nif (session_status() !== PHP_SESSION_ACTIVE) {\n    session_start();\n}\nheader(\"Location: mentor_assignment.php\");\nexit();\n"
+    },
+    "admin\/admin_dashboard_ajax.php": {
+        "exists": true,
+        "size": 2094,
+        "lines": 59,
+        "preview": "<?php\r\nsession_start();\r\ninclude_once(\"..\/database\/db_connect.php\");\r\n$db_handle = new DBController();\r\n\r\nif (isset($_GET['action'])) {\r\n    if ($_GET['action'] == 'get_rejected_students') {\r\n        $spec_id = isset($_GET['spec_id']) ? intval($_GET['spec_id']) : 0;\r\n        \r\n        \/\/ REAL DATABASE QUERY FOR REJECTED STUDENTS\r\n        $query = \"SELECT \r\n            s.fname,\r\n            s.lname,\r\n            s.register_number,\r\n            d.department_name,\r\n"
+    },
+    "admin\/all_class_ajax.php": {
+        "exists": true,
+        "size": 2002,
+        "lines": 50,
+        "preview": "<?php\r\nrequire \"..\/database\/db_connect.php\";\r\n$db_handle = new DBController();\r\n\/\/ storing  request (ie, get\/post) global array to a variable\r\n$requestData = $_REQUEST;\r\n\r\n$columns = array(\r\n\/\/ datatable column index  => database column name\r\n    0 => 'class_id',\r\n    1 => 'class_name',\r\n    2 => 'class_id',\r\n    3 => 'class_id',\r\n\r\n);\r\n\r\n"
+    },
+    "admin\/class_manage.php": {
+        "exists": true,
+        "size": 13530,
+        "lines": 365,
+        "preview": "<?php include \"header\/header.php\"; ?>\r\n<?php\r\nif(isset($_POST['add']))\r\n{\r\n  $c_name=$_POST['c_name'];\r\n  $cn_name=$_POST['cn_name'];\r\n  $c_teacher=$_POST['c_teacher'];\r\n  $period=$_POST['period'];\r\n\r\n  $sql=\"INSERT INTO `dsms_class_master`(`class_name`, `numeric_name`, `teacher`, `Period`) VALUES ('\".$c_name.\"','\".$cn_name.\"','\".$c_teacher.\"','\".$period.\"')\";\r\n    if($db_handle->conn->query($sql) === TRUE){\r\n      echo '<script type=\"text\/javascript\">alert(\"Class Added Successfully..!\");<\/script>';\r\n      echo \"<meta http-equiv='refresh' content='0'>\";\r\n    }else{\r\n      echo(\"Error description: \" . mysqli_error($db_handle->conn));\r\n"
+    },
+    "admin\/class_manage_new.php": {
+        "exists": true,
+        "size": 13839,
+        "lines": 507,
+        "preview": "<?php include \"header\/header.php\"; ?>\r\n\r\n  <!-- Content Wrapper. Contains page content -->\r\n  <div class=\"content-wrapper\">\r\n    <!-- Content Header (Page header) -->\r\n   <section class=\"content-header\">\r\n      \r\n      <ol class=\"breadcrumb\"> \r\n        <li><a href=\"#\"><i class=\"fa fa-dashboard\"><\/i> Home<\/a><\/li>\r\n        <li class=\"active\">Class<\/li>\r\n      <\/ol>\r\n    <\/section>\r\n <section class=\"content\" style=\"margin-top: 30px\">\r\n  <div class=\"box\" style=\" padding: 10px;\">\r\n \r\n"
+    },
+    "admin\/class_edit_new.php": {
+        "exists": true,
+        "size": 3382,
+        "lines": 86,
+        "preview": "<?php\r\n  session_start();\r\n  include \"..\/database\/db_connect.php\";\r\n\r\n  $db_handle = new DBcontroller();\r\n \r\n\tif (isset($_REQUEST['id'])) {\r\n\r\n\t\t$id = intval($_REQUEST['id']);\r\n\t\t$result=$db_handle->conn->query(\"SELECT * FROM st_class_master WHERE class_id='$id'\");\r\n\r\n\twhile($row=$result->fetch_assoc()){\r\n                    $b_id = $row['class_id'];\r\n                    $class_name = $row['class_name'];\r\n                    $date = $row['date']; \r\n"
+    },
+    "admin\/class_edit_new_ajax.php": {
+        "exists": true,
+        "size": 428,
+        "lines": 21,
+        "preview": "<?php\r\n\r\nrequire \"..\/database\/db_connect.php\";\r\n$db_handle = new DBController();\r\n  \r\n$id=$_POST[\"class_id\"];\r\n$class_name = ucwords(rtrim(ltrim($_POST[\"class_name\"])));\r\n\r\n    $sql = \"UPDATE `st_class_master` SET `class_name`='$class_name' WHERE class_id='$id'\";\r\n\r\n    $result = mysqli_query($db_handel->conn, $sql);\r\n\r\n\tif ($result==true) {\r\n\t\t             echo\"1\";\r\n\t               }\r\n"
+    },
+    "admin\/excel_marks_upload.php": {
+        "exists": true,
+        "size": 27931,
+        "lines": 473,
+        "preview": "<?php\nrequire \"header\/header.php\";\n\nif ((int)($usertype ?? 0) !== 1 && (int)($usertype ?? 0) !== 2 && (int)($usertype ?? 0) !== 3) {\n    header(\"location: index.php\");\n    exit;\n}\n\n$successMsg = '';\n$errorMsg = '';\n$rowErrors = array();\n\n\/\/ Sample CSV Download Handling\nif (isset($_GET['download_sample'])) {\n    header('Content-Type: text\/csv');\n"
+    },
+    "admin\/get_specializations.php": {
+        "exists": true,
+        "size": 1936,
+        "lines": 52,
+        "preview": "<?php\r\ninclude \"db_connection.php\"; \/\/ Adjust this to your database connection file\r\n\r\nif(isset($_POST['class_id'])) {\r\n    $class_id = $_POST['class_id'];\r\n    \r\n    \/\/ Get class name\r\n    $class_query = $db_handle->conn->query(\"SELECT class_name FROM st_class_master WHERE class_id = '$class_id'\");\r\n    $class_data = $class_query->fetch_assoc();\r\n    $class_name = $class_data['class_name'] ?? '';\r\n    \r\n    $response = [];\r\n    \r\n    \/\/ Check for FY (First Year)\r\n    if(stripos($class_name, 'FY') !== false || stripos($class_name, 'First Year') !== false) {\r\n"
+    },
+    "admin\/html_table.php": {
+        "exists": true,
+        "size": 8579,
+        "lines": 280,
+        "preview": "<?php\r\n\/\/Based on HTML2PDF by Cl\u00e9ment Lavoillotte\r\nrequire('fpdf.php');\r\n\/\/function hex2dec\r\n\/\/returns an associative array (keys: R,G,B) from a hex html code (e.g. #3FE5AA)\r\nfunction hex2dec($couleur = \"#000000\"){\r\n    $R = substr($couleur, 1, 2);\r\n    $rouge = hexdec($R);\r\n    $V = substr($couleur, 3, 2);\r\n    $vert = hexdec($V);\r\n    $B = substr($couleur, 5, 2);\r\n    $bleu = hexdec($B);\r\n    $tbl_couleur = array();\r\n    $tbl_couleur['R']=$rouge;\r\n    $tbl_couleur['G']=$vert;\r\n"
+    },
+    "admin\/index1.php": {
+        "exists": true,
+        "size": 29953,
+        "lines": 779,
+        "preview": "<?php\r\nrequire \"header\/header.php\";\r\n$user_type = $_SESSION['user_type'];\r\n$selected = \"\";\r\n\r\n\/* $total_income = $db_handle->conn->query(\"SELECT SUM(total_fees) as total_income FROM dsms_fees_master\")->fetch_assoc()['total_income'] ?? 0;\r\n    $total_expenses = $db_handle->conn->query(\"SELECT SUM(total) as total_expenses FROM vouchers\")->fetch_assoc()['total_expenses'] ?? 0;\r\n    $net_balance = $total_income - $total_expenses;*\/\r\n$total_income = 5000;\r\n$total_expenses = 6000;\r\n$net_balance = 7000;\r\n?>\r\n<link href='https:\/\/cdn.jsdelivr.net\/npm\/fullcalendar@5.11.2\/main.min.css' rel='stylesheet' \/>\r\n<script src='https:\/\/cdn.jsdelivr.net\/npm\/fullcalendar@5.11.2\/main.min.js'><\/script>\r\n\r\n"
+    },
+    "admin\/index_old.php": {
+        "exists": true,
+        "size": 57514,
+        "lines": 1179,
+        "preview": "<?php\r\nrequire \"header\/header.php\";\r\n\r\n\/\/ ========================\r\n\/\/ 1. DUMMY DATA FOR HOD TABLE\r\n\/\/ ========================\r\n$departments_hod = [\r\n    1 => ['dept' => 'Computer Science (CSE)', 'hod_name' => 'Dr. Arvind Kumar', 'phone' => '+91-9876543210', 'status' => 'Available'],\r\n    2 => ['dept' => 'Information Technology (IT)', 'hod_name' => 'Prof. Meera Sharma', 'phone' => '+91-9876543211', 'status' => 'In Meeting'],\r\n    3 => ['dept' => 'Artificial Intelligence & ML', 'hod_name' => 'Dr. Rahul Verma', 'phone' => '+91-9876543212', 'status' => 'Available'],\r\n    4 => ['dept' => 'AI & Data Science', 'hod_name' => 'Prof. Sneha Patil', 'phone' => '+91-9876543213', 'status' => 'On Leave'],\r\n    5 => ['dept' => 'Mechanical Engineering', 'hod_name' => 'Dr. Suresh Nair', 'phone' => '+91-9876543214', 'status' => 'Available'],\r\n    6 => ['dept' => 'Civil Engineering', 'hod_name' => 'Prof. Anita Desai', 'phone' => '+91-9876543215', 'status' => 'In Meeting'],\r\n    7 => ['dept' => 'Electrical Engineering', 'hod_name' => 'Dr. Manoj Gupta', 'phone' => '+91-9876543216', 'status' => 'Available'],\r\n];\r\n"
+    },
+    "admin\/list.php": {
+        "exists": true,
+        "size": 17768,
+        "lines": 451,
+        "preview": "<?php\r\nrequire \"header\/header.php\";\r\n\r\n\/\/ ========================\r\n\/\/ GET TYPE PARAMETER\r\n\/\/ ========================\r\n$type = isset($_GET['type']) ? $_GET['type'] : '';\r\n$page_title = '';\r\n$data = [];\r\n$columns = [];\r\n\r\n\/\/ ========================\r\n\/\/ DATABASE CONNECTION\r\n\/\/ ========================\r\n$db_handle = new DBController();\r\n"
+    },
+    "admin\/reg_no.php": {
+        "exists": true,
+        "size": 855,
+        "lines": 33,
+        "preview": "<?php\r\nsession_start();\r\nrequire_once \"..\/database\/db_connect.php\";\r\n\r\nheader('Content-Type: application\/json; charset=utf-8');\r\n\r\n$db_handle = new DBController();\r\n$registerNo = trim($_POST['register1'] ?? '');\r\n\r\nif ($registerNo === '') {\r\n    echo json_encode([\r\n        'exists' => false,\r\n    ]);\r\n    exit;\r\n}\r\n"
+    },
+    "admin\/setting_profile.php": {
+        "exists": true,
+        "size": 19919,
+        "lines": 510,
+        "preview": "<?php header(\"Location: profile.php\"); exit; ?>\r\n<?php\r\n$profileAlertType = '';\r\n$profileAlertMessage = '';\r\n$passwordAlertType = '';\r\n$passwordAlertMessage = '';\r\n\r\n$currentUserId = intval($userid ?? 0);\r\n$currentRoleId = intval($usertype ?? 0);\r\n\r\nif ($currentUserId <= 0 || $currentRoleId <= 0) {\r\n  $profileAlertType = 'danger';\r\n  $profileAlertMessage = 'Unable to load profile. Please login again.';\r\n}\r\n\r\n"
+    },
+    "admin\/student-edit.php": {
+        "exists": true,
+        "size": 37295,
+        "lines": 763,
+        "preview": "<?php\r\nsession_start();\r\nrequire \"..\/database\/db_connect.php\";\r\n$db_handle = new DBController();\r\n\r\nif (isset($_REQUEST['id'])) {\r\n  $student_id = intval($_REQUEST['id']);\r\n  $table = 'st_student_master';\r\n  \r\n  $sql = \"SELECT \r\n    sm.*,\r\n    IFNULL(cl.class_name, '') AS class_name,\r\n    IFNULL(sec.sections, '') AS section_name,\r\n    IFNULL(dep.department_name, '') AS department_name,\r\n    IFNULL(sp.specialization_name, '') AS specialization_name,\r\n"
+    },
+    "admin\/student-update.php": {
+        "exists": true,
+        "size": 6778,
+        "lines": 213,
+        "preview": "<?php\r\n\r\n include \"..\/database\/db_connect.php\";\r\n $db_handel = new DBController();\r\n\r\nif(isset($_POST['update'])){\r\n\r\n$update_id = $_POST['std_id'];\r\n$medium = $_POST['medium'];\t\r\n$academic  = $_POST['academic'];\r\n$class1  = $_POST['class'];\r\n$registration_no  = $_POST['registration_no'];\r\n$saral_id  = $_POST['saral_id'];\r\n$gr_no  = $_POST['gr_no'];\r\n$aadhar_no  = $_POST['aadhar_no'];\r\n"
+    },
+    "admin\/student.php": {
+        "exists": true,
+        "size": 8845,
+        "lines": 231,
+        "preview": "<?php\r\nsession_start();\r\nerror_reporting(E_ALL);\r\nini_set('display_errors', 1);\r\nrequire_once \"..\/database\/db_connect.php\";\r\n$database = new DBController();\r\n\r\nif (isset($_POST['save'])) {\r\n  $conn = $database->conn;\r\n\r\n  \/\/ Get form data - DON'T add quotes here, just escape\r\n  $academic_year_id = mysqli_real_escape_string($conn, $_POST['academic'] ?? '');\r\n  $registration_no = mysqli_real_escape_string($conn, $_POST['registration_no'] ?? '');\r\n  $class_id = mysqli_real_escape_string($conn, $_POST['class'] ?? '');\r\n  $division_id = mysqli_real_escape_string($conn, $_POST['batch'] ?? '');\r\n"
+    },
+    "admin\/student_admission_old.php": {
+        "exists": true,
+        "size": 28032,
+        "lines": 762,
+        "preview": "<?php include \"header\/header.php\"; ?>\r\n<script>\r\n  function validateform() {\r\n\r\n    var academic = document.myform.academic.value;\r\n\r\n    var class1 = document.myform.class.value;\r\n\r\n    var registration_no = document.myform.registration_no.value;\r\n\r\n    var batch = document.myform.batch.value;\r\n\r\n    var fname = document.myform.fname.value;\r\n\r\n    var dob = document.myform.dob.value;\r\n"
+    },
+    "admin\/subwrite.php": {
+        "exists": true,
+        "size": 715,
+        "lines": 28,
+        "preview": "<?php\r\nclass PDF extends FPDF\r\n{\r\nfunction subWrite($h, $txt, $link='', $subFontSize=12, $subOffset=0)\r\n{\r\n    \/\/ resize font\r\n    $subFontSizeold = $this->FontSizePt;\r\n    $this->SetFontSize($subFontSize);\r\n    \r\n    \/\/ reposition y\r\n    $subOffset = ((($subFontSize - $subFontSizeold) \/ $this->k) * 0.3) + ($subOffset \/ $this->k);\r\n    $subX        = $this->x;\r\n    $subY        = $this->y;\r\n    $this->SetXY($subX, $subY - $subOffset);\r\n\r\n"
+    },
+    "database\/academic_importer.php": {
+        "exists": true,
+        "size": 40257,
+        "lines": 859,
+        "preview": "<?php\n\nif (!class_exists('DBController')) {\n    require_once __DIR__ . '\/db_connect.php';\n}\n\nclass AcademicImporter\n{\n    private $db;\n    private $conn;\n\n    \/\/ Standard department mapping\n    private $deptAliases = [\n        'IT' => 4,\n        'COMP' => 3,\n"
+    },
+    "database\/antigravity_academic_data_2026_27.txt": {
+        "exists": true,
+        "size": 9750,
+        "lines": 198,
+        "preview": "ANTIGRAVITY ACADEMIC DATA \u2014 AY 2026-27\n================================================================================\nPurpose: Seed\/import reference for the existing application.\nImportant: Preserve subject\u2192mentor as a separate relationship. Initially assign deterministic dummy alphabet mentors; later mentors must be changeable from the Admin UI without editing individual students.\n\nWORKBOOK: _Specialization Data AY 2026- 27 SEM  V and SEM VII.xlsx\n--------------------------------------------------------------------------------\n\nSHEET: SEM V\nHEADER_ROW_IN_SOURCE: 606\nDATA_ROWS: 4\n\n115\tVrishketu Mishra\tBE B\t23\tIT\tData Science\tCollege ESE\tNew added\n\tAKASH VISHWAKARMA\t24-AI&DSC47-28\tQuantum Technology\t\t\t\t\n\tVIRAJ KAPANI\t24-MME22-28\tQuantum Technology\t\t\t\t\n"
+    },
+    "database\/reset_test_data.sql": {
+        "exists": true,
+        "size": 8853,
+        "lines": 144,
+        "preview": "-- Development-only reset. Do not run against production.\r\nUSE `tcet_st`;\r\nSET FOREIGN_KEY_CHECKS = 0;\r\n\r\nTRUNCATE TABLE st_mentor_student_mapping;\r\nTRUNCATE TABLE st_mentor_subject_mapping;\r\nTRUNCATE TABLE st_coordinator_mentor;\r\nTRUNCATE TABLE st_coordinator;\r\nTRUNCATE TABLE st_student_semester_history;\r\nTRUNCATE TABLE st_enrollment;\r\nTRUNCATE TABLE st_credit_ledger;\r\nTRUNCATE TABLE st_offline_marks_entry;\r\nTRUNCATE TABLE st_nptel_records;\r\nTRUNCATE TABLE st_research_records;\r\nTRUNCATE TABLE st_eligibility_log;\r\n"
+    },
+    "database\/tcet_st _updated.sql": {
+        "exists": true,
+        "size": 128182,
+        "lines": 1920,
+        "preview": "-- phpMyAdmin SQL Dump\n-- version 5.2.1\n-- https:\/\/www.phpmyadmin.net\/\n--\n-- Host: 127.0.0.1\n-- Generation Time: Aug 03, 2026 at 10:10 AM\n-- Server version: 10.4.32-MariaDB\n-- PHP Version: 8.2.12\n\nSET SQL_MODE = \"NO_AUTO_VALUE_ON_ZERO\";\nSTART TRANSACTION;\nSET time_zone = \"+00:00\";\n\n\n\/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT *\/;\n"
+    },
+    "database\/complete_database.sql": {
+        "exists": true,
+        "size": 136672,
+        "lines": 2044,
+        "preview": "-- phpMyAdmin SQL Dump\n-- version 5.2.1\n-- https:\/\/www.phpmyadmin.net\/\n--\n-- Host: 127.0.0.1\n-- Generation Time: Aug 03, 2026 at 10:10 AM\n-- Server version: 10.4.32-MariaDB\n-- PHP Version: 8.2.12\n\nCREATE DATABASE IF NOT EXISTS `tcet_st` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;\nUSE `tcet_st`;\n\nSET SQL_MODE = \"NO_AUTO_VALUE_ON_ZERO\";\nSTART TRANSACTION;\nSET time_zone = \"+00:00\";\n"
+    },
+    "database\/migrations\/20260827_semester_history.sql": {
+        "exists": true,
+        "size": 4984,
+        "lines": 90,
+        "preview": "-- Semester history migration (safe and non-destructive).\r\n-- Run once against tcet_st after taking a normal database backup.\r\n\r\nALTER TABLE st_specialization_subject_master\r\n  MODIFY COLUMN subject_name VARCHAR(255) NOT NULL,\r\n  ADD COLUMN IF NOT EXISTS subject_code VARCHAR(50) DEFAULT NULL AFTER subject_name,\r\n  ADD COLUMN IF NOT EXISTS department_id INT(11) DEFAULT NULL AFTER specialization_id,\r\n  ADD COLUMN IF NOT EXISTS semester_id INT(11) DEFAULT NULL AFTER department_id,\r\n  ADD COLUMN IF NOT EXISTS description VARCHAR(1000) DEFAULT NULL AFTER subject_name,\r\n  ADD COLUMN IF NOT EXISTS subject_type VARCHAR(100) DEFAULT NULL AFTER semester_id,\r\n  ADD COLUMN IF NOT EXISTS is_open_elective TINYINT(1) NOT NULL DEFAULT 0 AFTER subject_type,\r\n  ADD COLUMN IF NOT EXISTS is_research_component TINYINT(1) NOT NULL DEFAULT 0 AFTER is_open_elective,\r\n  ADD COLUMN IF NOT EXISTS academic_year_id INT(11) DEFAULT NULL AFTER is_research_component,\r\n  ADD COLUMN IF NOT EXISTS batch_id INT(11) DEFAULT NULL AFTER academic_year_id,\r\n  ADD COLUMN IF NOT EXISTS is_active TINYINT(1) NOT NULL DEFAULT 1 AFTER description;\r\n"
+    }
+}

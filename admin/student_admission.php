@@ -598,6 +598,7 @@ if (($isEditMode || empty($admissionForm)) && !empty($userid)) {
       </div>
     <?php } ?>
     <form action="student_process.php" name="myform" method="POST" onsubmit="return validateform()" enctype="multipart/form-data">
+      <?php echo DBController::getCsrfInputField(); ?>
       <div class="box box-default" style="padding: 10px;">
         <div class="box-header with-border">
           <h3 class="box-title">OFFICIAL DETAILS:- </h3>

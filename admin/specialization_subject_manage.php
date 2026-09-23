@@ -19,8 +19,12 @@ if (isset($_GET['edit'])) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $action = $_POST['action'] ?? '';
-    $subjectId = intval($_POST['subject_id'] ?? 0);
+    if (!DBController::validateCsrfToken()) {
+        $message = 'Security validation failed (invalid token). Please try again.';
+        $messageType = 'danger';
+    } else {
+        $action = $_POST['action'] ?? '';
+        $subjectId = intval($_POST['subject_id'] ?? 0);
     $departmentId = intval($_POST['department_id'] ?? 0);
     $semesterId = intval($_POST['semester_id'] ?? 0);
     $specializationId = intval($_POST['specialization_id'] ?? 0);
@@ -48,9 +52,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $message = ($stmt && mysqli_stmt_execute($stmt)) ? 'Subject status updated.' : 'Unable to update subject status.';
         $messageType = $message === 'Subject status updated.' ? 'success' : 'danger';
         if ($stmt) mysqli_stmt_close($stmt);
-    } else {
-        $message = 'Department, semester, specialization, and subject name are required.';
-        $messageType = 'danger';
+        } else {
+            $message = 'Department, semester, specialization, and subject name are required.';
+            $messageType = 'danger';
+        }
     }
 }
 
@@ -90,6 +95,7 @@ $subjects = $db_handle->runQuery("SELECT s.subject_id, s.subject_name, s.descrip
         </div>
       </div>
       <form method="post">
+        <?php echo DBController::getCsrfInputField(); ?>
         <input type="hidden" name="action" value="save">
         <input type="hidden" name="subject_id" value="<?php echo (int) ($editSubject['subject_id'] ?? 0); ?>">
         <div class="erp-card-body" style="padding: 16px;">
@@ -198,6 +204,7 @@ $subjects = $db_handle->runQuery("SELECT s.subject_id, s.subject_name, s.descrip
                     <i class="fa fa-pencil"></i> Edit
                   </a>
                   <form style="display:inline" method="post">
+                    <?php echo DBController::getCsrfInputField(); ?>
                     <input type="hidden" name="action" value="toggle">
                     <input type="hidden" name="subject_id" value="<?php echo (int) $item['subject_id']; ?>">
                     <button class="btn btn-erp-secondary btn-xs" type="submit" style="margin-left: 3px;" title="<?php echo $isActive ? 'Deactivate' : 'Activate'; ?>">

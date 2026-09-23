@@ -731,7 +731,22 @@ ensure_menu_metadata_columns($db_handle->conn);
 
 $availableMenuIcons = get_menu_icon_options();
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['master_action'], $_POST['master_type'])) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+  if (!DBController::validateCsrfToken()) {
+    $alertType = 'danger';
+    $alertMessage = 'Security validation failed (CSRF token expired). Please refresh the page.';
+    if ($isAjaxRequest) {
+      if (ob_get_length()) {
+        ob_clean();
+      }
+      header('Content-Type: application/json');
+      echo json_encode(array('status' => 'error', 'message' => $alertMessage));
+      exit();
+    }
+  }
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['master_action'], $_POST['master_type']) && DBController::validateCsrfToken()) {
   $masterType = $_POST['master_type'];
   $action = $_POST['master_action'];
 
