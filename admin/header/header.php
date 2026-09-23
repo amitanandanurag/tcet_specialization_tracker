@@ -344,14 +344,6 @@ if ($stmt) {
 			.main-content-responsive .content-header h1 {
 				font-size: 20px;
 			}
-
-			.main-content-responsive .main-header .logo {
-				width: 160px;
-			}
-
-			.main-content-responsive .main-header .navbar {
-				margin-left: 160px;
-			}
 		}
 	</style>
 </head>
@@ -362,11 +354,13 @@ if ($stmt) {
 		<header class="main-header">
 			<!-- Logo -->
 			<a href="<?php echo $dashboardRoute; ?>" class="logo" style="text-decoration: none;">
-				<!-- mini logo for sidebar mini 50x50 pixels -->
-				<span class="logo-mini"><img src="images/tcet_logo.png" height="30px" style="border-radius: 4px; background: #ffffff; padding: 2px; object-fit: contain;" alt="TCET" /></span>
-				<!-- logo for regular state and mobile devices -->
-				<span class="logo-lg" style="display: flex; align-items: center; justify-content: center; gap: 8px;">
-					<img src="images/tcet_logo.png" height="32px" style="border-radius: 4px; background: #ffffff; padding: 2px; object-fit: contain;" alt="TCET" />
+				<!-- mini logo for sidebar mini 50x50 pixels: ONLY logo image -->
+				<span class="logo-mini">
+					<img src="images/tcet_logo.png" height="32" width="32" style="border-radius: 4px; background: #ffffff; padding: 2px; object-fit: contain;" alt="TCET" />
+				</span>
+				<!-- logo for regular state and expanded sidebar -->
+				<span class="logo-lg">
+					<img src="images/tcet_logo.png" height="32" width="32" style="border-radius: 4px; background: #ffffff; padding: 2px; object-fit: contain;" alt="TCET" />
 					<span style="font-weight: 700; font-size: 15px; letter-spacing: 0.5px;">TCET <span style="font-weight: 400; opacity: 0.85; font-size: 13px;">ERP</span></span>
 				</span>
 			</a>
@@ -375,7 +369,6 @@ if ($stmt) {
 				<!-- Sidebar toggle button-->
 				<a href="#" class="sidebar-toggle" data-toggle="offcanvas" role="button" title="Toggle Navigation">
 					<span class="sr-only">Toggle navigation</span>
-					<i class="fa fa-bars"></i>
 				</a>
 
 				<div class="navbar-custom-menu">
@@ -418,13 +411,6 @@ if ($stmt) {
 		<aside class="main-sidebar">
 			<!-- sidebar: style can be found in sidebar.less -->
 			<section class="sidebar">
-				<div class="erp-sidebar-brand hidden-xs">
-					<img src="images/tcet_logo.png" alt="TCET Logo" style="width: 34px; height: 34px; border-radius: 4px; object-fit: contain; background: #ffffff; padding: 2px; border: 1px solid rgba(255,255,255,0.2);">
-					<div>
-						<div class="erp-sidebar-brand-title">TCET Mumbai</div>
-						<span class="erp-sidebar-brand-sub">Academic ERP Portal</span>
-					</div>
-				</div>
 				<?php include_once "side_menu.php"; ?>
 				<!-- /.sidebar -->
 			</section>

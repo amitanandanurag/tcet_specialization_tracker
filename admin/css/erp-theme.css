@@ -81,23 +81,82 @@ body, .content-wrapper, .right-side, .main-footer {
   height: 50px !important;
   line-height: 50px !important;
   border-right: 1px solid rgba(255, 255, 255, 0.1);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
+  padding: 0 !important;
+  overflow: hidden !important;
+  text-decoration: none !important;
 }
 .skin-blue .main-header .logo:hover {
   background-color: #231e73 !important;
 }
+
+/* Default Logo State (Expanded Sidebar) */
+.main-header .logo .logo-lg {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 50px;
+}
+.main-header .logo .logo-mini {
+  display: none !important;
+  width: 50px;
+  height: 50px;
+}
+
+/* Collapsed Sidebar State: ONLY show the logo image, completely hide all text */
+.sidebar-collapse .main-header .logo,
+.sidebar-mini.sidebar-collapse .main-header .logo {
+  width: 50px !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+.sidebar-collapse .main-header .logo .logo-lg,
+.sidebar-mini.sidebar-collapse .main-header .logo .logo-lg {
+  display: none !important;
+  visibility: hidden !important;
+  width: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+}
+.sidebar-collapse .main-header .logo .logo-mini,
+.sidebar-mini.sidebar-collapse .main-header .logo .logo-mini {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 50px !important;
+  height: 50px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+.sidebar-collapse .main-header .logo .logo-mini img,
+.sidebar-mini.sidebar-collapse .main-header .logo .logo-mini img {
+  height: 32px !important;
+  width: 32px !important;
+  max-width: 32px !important;
+  max-height: 32px !important;
+  object-fit: contain;
+}
 .skin-blue .main-header .sidebar-toggle {
   height: 50px !important;
-  line-height: 20px !important;
-  padding: 15px 18px !important;
-  font-size: 14px;
+  line-height: 50px !important;
+  padding: 0 16px !important;
+  font-size: 15px;
   color: #ffffff !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none !important;
 }
-.skin-blue .main-header .sidebar-toggle:hover {
-  background: rgba(0, 0, 0, 0.1) !important;
+.skin-blue .main-header .sidebar-toggle:before {
+  content: "\f0c9";
+  font-family: FontAwesome;
+  font-size: 15px;
+}
+.skin-blue .main-header .sidebar-toggle:hover,
+.skin-blue .main-header .sidebar-toggle:focus {
+  background: rgba(0, 0, 0, 0.12) !important;
+  color: #ffffff !important;
 }
 
 /* Institutional Header User Menu */
@@ -694,21 +753,23 @@ body, .content-wrapper, .right-side, .main-footer {
    ========================================================================== */
 .erp-summary-bar {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   flex-wrap: wrap;
   background: #ffffff;
   border: 1px solid var(--erp-border);
   border-radius: var(--erp-radius-md);
-  padding: 10px 16px;
+  padding: 12px 16px;
   margin-bottom: 16px;
-  gap: 20px;
+  gap: 16px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
 }
 .erp-metric-item {
   display: flex;
-  align-items: baseline;
-  gap: 8px;
-  padding-right: 20px;
+  flex-direction: column;
+  justify-content: center;
+  flex: 1;
+  min-width: 130px;
+  padding-right: 16px;
   border-right: 1px solid var(--erp-border);
 }
 .erp-metric-item:last-child {
@@ -719,13 +780,20 @@ body, .content-wrapper, .right-side, .main-footer {
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.4px;
+  letter-spacing: 0.5px;
   color: var(--erp-text-muted);
+  margin-bottom: 3px;
 }
-.erp-metric-num {
-  font-size: 16px;
+.erp-metric-value, .erp-metric-num {
+  font-size: 15px;
   font-weight: 700;
   color: var(--erp-text-main);
+  line-height: 1.25;
+}
+.erp-metric-sub {
+  font-size: 11px;
+  color: var(--erp-text-secondary);
+  margin-top: 3px;
 }
 
 /* ==========================================================================
@@ -864,69 +932,6 @@ div.dataTables_wrapper div.dataTables_paginate ul.pagination {
   font-size: 13px;
   font-weight: 500;
   color: #0f172a;
-}
-.erp-progression-track {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 8px;
-  padding: 14px;
-}
-@media (max-width: 768px) {
-  .erp-progression-track {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-@media (max-width: 480px) {
-  .erp-progression-track {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-.erp-progression-step {
-  border: 1px solid var(--erp-border);
-  border-radius: var(--erp-radius-sm);
-  padding: 8px 10px;
-  background: #ffffff;
-  text-align: center;
-  border-top: 3px solid #cbd5e1;
-}
-.erp-progression-step.is-current {
-  border-color: var(--erp-primary-border);
-  border-top: 3px solid var(--erp-primary);
-  background: #f8f9ff;
-}
-.erp-progression-step.is-completed {
-  border-color: var(--erp-success-border);
-  border-top: 3px solid #16a34a;
-  background: #fcfdfc;
-}
-.erp-progression-step-title {
-  font-size: 12px;
-  font-weight: 700;
-  margin-bottom: 3px;
-  color: #334155;
-}
-.erp-progression-step.is-current .erp-progression-step-title {
-  color: var(--erp-primary);
-}
-.erp-progression-step.is-completed .erp-progression-step-title {
-  color: #16a34a;
-}
-.erp-progression-step-badge {
-  font-size: 9px;
-  text-transform: uppercase;
-  font-weight: 600;
-  padding: 1px 4px;
-  border-radius: 2px;
-  display: inline-block;
-  margin-bottom: 4px;
-}
-.erp-progression-step-subject {
-  font-size: 11px;
-  color: var(--erp-text-muted);
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 /* ==========================================================================
@@ -1084,5 +1089,39 @@ div.dataTables_wrapper div.dataTables_paginate ul.pagination {
 }
 .table > tbody > tr:hover {
   background-color: #f8fafc !important;
+}
+
+/* ==========================================================================
+   RESPONSIVE DESIGN BREAKPOINTS
+   ========================================================================== */
+@media (max-width: 991px) {
+  .erp-summary-bar {
+    gap: 12px;
+  }
+  .erp-metric-item {
+    min-width: 110px;
+    padding-right: 12px;
+  }
+}
+
+@media (max-width: 768px) {
+  .erp-summary-bar {
+    flex-direction: column;
+    gap: 10px;
+  }
+  .erp-metric-item {
+    border-right: none;
+    border-bottom: 1px solid var(--erp-border);
+    padding-right: 0;
+    padding-bottom: 8px;
+    width: 100%;
+  }
+  .erp-metric-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+  .erp-detail-grid {
+    grid-template-columns: 1fr;
+  }
 }
 

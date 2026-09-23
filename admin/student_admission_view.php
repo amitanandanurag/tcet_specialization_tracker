@@ -192,74 +192,38 @@ if (!function_exists('formatValue')) {
             </div>
         </div>
 
-        <!-- Academic Progression Journey Milestone Strip -->
+        <!-- ACADEMIC PROGRESSION & SEMESTER HISTORY -->
         <?php
         $academicHistory = $db_handle->getStudentAcademicHistory($student_id);
-        $currentSemNum = intval($student['current_semester_id'] ?? 5);
-        $allSemesters = [3 => 'SEM III', 4 => 'SEM IV', 5 => 'SEM V', 6 => 'SEM VI', 7 => 'SEM VII', 8 => 'SEM VIII'];
-        $historyBySem = [];
-        foreach ($academicHistory as $h) {
-            $historyBySem[intval($h['semester_id'])] = $h;
-        }
+        $currentSemNum = intval($student['current_semester_id'] ?? 0);
         ?>
-        <div class="erp-detail-card">
-            <div class="erp-detail-card-header" style="justify-content: space-between;">
-                <div>
-                    <i class="fa fa-road"></i> Academic Progression Journey
-                </div>
-                <span class="text-muted" style="font-size: 11px;">Current: <strong><?= htmlspecialchars($student['semester_name'] ?? ('Semester ' . $currentSemNum)) ?></strong></span>
-            </div>
-            <div class="erp-progression-track">
-                <?php foreach ($allSemesters as $semNum => $semLabel): 
-                    $isPast = $semNum < $currentSemNum;
-                    $isCurrent = $semNum === $currentSemNum;
-                    $isFuture = $semNum > $currentSemNum;
-                    $hasData = isset($historyBySem[$semNum]);
-                    
-                    $stepClass = $isCurrent ? 'is-current' : ($isPast ? 'is-completed' : '');
-                    $stepBadge = $isCurrent ? 'Current' : ($isPast ? 'Completed' : 'Upcoming');
-                    $stepBadgeClass = $isCurrent ? 'label-primary' : ($isPast ? 'label-success' : 'label-default');
-                ?>
-                    <div class="erp-progression-step <?= $stepClass ?>">
-                        <div class="erp-progression-step-title"><?= $semLabel ?></div>
-                        <span class="label <?= $stepBadgeClass ?>" style="font-size: 9px; padding: 1px 4px;"><?= $stepBadge ?></span>
-                        <span class="erp-progression-step-subject" title="<?= htmlspecialchars($hasData ? ($historyBySem[$semNum]['subject_name'] ?: 'Enrolled') : '') ?>">
-                            <?php if ($hasData): ?>
-                                <?= htmlspecialchars($historyBySem[$semNum]['subject_name'] ?: 'Enrolled') ?>
-                            <?php else: ?>
-                                <?= $isFuture ? 'Future Stage' : 'Not Enrolled' ?>
-                            <?php endif; ?>
-                        </span>
-                    </div>
-                <?php endforeach; ?>
-            </div>
-        </div>
-
-        <!-- Semester & Specialization History Ledger -->
         <div class="box box-solid">
             <div class="box-header with-border">
-                <h3 class="box-title"><i class="fa fa-history text-muted"></i> Semester & Specialization History Ledger</h3>
+                <h3 class="box-title"><i class="fa fa-history text-muted"></i> Academic Progression & Semester History</h3>
+                <div class="box-tools pull-right">
+                    <span class="text-muted" style="font-size: 12px;"><?= count($academicHistory) ?> <?= count($academicHistory) === 1 ? 'Record' : 'Records' ?></span>
+                </div>
             </div>
             <div class="box-body table-responsive no-padding">
-                <table class="table table-bordered table-hover table-striped">
-                    <thead>
-                        <tr>
-                            <th>Semester</th>
-                            <th>Academic Year</th>
-                            <th>Division</th>
-                            <th>Roll No</th>
-                            <th>Specialization</th>
-                            <th>Enrolled Subject</th>
-                            <th>Assigned Mentor</th>
-                            <th class="col-num">CGPA</th>
-                            <th class="col-center">Status</th>
-                            <th>Enrolled Date</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php if (!empty($academicHistory)): ?>
+                <?php if (!empty($academicHistory)): ?>
+                    <table class="table table-bordered table-hover table-striped">
+                        <thead>
+                            <tr>
+                                <th>Semester</th>
+                                <th>Academic Year</th>
+                                <th>Division</th>
+                                <th>Roll No</th>
+                                <th>Specialization</th>
+                                <th>Enrolled Subject</th>
+                                <th>Assigned Mentor</th>
+                                <th class="col-num">CGPA</th>
+                                <th class="col-center">Status</th>
+                                <th>Enrolled Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
                             <?php foreach ($academicHistory as $hrow): 
-                                $isCurrentRow = intval($hrow['semester_id']) === $currentSemNum;
+                                $isCurrentRow = ($currentSemNum > 0 && intval($hrow['semester_id']) === $currentSemNum);
                                 $statusBadge = ($hrow['history_status'] === 'Active' || $isCurrentRow) ? 'label-primary' : 'label-success';
                                 $statusText = ($hrow['history_status'] === 'Active' || $isCurrentRow) ? 'Active (Current)' : 'Completed';
                             ?>
@@ -281,18 +245,19 @@ if (!function_exists('formatValue')) {
                                             <span class="erp-mentor-unassigned">Not Assigned</span>
                                         <?php endif; ?>
                                     </td>
-                                    <td class="col-num font-weight-bold"><?= htmlspecialchars($hrow['cgpa'] ?? 'N/A') ?></td>
+                                    <td class="col-num font-weight-bold"><?= !empty($hrow['cgpa']) ? htmlspecialchars($hrow['cgpa']) : 'N/A' ?></td>
                                     <td class="col-center"><span class="label <?= $statusBadge ?>"><?= $statusText ?></span></td>
-                                    <td><span class="text-muted"><?= htmlspecialchars($hrow['enrolled_at']) ?></span></td>
+                                    <td><span class="text-muted"><?= !empty($hrow['enrolled_at']) && $hrow['enrolled_at'] !== '0000-00-00 00:00:00' ? htmlspecialchars($hrow['enrolled_at']) : 'N/A' ?></span></td>
                                 </tr>
                             <?php endforeach; ?>
-                        <?php else: ?>
-                            <tr>
-                                <td colspan="10" class="text-center text-muted" style="padding: 20px;">No historical semester registrations recorded for this student.</td>
-                            </tr>
-                        <?php endif; ?>
-                    </tbody>
-                </table>
+                        </tbody>
+                    </table>
+                <?php else: ?>
+                    <div class="text-center" style="padding: 32px 16px;">
+                        <p style="font-size: 13px; color: #475569; margin-bottom: 4px; font-weight: 500;">No semester progression records are available for this student.</p>
+                        <span class="text-muted" style="font-size: 12px;">Semester history will appear here once academic enrollment and progression data is recorded.</span>
+                    </div>
+                <?php endif; ?>
             </div>
         </div>
 
