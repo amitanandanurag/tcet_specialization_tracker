@@ -37,6 +37,7 @@ if (($isEditMode || empty($admissionForm)) && !empty($userid)) {
         $admissionForm['batch'] = $srow['academic_year_id'] ?? '';
         $admissionForm['graduation_year'] = $srow['grad_year'] ?? '';
         $admissionForm['department_id'] = $srow['department_id'] ?? '';
+        $admissionForm['specialization_track_id'] = $srow['specialization_track_id'] ?? (!empty($srow['specialization_id']) && $srow['specialization_id'] <= 4 ? $srow['specialization_id'] : 1);
         $admissionForm['specialization_id'] = $srow['specialization_id'] ?? '';
         $admissionForm['cgpa'] = $srow['cgpa'] ?? '';
         $admissionForm['minor_course_id'] = $srow['minor_course_id'] ?? '';
@@ -59,14 +60,16 @@ if (($isEditMode || empty($admissionForm)) && !empty($userid)) {
     var registration_no = document.myform.registration_no.value;
     var batch = document.myform.batch.value;
     var fname = document.myform.fname.value;
+    var departmentId = document.myform.department_id ? document.myform.department_id.value : "";
+    var currentSemesterId = document.myform.current_semester_id ? document.myform.current_semester_id.value : "";
+    var trackSelect = document.getElementById("specialization_track_select");
+    var trackId = trackSelect ? trackSelect.value : "";
+    var trackText = (trackSelect && trackSelect.selectedIndex >= 0) ? trackSelect.options[trackSelect.selectedIndex].text.toLowerCase() : "";
     var specializationSelect = document.getElementById("specialization_select");
-    var specializationText = "";
+    var specializationId = specializationSelect ? specializationSelect.value : "";
+    var specializationText = (specializationSelect && specializationSelect.selectedIndex >= 0) ? specializationSelect.options[specializationSelect.selectedIndex].text.toLowerCase() : "";
     var cgpaValue = document.getElementById("cgpa") ? document.getElementById("cgpa").value : "";
     var minorCgpaValue = document.getElementById("minor_cgpa") ? document.getElementById("minor_cgpa").value : "";
-
-    if (specializationSelect && specializationSelect.selectedIndex >= 0) {
-      specializationText = specializationSelect.options[specializationSelect.selectedIndex].text.toLowerCase();
-    }
 
     if (academic == null || academic == "") {
       alert("Academic Year can't be blank.");
@@ -88,10 +91,40 @@ if (($isEditMode || empty($admissionForm)) && !empty($userid)) {
       alert("First Name can't be blank.");
       return false;
     }
+    if (departmentId == null || departmentId == "") {
+      alert("Department can't be blank.");
+      return false;
+    }
+    if (currentSemesterId == null || currentSemesterId == "") {
+      alert("Semester can't be blank.");
+      return false;
+    }
 
-    var isMinorMultidisciplinary = specializationText.indexOf("minor multidisciplinary") !== -1;
-    var isMinor = specializationText.indexOf("minor") !== -1 && !isMinorMultidisciplinary;
-    var isHonours = specializationText.indexOf("honours") !== -1 || specializationText.indexOf("honors") !== -1;
+    var classText = $("#class4 option:selected").text().toUpperCase();
+    if (classText === 'FY' || classText === 'FE') {
+      alert("Specialization is not offered for First Year (FY) students.");
+      return false;
+    }
+
+    if (trackId == null || trackId == "") {
+      alert("Please select Specialization Track.");
+      return false;
+    }
+
+    if (trackId == "2") {
+      var semVal = $('#semester_select').val();
+      var deptText = $("#department_select option:selected").text().trim().toUpperCase();
+      var deptVal = $('#department_select').val();
+      var isNonBeDept = (deptText === 'BCA' || deptText === 'MCA' || deptText === 'MBA' || deptVal === '11' || deptVal === '1' || deptVal === '14');
+      if (classText !== 'BE' || (semVal !== '7' && semVal !== '8') || isNonBeDept) {
+        alert("Honours with Research is available only to BE students in Semester 7 and Semester 8.");
+        return false;
+      }
+    }
+
+    var isMinorMultidisciplinary = (trackId == "4") || trackText.indexOf("minor multidisciplinary") !== -1;
+    var isMinorDegree = (trackId == "3") || (trackText.indexOf("minor") !== -1 && !isMinorMultidisciplinary);
+    var isHonours = (trackId == "1" || trackId == "2") || trackText.indexOf("honours") !== -1 || trackText.indexOf("honors") !== -1;
 
     if (isHonours) {
       if (cgpaValue == null || cgpaValue === "") {
@@ -106,12 +139,37 @@ if (($isEditMode || empty($admissionForm)) && !empty($userid)) {
         alert("Not eligible for Honours. Minimum CGPA Eligibility: 7.5");
         return false;
       }
-      var classText = $("#class4 option:selected").text().toUpperCase();
+      if (!specializationId || specializationId === "") {
+        alert("Please select Specialization for Honours.");
+        return false;
+      }
       if (classText !== 'BE') {
-        if ($('#specialization_subject_select').prop('selectedIndex') <= 0) {
+        if ($('#specialization_subject_select').val() == "" || $('#specialization_subject_select').prop('selectedIndex') <= 0) {
           alert("Please select Specialization Subject for Honours.");
           return false;
         }
+      }
+    } else if (isMinorDegree) {
+      if (cgpaValue == null || cgpaValue === "") {
+        alert("Please enter CGPA for Minor.");
+        return false;
+      }
+      if (isNaN(cgpaValue)) {
+        alert("Please enter valid numeric CGPA.");
+        return false;
+      }
+      var cgpaNum = parseFloat(cgpaValue);
+      if (cgpaNum < 0 || cgpaNum > 10) {
+        alert("CGPA must be between 0 and 10.");
+        return false;
+      }
+      if (!specializationId || specializationId === "") {
+        alert("Please select Specialization for Minor Degree.");
+        return false;
+      }
+      if ($('#specialization_subject_select').val() == "" || $('#specialization_subject_select').prop('selectedIndex') <= 0) {
+        alert("Please select Specialization Subject for Minor Degree.");
+        return false;
       }
     } else if (isMinorMultidisciplinary) {
       var minorCourse = $('#minor_course_select').val();
@@ -139,7 +197,7 @@ if (($isEditMode || empty($admissionForm)) && !empty($userid)) {
       }
     }
 
-    var isResearch = specializationText.indexOf("research") !== -1;
+    var isResearch = (trackId == "2") || trackText.indexOf("research") !== -1 || specializationText.indexOf("research") !== -1;
     if (isResearch) {
       if ($('#research_component_i_id').val() == "") {
         alert("Please select Research Component I.");
@@ -238,7 +296,8 @@ if (($isEditMode || empty($admissionForm)) && !empty($userid)) {
 
   function resetSpecializationConditionalUI() {
     $('#cgpa').val('');
-    $('#specialization_subject_select').prop('selectedIndex', 0);
+    $('#specialization_select').empty().append('<option value="">Select Specialization</option>');
+    $('#specialization_subject_select').empty().append('<option value="">Select Specialization Subject</option>');
     $('#specialization_subject_wrapper').hide();
     $('#cgpa_section').hide();
     $('#honours_not_eligible').hide();
@@ -254,30 +313,133 @@ if (($isEditMode || empty($admissionForm)) && !empty($userid)) {
     setAdmissionDetailSectionsVisible(false);
   }
 
-  function loadSpecializationSubjects() {
+  function loadSpecializations(preserveCurrent) {
+    var classId = $('#class4').val();
     var departmentId = $('#department_select').val();
-    var semesterId = $('#semester_select').val();
-    var specializationId = $('#specialization_select').val();
-    var subjectSelect = $('#specialization_subject_select');
-    subjectSelect.empty().append('<option value="">Select Specialization Subject</option>');
-    if (!departmentId || !semesterId || !specializationId) {
+    var trackId = $('#specialization_track_select').val();
+    var specSelect = $('#specialization_select');
+    var previousVal = preserveCurrent ? specSelect.val() : '';
+
+    specSelect.empty().append('<option value="">Select Specialization</option>');
+
+    if (trackId === "4") {
+      $('#specialization_name_wrapper').hide();
+      $('#specialization_subject_wrapper').hide();
+      $('#specialization_subject_select').empty().append('<option value="">Select Specialization Subject</option>');
+      $('#minor_multidisciplinary_section').show();
+      $('#cgpa_section').hide();
+      $('#honours_not_eligible').hide();
+      setAdmissionDetailSectionsVisible(true);
       return;
     }
+
+    $('#minor_multidisciplinary_section').hide();
+
+    if (!departmentId || !trackId) {
+      $('#specialization_name_wrapper').show();
+      loadSpecializationSubjects(false);
+      return;
+    }
+
+    $('#specialization_name_wrapper').show();
+
+    $.ajax({
+      type: 'POST',
+      url: 'get_specializations.php',
+      dataType: 'json',
+      data: {
+        class_id: classId,
+        department_id: departmentId,
+        track_id: trackId
+      },
+      success: function(response) {
+        specSelect.empty().append('<option value="">Select Specialization</option>');
+        if (response && response.warning) {
+          alert(response.message || 'Specialization is not offered for this class.');
+          return;
+        }
+        if (response && response.data && response.data.length > 0) {
+          var matched = false;
+          $.each(response.data, function(_, item) {
+            var isSel = (previousVal && String(item.specialization_id) === String(previousVal));
+            if (isSel) matched = true;
+            specSelect.append($('<option>', {
+              value: item.specialization_id,
+              text: item.specialization_name,
+              selected: isSel
+            }));
+          });
+          if (!matched && previousVal) {
+            specSelect.val('');
+          }
+        } else {
+          specSelect.append('<option value="">No eligible specializations found</option>');
+        }
+        loadSpecializationSubjects(preserveCurrent);
+        updateTrackConditionalUI();
+      },
+      error: function() {
+        specSelect.empty().append('<option value="">Error loading specializations</option>');
+      }
+    });
+  }
+
+  function loadSpecializationSubjects(preserveCurrent) {
+    var classId = $('#class4').val();
+    var departmentId = $('#department_select').val();
+    var semesterId = $('#semester_select').val();
+    var trackId = $('#specialization_track_select').val();
+    var specializationId = $('#specialization_select').val();
+    var subjectSelect = $('#specialization_subject_select');
+    var previousVal = preserveCurrent ? subjectSelect.val() : '';
+
+    subjectSelect.empty().append('<option value="">Select Specialization Subject</option>');
+
+    if (trackId === "4" || !specializationId || !semesterId) {
+      $('#specialization_subject_wrapper').hide();
+      return;
+    }
+
+    var classText = $("#class4 option:selected").text().toUpperCase();
+    if (classText === 'BE' && trackId === "2") {
+      $('#specialization_subject_wrapper').hide();
+      return;
+    }
+
+    $('#specialization_subject_wrapper').show();
+
     $.ajax({
       type: 'POST',
       url: 'get_specialization_subject.php',
       dataType: 'json',
-      data: { department_id: departmentId, semester_id: semesterId, specialization_id: specializationId },
+      data: {
+        department_id: departmentId,
+        semester_id: semesterId,
+        specialization_id: specializationId,
+        track_id: trackId
+      },
       success: function(response) {
-        if (response && response.success && response.data) {
-          $.each(response.data, function(_, subject) {
-            subjectSelect.append($('<option>', { value: subject.subject_id, text: subject.subject_name }));
+        subjectSelect.empty().append('<option value="">Select Specialization Subject</option>');
+        if (response && response.success && response.data && response.data.length > 0) {
+          var matched = false;
+          $.each(response.data, function(_, item) {
+            var isSel = (previousVal && String(item.subject_id) === String(previousVal));
+            if (isSel) matched = true;
+            subjectSelect.append($('<option>', {
+              value: item.subject_id,
+              text: item.subject_name,
+              selected: isSel
+            }));
           });
-          var selectedSubjectId = <?php echo json_encode((string) ($admissionForm['unaided_subject'] ?? '')); ?>;
-          if (selectedSubjectId !== '') {
-            subjectSelect.val(selectedSubjectId);
+          if (!matched && previousVal) {
+            subjectSelect.val('');
           }
+        } else {
+          subjectSelect.append('<option value="">No subjects available for this semester</option>');
         }
+      },
+      error: function() {
+        subjectSelect.empty().append('<option value="">Error loading subjects</option>');
       }
     });
   }
@@ -318,83 +480,62 @@ if (($isEditMode || empty($admissionForm)) && !empty($userid)) {
     }
   }
 
-  function updateHonoursEligibility() {
-    var specializationText = $('#specialization_select option:selected').text().toLowerCase();
+  function updateTrackConditionalUI() {
+    var trackId = $('#specialization_track_select').val();
+    var trackText = $('#specialization_track_select option:selected').text().toLowerCase();
     var cgpaRaw = $('#cgpa').val();
     var cgpa = parseFloat(cgpaRaw);
-    var isHonours = specializationText.indexOf('honours') !== -1 || specializationText.indexOf('honors') !== -1;
-    var classText = $("#class4 option:selected").text().toUpperCase();
+    var isHonours = (trackId === "1" || trackId === "2") || trackText.indexOf('honours') !== -1 || trackText.indexOf('honors') !== -1;
+    var isMinorDegree = (trackId === "3") || (trackText.indexOf('minor') !== -1 && trackText.indexOf('multidisciplinary') === -1);
+    var isMinorMultidisciplinary = (trackId === "4") || trackText.indexOf('minor multidisciplinary') !== -1;
+    var isResearch = (trackId === "2") || trackText.indexOf('research') !== -1;
 
-    if (!isHonours) {
-      $('#specialization_subject_wrapper').hide();
-      $('#honours_not_eligible').hide();
-      setAdmissionDetailSectionsVisible(false);
-      return;
-    }
-
-    if (cgpaRaw !== '' && !isNaN(cgpa) && cgpa >= 7.5) {
-      if (classText === 'BE') {
-        $('#specialization_subject_wrapper').hide();
-      } else {
-        $('#specialization_subject_wrapper').show();
-      }
-      $('#honours_not_eligible').hide();
-      setAdmissionDetailSectionsVisible(true);
-    } else if (cgpaRaw !== '') {
-      $('#specialization_subject_wrapper').hide();
-      $('#specialization_subject_select').prop('selectedIndex', 0);
-      $('#honours_not_eligible').show();
-      setAdmissionDetailSectionsVisible(false);
-    } else {
-      $('#specialization_subject_wrapper').hide();
-      $('#honours_not_eligible').hide();
-      setAdmissionDetailSectionsVisible(false);
-    }
-  }
-
-  function updateResearchEligibility() {
-    var specializationText = $('#specialization_select option:selected').text().toLowerCase();
-    var isResearch = specializationText.indexOf("research") !== -1;
-    
     if (isResearch) {
       $('#research_sections_wrapper').show();
     } else {
       $('#research_sections_wrapper').hide();
     }
-  }
 
-  function handleSpecializationSelection(shouldReset) {
-    var specializationText = $('#specialization_select option:selected').text().toLowerCase();
-    var isMinorMultidisciplinary = specializationText.indexOf("minor multidisciplinary") !== -1;
-    var isMinorDegree = specializationText.indexOf("minor") !== -1 && !isMinorMultidisciplinary;
-    var isHonours = specializationText.indexOf('honours') !== -1 || specializationText.indexOf('honors') !== -1;
-
-    if (shouldReset) {
-      resetSpecializationConditionalUI();
-    }
-
-    updateResearchEligibility();
-
-    if (isMinorDegree) {
-      $('#cgpa_section').show();
+    if (isMinorMultidisciplinary) {
+      $('#specialization_name_wrapper').hide();
+      $('#specialization_subject_wrapper').hide();
+      $('#cgpa_section').hide();
+      $('#honours_not_eligible').hide();
+      $('#minor_multidisciplinary_section').show();
       setAdmissionDetailSectionsVisible(true);
       return;
     }
 
-    if (isMinorMultidisciplinary) {
-      $('#minor_multidisciplinary_section').show();
+    $('#minor_multidisciplinary_section').hide();
+    $('#specialization_name_wrapper').show();
+
+    if (isMinorDegree) {
+      $('#cgpa_section').show();
+      $('#cgpa_label').html('Enter Your CGPA (Aggregate)<span style="color: red;">*</span>');
+      $('#honours_not_eligible').hide();
       setAdmissionDetailSectionsVisible(true);
       return;
     }
 
     if (isHonours) {
       $('#cgpa_section').show();
-      setAdmissionDetailSectionsVisible(true);
+      $('#cgpa_label').html('Enter Your CGPA (Aggregate) <small style="color: #64748b;">(Min 7.5)</small><span style="color: red;">*</span>');
+      if (cgpaRaw !== '' && !isNaN(cgpa) && cgpa >= 7.5) {
+        $('#honours_not_eligible').hide();
+        setAdmissionDetailSectionsVisible(true);
+      } else if (cgpaRaw !== '') {
+        $('#honours_not_eligible').show();
+        setAdmissionDetailSectionsVisible(false);
+      } else {
+        $('#honours_not_eligible').hide();
+        setAdmissionDetailSectionsVisible(false);
+      }
       return;
     }
 
-    // For regular specializations, show admission detail sections
-    setAdmissionDetailSectionsVisible(true);
+    $('#cgpa_section').hide();
+    $('#honours_not_eligible').hide();
+    setAdmissionDetailSectionsVisible(false);
   }
 
   function updateSemestersByClass() {
@@ -471,90 +612,135 @@ if (($isEditMode || empty($admissionForm)) && !empty($userid)) {
     });
   }
 
-  function updateSpecializationsByClass() {
+  function updateTracksByClassAndSemester() {
     var classVal = $("#class4").val();
-    var selectedClassText = $("#class4 option:selected").text().toUpperCase();
-    var specSelect = $('#specialization_select');
-    var currentVal = specSelect.val();
+    var selectedClassText = $("#class4 option:selected").text().trim().toUpperCase();
+    var semesterSelect = $('#semester_select');
+    var semVal = semesterSelect.val();
+    var deptVal = $('#department_select').val();
+    var deptText = $("#department_select option:selected").text().trim().toUpperCase();
+    var trackSelect = $('#specialization_track_select');
+    var currentTrackVal = trackSelect.val();
 
-    if (!specSelect.data('original-options')) {
-      var options = [];
-      specSelect.find('option').each(function() {
-        options.push({
-          value: $(this).val(),
-          text: $(this).text()
-        });
-      });
-      specSelect.data('original-options', options);
+    if (!trackSelect.data('master-tracks')) {
+      var master = [
+        { id: "1", name: "Honours Degree" },
+        { id: "2", name: "Honours with Research" },
+        { id: "3", name: "Minor Degree" },
+        { id: "4", name: "Minor Multidisciplinary" }
+      ];
+      trackSelect.data('master-tracks', master);
     }
 
-    var originalOptions = specSelect.data('original-options');
-    specSelect.empty().append('<option value="">Select Specialization</option>');
+    var masterTracks = trackSelect.data('master-tracks');
+    var isFY = (selectedClassText === 'FY' || selectedClassText === 'FE');
+    var isBE = (selectedClassText === 'BE' || classVal === '7');
+    var isSem7or8 = (semVal === '7' || semVal === '8');
+    var isNonBeDept = (deptText === 'BCA' || deptText === 'MCA' || deptText === 'MBA' || deptVal === '11' || deptVal === '1' || deptVal === '14');
 
-    if (!classVal || classVal === "") {
+    // Rule: Honours with Research (Track 2) is available only to BE students in Semester 7 and Semester 8.
+    var isResearchEligible = isBE && isSem7or8 && !isNonBeDept && !isFY;
+
+    trackSelect.empty().append('<option value="">Select Specialization Track</option>');
+
+    if (isFY) {
+      if (currentTrackVal !== '') {
+        trackSelect.val('');
+        resetSpecializationConditionalUI();
+      }
       return;
     }
 
-    var isBE = (selectedClassText === 'BE');
-
-    $.each(originalOptions, function(index, opt) {
-      if (opt.value === "") return;
-      var textLower = opt.text.toLowerCase();
-      var isResearch = (textLower.indexOf('research') !== -1);
-
-      if (isBE) {
-        if (isResearch) {
-          var selectedAttr = (opt.value === currentVal) ? 'selected' : '';
-          specSelect.append('<option value="' + opt.value + '" ' + selectedAttr + '>' + opt.text + '</option>');
-        }
-      } else {
-        if (!isResearch) {
-          var selectedAttr = (opt.value === currentVal) ? 'selected' : '';
-          specSelect.append('<option value="' + opt.value + '" ' + selectedAttr + '>' + opt.text + '</option>');
-        }
+    var preservedVal = '';
+    $.each(masterTracks, function(_, track) {
+      if (track.id === "2" && !isResearchEligible) {
+        return; // Exclude Honours with Research
       }
+      var isSelected = (String(track.id) === String(currentTrackVal));
+      if (isSelected) {
+        preservedVal = track.id;
+      }
+      trackSelect.append($('<option>', {
+        value: track.id,
+        text: track.name,
+        selected: isSelected
+      }));
     });
+
+    if (currentTrackVal && currentTrackVal !== '' && preservedVal === '') {
+      // Selection was invalidated (e.g. was Honours with Research and is now ineligible)
+      trackSelect.val('');
+      $('#specialization_select').empty().append('<option value="">Select Specialization</option>');
+      $('#specialization_subject_select').empty().append('<option value="">Select Specialization Subject</option>');
+      $('#specialization_subject_wrapper').hide();
+      $('#research_sections_wrapper').hide();
+      $('#research_component_i_id').val('');
+      $('#research_core_vii').val('');
+      $('#research_component_ii_id').val('');
+      $('#research_core_viii').val('');
+      updateTrackConditionalUI();
+      loadSpecializations(false);
+    }
   }
 
   $(document).ready(function() {
     updateSemestersByClass();
     updateDivisionsByClass();
-    updateSpecializationsByClass();
+    updateTracksByClassAndSemester();
+
+    var initialTrack = <?php echo json_encode((string) ($admissionForm['specialization_track_id'] ?? '')); ?>;
+    var initialSpec = <?php echo json_encode((string) ($admissionForm['specialization_id'] ?? '')); ?>;
+    var initialSub = <?php echo json_encode((string) ($admissionForm['unaided_subject'] ?? '')); ?>;
+
+    if (initialTrack !== '' && $('#specialization_track_select option[value="' + initialTrack + '"]').length > 0) {
+      $('#specialization_track_select').val(initialTrack);
+    }
+
+    updateTrackConditionalUI();
+
+    if ($('#department_select').val() && $('#specialization_track_select').val()) {
+      loadSpecializations(true);
+    }
 
     $('#class4').on('change', function() {
       updateSemestersByClass();
       updateDivisionsByClass();
-      updateSpecializationsByClass();
-      loadSpecializationSubjects();
-      updateHonoursEligibility();
+      updateTracksByClassAndSemester();
+      var selectedClassText = $("#class4 option:selected").text().toUpperCase();
+      if (selectedClassText === 'FY' || selectedClassText === 'FE') {
+        alert("Specialization is not offered for First Year (FY) students.");
+        $('#specialization_track_select').val('');
+        $('#specialization_select').empty().append('<option value="">Select Specialization</option>');
+        $('#specialization_subject_select').empty().append('<option value="">Select Specialization Subject</option>');
+        updateTrackConditionalUI();
+        return;
+      }
+      loadSpecializations(false);
     });
 
-    $('#department_select, #semester_select').on('change', function() {
-      loadSpecializationSubjects();
+    $('#department_select').on('change', function() {
+      updateTracksByClassAndSemester();
+      loadSpecializations(false);
     });
 
-    handleSpecializationSelection(false);
+    $('#specialization_track_select').on('change', function() {
+      updateTrackConditionalUI();
+      loadSpecializations(false);
+    });
 
     $('#specialization_select').on('change', function() {
-      loadSpecializationSubjects();
-      handleSpecializationSelection(true);
+      loadSpecializationSubjects(false);
+      updateTrackConditionalUI();
     });
 
-    loadSpecializationSubjects();
+    $('#semester_select').on('change', function() {
+      updateTracksByClassAndSemester();
+      loadSpecializationSubjects(false);
+      updateAllPreviousMarksUpload();
+    });
 
     $('#cgpa').on('input keyup change blur', function() {
-      var specializationText = $('#specialization_select option:selected').text().toLowerCase();
-      var isMinorMultidisciplinary = specializationText.indexOf("minor multidisciplinary") !== -1;
-      var isMinorDegree = specializationText.indexOf("minor") !== -1 && !isMinorMultidisciplinary;
-      var isHonours = specializationText.indexOf('honours') !== -1 || specializationText.indexOf('honors') !== -1;
-
-      if (isMinorMultidisciplinary) {
-        setAdmissionDetailSectionsVisible(true);
-      } else if (isMinorDegree) {
-        setAdmissionDetailSectionsVisible(true);
-      } else if (isHonours) {
-        updateHonoursEligibility();
-      }
+      updateTrackConditionalUI();
     });
 
     $('#minor_course_select').on('change', function() {
@@ -749,18 +935,65 @@ if (($isEditMode || empty($admissionForm)) && !empty($userid)) {
 
               <div class="col-md-4">
                 <div class="form-group">
+                  <label>Specialization Track<span style="color: red;">*</span></label>
+                  <select class="form-control select" name="specialization_track_id" id="specialization_track_select" class="batch" style="width: 100%;" required>
+                    <option value="">Select Specialization Track</option>
+                    <?php
+                    $initClass = intval($admissionForm['class'] ?? 0);
+                    $initSem = intval($admissionForm['current_semester_id'] ?? 0);
+                    $initDept = intval($admissionForm['department_id'] ?? 0);
+                    $trackRes = $db_handle->conn->query("SELECT specialization_id, specialization_name FROM st_specialization_master WHERE is_track = 1 ORDER BY specialization_id ASC");
+                    while ($tRow = $trackRes->fetch_assoc()) {
+                      $tId = intval($tRow['specialization_id']);
+                      $tName = $tRow['specialization_name'];
+                      if ($tId === 2 && !$db_handle->isTrackEligible(2, $initClass, $initSem, $initDept)) {
+                        continue;
+                      }
+                      $selected = (!empty($admissionForm['specialization_track_id']) && (string)$admissionForm['specialization_track_id'] === (string)$tId) ? 'selected' : '';
+                      echo "<option value='{$tId}' {$selected}>" . htmlspecialchars($tName) . "</option>";
+                    }
+                    ?>
+                  </select>
+                </div>
+              </div>
+
+              <div class="col-md-4" id="specialization_name_wrapper">
+                <div class="form-group">
                   <label>Specialization<span style="color: red;">*</span></label>
-                  <select class="form-control select" name="specialization_id" id="specialization_select" class="batch" style="width: 100%;" required>
+                  <select class="form-control select" name="specialization_id" id="specialization_select" class="batch" style="width: 100%;">
                     <option value="">Select Specialization</option>
                     <?php
-                    $result = $db_handle->conn->query("SELECT * from st_specialization_master");
-                    while ($row = $result->fetch_assoc()) {
-                      $specialization_name = $row['specialization_name'];
-                      $specialization_id = $row['specialization_id'];
-                      $selected = (!empty($admissionForm['specialization_id']) && (string)$admissionForm['specialization_id'] === (string)$specialization_id) ? 'selected' : '';
+                    if (!empty($admissionForm['department_id']) && !empty($admissionForm['specialization_track_id'])) {
+                      $specOptions = $db_handle->getEligibleSpecializations(intval($admissionForm['department_id']), intval($admissionForm['specialization_track_id']), intval($admissionForm['class'] ?? 0));
+                      foreach ($specOptions as $so) {
+                        $soId = $so['specialization_id'];
+                        $soName = $so['specialization_name'];
+                        $selected = (!empty($admissionForm['specialization_id']) && (string)$admissionForm['specialization_id'] === (string)$soId) ? 'selected' : '';
+                        echo '<option value="' . $soId . '" ' . $selected . '>' . htmlspecialchars($soName) . '</option>';
+                      }
+                    }
                     ?>
-                      <option value="<?php echo $specialization_id;  ?>" <?php echo $selected; ?>><?php echo $specialization_name;  ?></option>
-                    <?php } ?>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- Specialization Subject & CGPA Row -->
+            <div class="col-md-12">
+              <div class="col-md-4" id="specialization_subject_wrapper" style="display: none;">
+                <div class="form-group">
+                  <label>Specialization Subject<span style="color: red;">*</span></label>
+                  <select class="form-control select" name="unaided_subject" id="specialization_subject_select" class="batch" style="width: 100%;">
+                    <option value="">Select Specialization Subject</option>
+                    <?php
+                    if (!empty($admissionForm['specialization_id']) && !empty($admissionForm['current_semester_id'])) {
+                      $subjects = $db_handle->getEligibleSubjects(intval($admissionForm['specialization_id']), intval($admissionForm['current_semester_id']), intval($admissionForm['department_id'] ?? 0), intval($admissionForm['specialization_track_id'] ?? 0));
+                      foreach ($subjects as $sub) {
+                        $selected = (!empty($admissionForm['unaided_subject']) && (string)$admissionForm['unaided_subject'] === (string)$sub['subject_id']) ? 'selected' : '';
+                        echo '<option value="' . $sub['subject_id'] . '" ' . $selected . '>' . htmlspecialchars($sub['subject_name']) . '</option>';
+                      }
+                    }
+                    ?>
                   </select>
                 </div>
               </div>
@@ -768,9 +1001,13 @@ if (($isEditMode || empty($admissionForm)) && !empty($userid)) {
               <!-- CGPA Field -->
               <div class="col-md-4" id="cgpa_section" style="display: none;">
                 <div class="form-group">
-                  <label>Enter Your CGPA (Aggregate)<span style="color: red;">*</span></label>
+                  <label id="cgpa_label">Enter Your CGPA (Aggregate)<span style="color: red;">*</span></label>
                   <input type="text" name="cgpa" id="cgpa" class="form-control" value="<?php echo htmlspecialchars($admissionForm['cgpa'] ?? ''); ?>" placeholder="Enter CGPA" style="width: 100%;">
                 </div>
+              </div>
+
+              <div class="col-md-4" id="honours_not_eligible" style="display: none; margin-top: 25px; color: #d9534f; font-weight: 600;">
+                <i class="fa fa-exclamation-triangle"></i> Not eligible to register in Honours. Minimum CGPA Eligibility: 7.5
               </div>
             </div>
 
@@ -804,7 +1041,6 @@ if (($isEditMode || empty($admissionForm)) && !empty($userid)) {
                   <select class="form-control select" name="minor_subject_id" id="minor_subject_select" style="width: 100%;">
                     <option value="">Select Minor Subject</option>
                      <?php
-                     // Load subjects for the selected course in edit mode
                      if (!empty($admissionForm['minor_course_id'])) {
                        $course_id = intval($admissionForm['minor_course_id']);
                        $subjectResult = $db_handle->conn->query("SELECT subject_id, subject_name FROM st_minorsubject WHERE course_id = '$course_id' ORDER BY subject_name");
@@ -820,46 +1056,11 @@ if (($isEditMode || empty($admissionForm)) && !empty($userid)) {
                 </div>
               </div>
 
-              <!-- ADD THIS MISSING CGPA FIELD -->
               <div class="col-md-4">
                 <div class="form-group">
                   <label>Minor CGPA <span style="color: red;">*</span></label>
                   <input type="text" name="minor_cgpa" id="minor_cgpa" class="form-control" value="<?php echo htmlspecialchars($admissionForm['minor_cgpa'] ?? ''); ?>" placeholder="Enter Minor CGPA (0-10)" style="width: 100%;">
                 </div>
-              </div>
-            </div>
-
-            <div class="col-md-12">
-              <div class="col-md-4" id="specialization_subject_wrapper" style="display: none;">
-                <div class="form-group">
-                  <label>Specialization Subject<span style="color: red;">*</span></label>
-                  <select class="form-control select" name="unaided_subject" id="specialization_subject_select" class="batch" style="width: 100%;">
-                    <option>Select Specialization Subject</option>
-                    <?php
-                      $selectedDepartmentId = intval($admissionForm['department_id'] ?? 0);
-                      $selectedSemesterId = intval($admissionForm['current_semester_id'] ?? 0);
-                      $selectedSpecializationId = intval($admissionForm['specialization_id'] ?? 0);
-                      $subjectSql = "SELECT subject_id, subject_name
-                                     FROM st_specialization_subject_master
-                                     WHERE is_active = 1
-                                       AND department_id = {$selectedDepartmentId}
-                                       AND semester_id = {$selectedSemesterId}
-                                       AND specialization_id = {$selectedSpecializationId}
-                                     ORDER BY subject_name";
-                      $result = $db_handle->conn->query($subjectSql);
-                    while ($row = $result->fetch_assoc()) {
-                      $subject_name = $row['subject_name'];
-                      $subject_id = $row['subject_id'];
-                      $selected = (!empty($admissionForm['unaided_subject']) && (string)$admissionForm['unaided_subject'] === (string)$subject_id) ? 'selected' : '';
-                    ?>
-                      <option value="<?php echo $subject_id;  ?>" <?php echo $selected; ?>><?php echo $subject_name;  ?></option>
-                    <?php } ?>
-                  </select>
-                </div>
-              </div>
-
-              <div class="col-md-8" id="honours_not_eligible" style="display: none; margin-top: 30px; color: #d9534f; font-weight: 600;">
-                Not eligible to register in Honours. Minimum CGPA Eligibility: 7.5
               </div>
             </div>
 

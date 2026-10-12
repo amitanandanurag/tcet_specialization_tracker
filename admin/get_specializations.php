@@ -7,52 +7,73 @@ header('Content-Type: application/json');
 require_once "../database/db_connect.php";
 $db_handle = new DBController();
 
-if (isset($_POST['class_id'])) {
-    $class_id = intval($_POST['class_id']);
-    
-    // Get class name using prepared statement
-    $class_name = '';
-    $stmt = mysqli_prepare($db_handle->conn, "SELECT class_name FROM st_class_master WHERE class_id = ?");
-    if ($stmt) {
-        mysqli_stmt_bind_param($stmt, "i", $class_id);
-        mysqli_stmt_execute($stmt);
-        $res = mysqli_stmt_get_result($stmt);
-        if ($res && ($class_data = mysqli_fetch_assoc($res))) {
-            $class_name = $class_data['class_name'] ?? '';
+$class_id = isset($_POST['class_id']) ? intval($_POST['class_id']) : (isset($_GET['class_id']) ? intval($_GET['class_id']) : 0);
+$department_id = isset($_POST['department_id']) ? intval($_POST['department_id']) : (isset($_GET['department_id']) ? intval($_GET['department_id']) : 0);
+$track_id = isset($_POST['track_id']) ? intval($_POST['track_id']) : (isset($_POST['specialization_track_id']) ? intval($_POST['specialization_track_id']) : (isset($_GET['track_id']) ? intval($_GET['track_id']) : 0));
+
+// Check Class restriction (FY / First Year not eligible)
+if ($class_id > 0) {
+    $class_stmt = mysqli_prepare($db_handle->conn, "SELECT class_name FROM st_class_master WHERE class_id = ? LIMIT 1");
+    if ($class_stmt) {
+        mysqli_stmt_bind_param($class_stmt, "i", $class_id);
+        mysqli_stmt_execute($class_stmt);
+        $c_res = mysqli_stmt_get_result($class_stmt);
+        if ($c_res && ($c_data = mysqli_fetch_assoc($c_res))) {
+            $class_name = strtoupper($c_data['class_name'] ?? '');
+            if ($class_name === 'FY' || $class_name === 'FE' || stripos($class_name, 'FIRST YEAR') !== false) {
+                echo json_encode([
+                    'success' => true,
+                    'warning' => true,
+                    'message' => 'Specialization is not offered for First Year (FY) students.',
+                    'data' => []
+                ]);
+                mysqli_stmt_close($class_stmt);
+                exit;
+            }
         }
-        mysqli_stmt_close($stmt);
+        mysqli_stmt_close($class_stmt);
     }
-    
-    $response = [];
-    
-    // Check for FY (First Year)
-    if (stripos($class_name, 'FY') !== false || stripos($class_name, 'First Year') !== false) {
-        $response['warning'] = true;
-        $response['data'] = [];
-        echo json_encode($response);
-        exit;
-    }
-    
-    // Check for SY (Second Year)
-    if (stripos($class_name, 'SY') !== false || stripos($class_name, 'Second Year') !== false) {
-        $result = $db_handle->conn->query("SELECT specialization_id, specialization_name FROM st_specialization_master WHERE specialization_name LIKE '%Honours%' OR specialization_name LIKE '%Minor%' ORDER BY specialization_name");
-    } else {
-        // For other classes, show all specializations
-        $result = $db_handle->conn->query("SELECT specialization_id, specialization_name FROM st_specialization_master ORDER BY specialization_name");
-    }
-    
-    $specializations = [];
-    if ($result && $result->num_rows > 0) {
-        while ($row = $result->fetch_assoc()) {
-            $specializations[] = $row;
-        }
-    }
-    
-    $response['warning'] = false;
-    $response['data'] = $specializations;
-    
-    echo json_encode($response);
-} else {
-    echo json_encode(['warning' => false, 'data' => []]);
 }
-?>
+
+// If Minor Multidisciplinary track (ID 4)
+if ($track_id === 4) {
+    echo json_encode([
+        'success' => true,
+        'warning' => false,
+        'is_multidisciplinary' => true,
+        'data' => [
+            ['specialization_id' => 4, 'specialization_name' => 'Minor Multidisciplinary']
+        ]
+    ]);
+    exit;
+}
+
+// If both department_id and track_id are available, apply official eligibility mappings
+if ($department_id > 0 && $track_id > 0) {
+    $specializations = $db_handle->getEligibleSpecializations($department_id, $track_id, $class_id);
+    echo json_encode([
+        'success' => true,
+        'warning' => false,
+        'data' => $specializations
+    ]);
+    exit;
+}
+
+// Fallback: If only track_id is selected but department not yet selected
+if ($track_id > 0 && $department_id <= 0) {
+    echo json_encode([
+        'success' => true,
+        'warning' => false,
+        'message' => 'Please select a department to see eligible specializations.',
+        'data' => []
+    ]);
+    exit;
+}
+
+// Fallback: If no track selected yet
+echo json_encode([
+    'success' => true,
+    'warning' => false,
+    'data' => []
+]);
+exit;

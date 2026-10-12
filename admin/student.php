@@ -34,57 +34,74 @@ if (isset($_POST['save'])) {
     $department_id = "'" . mysqli_real_escape_string($conn, $_POST['department_id']) . "'";
   }
 
-  // Handle specialization_id
-  $specialization_id = 'NULL';
-  if (!empty($_POST['specialization_id']) && $_POST['specialization_id'] != 'Select Specialization' && is_numeric($_POST['specialization_id'])) {
-    $specialization_id = "'" . mysqli_real_escape_string($conn, $_POST['specialization_id']) . "'";
+  $track_id = intval($_POST['specialization_track_id'] ?? 0);
+  $spec_id = intval($_POST['specialization_id'] ?? 0);
+  $dept_id = intval($_POST['department_id'] ?? 0);
+  $sem_id = intval($_POST['current_semester_id'] ?? 0);
+
+  if ($track_id <= 0 && $spec_id > 0 && $spec_id <= 4) {
+    $track_id = $spec_id;
   }
 
-  // Handle specialization_subject_id
-  $specialization_subject_id = 'NULL';
-  if (!empty($_POST['unaided_subject']) && $_POST['unaided_subject'] != 'Select Specialization Subject' && is_numeric($_POST['unaided_subject'])) {
-    $specialization_subject_id = "'" . mysqli_real_escape_string($conn, $_POST['unaided_subject']) . "'";
-  }
-
-  // Handle CGPA - FIXED LOGIC
-  $cgpa = 'NULL';
-
-  // Get specialization name
-  $spec_id = $_POST['specialization_id'] ?? '';
-  if (!empty($spec_id) && is_numeric($spec_id)) {
-    $spec_check = mysqli_query($conn, "SELECT specialization_name FROM st_specialization_master WHERE specialization_id = '" . mysqli_real_escape_string($conn, $spec_id) . "'");
-    if ($spec_check) {
-      $spec_row = mysqli_fetch_assoc($spec_check);
-      $specialization_name = strtolower($spec_row['specialization_name'] ?? '');
-
-      // Check for Minor Multidisciplinary (most specific first)
-      if (strpos($specialization_name, 'minor multidisciplinary') !== false) {
-        // For Minor Multidisciplinary - use minor_cgpa
-        if (!empty($_POST['minor_cgpa']) && is_numeric($_POST['minor_cgpa'])) {
-          $cgpa_val = floatval($_POST['minor_cgpa']);
-          $cgpa_val = number_format($cgpa_val, 2);
-          $cgpa = "'" . $cgpa_val . "'";
-        }
-      }
-      // Check for Minor (non-multidisciplinary)
-      else if (strpos($specialization_name, 'minor') !== false) {
-        // For Minor - you can use regular cgpa or leave NULL
-        if (!empty($_POST['cgpa']) && is_numeric($_POST['cgpa'])) {
-          $cgpa_val = floatval($_POST['cgpa']);
-          $cgpa_val = number_format($cgpa_val, 2);
-          $cgpa = "'" . $cgpa_val . "'";
-        }
-      }
-      // Check for Honours
-      else if (strpos($specialization_name, 'honour') !== false || strpos($specialization_name, 'honor') !== false) {
-        if (!empty($_POST['cgpa']) && is_numeric($_POST['cgpa'])) {
-          $cgpa_val = floatval($_POST['cgpa']);
-          $cgpa_val = number_format($cgpa_val, 2);
-          $cgpa = "'" . $cgpa_val . "'";
-        }
-      }
+  if ($track_id === 2) {
+    $subClass = intval($_POST['class'] ?? 0);
+    $subSem = intval($_POST['current_semester_id'] ?? 0);
+    $subDept = intval($_POST['department_id'] ?? 0);
+    if (!$database->isTrackEligible(2, $subClass, $subSem, $subDept)) {
+      echo '<script type="text/javascript">alert("Error: Honours with Research is available only to BE students in Semester 7 and Semester 8.");</script>';
+      echo "<script>window.open('student_admission.php','_self')</script>";
+      exit;
     }
   }
+
+  $specialization_track_id = ($track_id > 0) ? $track_id : 'NULL';
+  $specialization_id = 'NULL';
+  $specialization_subject_id = 'NULL';
+  $cgpa = 'NULL';
+
+  if ($track_id === 4) {
+    $specialization_id = 4;
+    if (!empty($_POST['minor_cgpa']) && is_numeric($_POST['minor_cgpa'])) {
+      $cgpa_val = floatval($_POST['minor_cgpa']);
+      $cgpa = "'" . number_format($cgpa_val, 2) . "'";
+    }
+  } elseif ($track_id === 1 || $track_id === 2) {
+    if ($spec_id > 0 && $database->isDepartmentEligibleForSpecialization($dept_id, $spec_id, $track_id)) {
+      $specialization_id = $spec_id;
+    }
+    if (!empty($_POST['cgpa']) && is_numeric($_POST['cgpa'])) {
+      $cgpa_val = floatval($_POST['cgpa']);
+      if ($cgpa_val >= 7.5) {
+        $cgpa = "'" . number_format($cgpa_val, 2) . "'";
+      }
+    }
+    if (!empty($_POST['unaided_subject']) && is_numeric($_POST['unaided_subject'])) {
+      $specialization_subject_id = intval($_POST['unaided_subject']);
+    }
+  } elseif ($track_id === 3) {
+    if ($spec_id > 0 && $database->isDepartmentEligibleForSpecialization($dept_id, $spec_id, $track_id)) {
+      $specialization_id = $spec_id;
+    }
+    if (!empty($_POST['cgpa']) && is_numeric($_POST['cgpa'])) {
+      $cgpa_val = floatval($_POST['cgpa']);
+      $cgpa = "'" . number_format($cgpa_val, 2) . "'";
+    }
+    if (!empty($_POST['unaided_subject']) && is_numeric($_POST['unaided_subject'])) {
+      $specialization_subject_id = intval($_POST['unaided_subject']);
+    }
+  } else {
+    if ($spec_id > 0) {
+      $specialization_id = $spec_id;
+    }
+    if (!empty($_POST['cgpa']) && is_numeric($_POST['cgpa'])) {
+      $cgpa_val = floatval($_POST['cgpa']);
+      $cgpa = "'" . number_format($cgpa_val, 2) . "'";
+    }
+    if (!empty($_POST['unaided_subject']) && is_numeric($_POST['unaided_subject'])) {
+      $specialization_subject_id = intval($_POST['unaided_subject']);
+    }
+  }
+
 
   // Handle minor_course_id
   $minor_course_id = 'NULL';
@@ -159,6 +176,7 @@ if (isset($_POST['save'])) {
     `grad_year`,
     `roll_no`,
     `department_id`,
+    `specialization_track_id`,
     `specialization_id`,
     `specialization_subject_id`,
     `cgpa`,
@@ -180,6 +198,7 @@ if (isset($_POST['save'])) {
     $grad_year,
     $roll_no,
     $department_id,
+    $specialization_track_id,
     $specialization_id,
     $specialization_subject_id,
     $cgpa,

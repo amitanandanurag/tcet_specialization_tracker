@@ -13,6 +13,10 @@ $suites = [
     'Production Suite' => __DIR__ . '/test_production_suite.php',
     'Academic Progression & Mentor History Suite' => __DIR__ . '/test_academic_progression.php',
     'Final Independent Verification Suite' => __DIR__ . '/test_final_independent_verification.php',
+    'Specialization & Course Data Import Suite' => __DIR__ . '/test_specialization_course_import.php',
+    'Specialization Mapping & Registration Suite' => __DIR__ . '/test_student_registration_specialization_mapping.php',
+    'Honours with Research Eligibility Suite' => __DIR__ . '/test_honours_with_research_eligibility.php',
+    'Progression Consistency Suite' => __DIR__ . '/test_progression_consistency.php',
 ];
 
 $totalTests = 0;

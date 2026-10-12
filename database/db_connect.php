@@ -186,6 +186,58 @@ class DBController
     return $exists;
   }
 
+  public function columnExists($tableName, $columnName)
+  {
+    if (!($this->conn instanceof mysqli)) {
+      return false;
+    }
+    $safeTable = mysqli_real_escape_string($this->conn, $tableName);
+    $safeColumn = mysqli_real_escape_string($this->conn, $columnName);
+    $result = mysqli_query($this->conn, "SHOW COLUMNS FROM `$safeTable` LIKE '$safeColumn'");
+    $exists = ($result && mysqli_num_rows($result) > 0);
+    if ($result) {
+      mysqli_free_result($result);
+    }
+    return $exists;
+  }
+
+  public function ensureSpecializationCourseSchema()
+  {
+    if (!($this->conn instanceof mysqli)) {
+      return false;
+    }
+
+    $schemaUpdates = array(
+      'st_department_master' => array(
+        'program_name' => "ALTER TABLE st_department_master ADD COLUMN program_name varchar(150) DEFAULT NULL AFTER department_name"
+      ),
+      'st_specialization_master' => array(
+        'honors_eligibility' => "ALTER TABLE st_specialization_master ADD COLUMN honors_eligibility text DEFAULT NULL",
+        'minor_eligibility' => "ALTER TABLE st_specialization_master ADD COLUMN minor_eligibility text DEFAULT NULL",
+        'offering_program' => "ALTER TABLE st_specialization_master ADD COLUMN offering_program varchar(150) DEFAULT NULL",
+        'department_id' => "ALTER TABLE st_specialization_master ADD COLUMN department_id int(11) DEFAULT NULL"
+      ),
+      'st_specialization_subject_master' => array(
+        'program_name' => "ALTER TABLE st_specialization_subject_master ADD COLUMN program_name varchar(150) DEFAULT NULL",
+        'year_of_study' => "ALTER TABLE st_specialization_subject_master ADD COLUMN year_of_study varchar(50) DEFAULT NULL",
+        'source_page' => "ALTER TABLE st_specialization_subject_master ADD COLUMN source_page varchar(50) DEFAULT NULL",
+        'source_notes' => "ALTER TABLE st_specialization_subject_master ADD COLUMN source_notes text DEFAULT NULL",
+        'honors_eligibility' => "ALTER TABLE st_specialization_subject_master ADD COLUMN honors_eligibility text DEFAULT NULL",
+        'minor_eligibility' => "ALTER TABLE st_specialization_subject_master ADD COLUMN minor_eligibility text DEFAULT NULL"
+      )
+    );
+
+    foreach ($schemaUpdates as $table => $cols) {
+      foreach ($cols as $colName => $sql) {
+        if (!$this->columnExists($table, $colName)) {
+          mysqli_query($this->conn, $sql);
+        }
+      }
+    }
+
+    return true;
+  }
+
   public function ensureAuditLogTable()
   {
     if (!($this->conn instanceof mysqli)) {
@@ -422,25 +474,447 @@ class DBController
     return false;
   }
 
-  public function isSubjectAvailable($subjectId, $departmentId, $semesterId, $specializationId)
+  public function matchesEligibilityString($deptRow, $eligibilityText)
+  {
+    if (empty($eligibilityText) || trim($eligibilityText) === '—' || trim($eligibilityText) === '-') {
+      return false;
+    }
+    
+    $trimmed = trim($eligibilityText);
+    if (strcasecmp($trimmed, 'All UG Programs') === 0 || strcasecmp($trimmed, 'All UG') === 0 || strcasecmp($trimmed, 'All Branch') === 0) {
+      return true;
+    }
+
+    $deptCode = strtoupper(trim($deptRow['department_name'] ?? ''));
+    $progName = trim($deptRow['program_name'] ?? '');
+
+    $norm = function($str) {
+      $str = strtolower($str);
+      $str = str_replace(['&', 'and'], 'and', $str);
+      return preg_replace('/[^a-z0-9]/', '', $str);
+    };
+
+    $normProg = $norm($progName);
+
+    $codeMap = [
+      'CE' => ['computer engineering', 'be computer engineering'],
+      'IT' => ['information technology', 'be information technology'],
+      'EXTC' => ['electronics & telecommunication', 'electronics and telecommunication', 'electronics & communication', 'extc'],
+      'ECS' => ['electronics & computer science', 'electronics and computer science', 'ecs'],
+      'MECH' => ['mechanical engineering', 'be mechanical engineering', 'mech'],
+      'CIVIL' => ['civil engineering', 'be civil engineering', 'civil'],
+      'CSE-CS' => ['computer science & engineering (cyber security)', 'computer science and engineering (cybersecurity)', 'computer science & engineering (cybersecurity)', 'cyber security', 'cse-cs'],
+      'MME' => ['mechanical & mechatronics', 'mechanical and mechatronics', 'mechanical & mechatronics engineering', 'mme'],
+      'AIDS' => ['artificial intelligence & data science', 'artificial intelligence and data science', 'aids'],
+      'AIML' => ['artificial intelligence & machine learning', 'artificial intelligence and machine learning', 'aiml'],
+      'IOT' => ['internet of things', 'btech internet of things', 'be internet of things', 'iot'],
+      'MBA' => ['mba', 'master of business administration'],
+      'MCA' => ['mca', 'master of computer applications'],
+      'BCA' => ['bca', 'bachelor of computer applications'],
+    ];
+
+    $parts = preg_split('/[;\/]+/', $eligibilityText);
+    foreach ($parts as $part) {
+      $part = trim($part);
+      if ($part === '') continue;
+
+      $normPart = $norm($part);
+      if ($normProg !== '' && (strpos($normProg, $normPart) !== false || strpos($normPart, $normProg) !== false)) {
+        return true;
+      }
+
+      if (isset($codeMap[$deptCode])) {
+        foreach ($codeMap[$deptCode] as $alias) {
+          $normAlias = $norm($alias);
+          if (strpos($normPart, $normAlias) !== false || strpos($normAlias, $normPart) !== false) {
+            return true;
+          }
+        }
+      }
+    }
+
+    return false;
+  }
+
+  public function isDepartmentEligibleForSpecialization($departmentId, $specializationId, $trackId = null)
   {
     if (!($this->conn instanceof mysqli)) {
       return false;
     }
-    $stmt = mysqli_prepare($this->conn, "SELECT subject_id FROM st_specialization_subject_master WHERE subject_id = ? AND department_id = ? AND semester_id = ? AND specialization_id = ? AND is_active = 1 LIMIT 1");
+    $departmentId = intval($departmentId);
+    $specializationId = intval($specializationId);
+    if ($departmentId <= 0 || $specializationId <= 0) {
+      return false;
+    }
+
+    $stmt = mysqli_prepare($this->conn, "SELECT specialization_id, specialization_name, is_track, track_code, honors_eligibility, minor_eligibility FROM st_specialization_master WHERE specialization_id = ? LIMIT 1");
     if (!$stmt) {
+      return false;
+    }
+    mysqli_stmt_bind_param($stmt, "i", $specializationId);
+    mysqli_stmt_execute($stmt);
+    $res = mysqli_stmt_get_result($stmt);
+    $specRow = ($res && mysqli_num_rows($res) > 0) ? mysqli_fetch_assoc($res) : null;
+    mysqli_stmt_close($stmt);
+
+    if (!$specRow) {
+      return false;
+    }
+
+    if (!empty($specRow['is_track'])) {
+      return true;
+    }
+
+    $dStmt = mysqli_prepare($this->conn, "SELECT department_name, program_name FROM st_department_master WHERE department_id = ? LIMIT 1");
+    if (!$dStmt) {
+      return false;
+    }
+    mysqli_stmt_bind_param($dStmt, "i", $departmentId);
+    mysqli_stmt_execute($dStmt);
+    $dRes = mysqli_stmt_get_result($dStmt);
+    $deptRow = ($dRes && mysqli_num_rows($dRes) > 0) ? mysqli_fetch_assoc($dRes) : null;
+    mysqli_stmt_close($dStmt);
+
+    if (!$deptRow) {
+      return false;
+    }
+
+    $trackId = intval($trackId);
+    if ($trackId === 1 || $trackId === 2) {
+      if ($trackId === 2 && $this->isNonBeDepartment($departmentId)) {
+        return false;
+      }
+      return $this->matchesEligibilityString($deptRow, $specRow['honors_eligibility']);
+    }
+    if ($trackId === 3) {
+      return $this->matchesEligibilityString($deptRow, $specRow['minor_eligibility']);
+    }
+    if ($trackId === 4) {
+      return true;
+    }
+
+    return $this->matchesEligibilityString($deptRow, $specRow['honors_eligibility']) ||
+           $this->matchesEligibilityString($deptRow, $specRow['minor_eligibility']);
+  }
+
+  public function getClassNameById($classId)
+  {
+    if (!($this->conn instanceof mysqli)) {
+      return '';
+    }
+    $classId = intval($classId);
+    if ($classId <= 0) {
+      return '';
+    }
+    $stmt = mysqli_prepare($this->conn, "SELECT class_name FROM st_class_master WHERE class_id = ? LIMIT 1");
+    if (!$stmt) {
+      return '';
+    }
+    mysqli_stmt_bind_param($stmt, "i", $classId);
+    mysqli_stmt_execute($stmt);
+    $res = mysqli_stmt_get_result($stmt);
+    $row = ($res && mysqli_num_rows($res) > 0) ? mysqli_fetch_assoc($res) : null;
+    mysqli_stmt_close($stmt);
+    return strtoupper(trim($row['class_name'] ?? ''));
+  }
+
+  public function isNonBeDepartment($departmentId)
+  {
+    if (!($this->conn instanceof mysqli)) {
+      return false;
+    }
+    $departmentId = intval($departmentId);
+    if ($departmentId <= 0) {
+      return false;
+    }
+    $stmt = mysqli_prepare($this->conn, "SELECT department_name, program_name FROM st_department_master WHERE department_id = ? LIMIT 1");
+    if (!$stmt) {
+      return false;
+    }
+    mysqli_stmt_bind_param($stmt, "i", $departmentId);
+    mysqli_stmt_execute($stmt);
+    $res = mysqli_stmt_get_result($stmt);
+    $row = ($res && mysqli_num_rows($res) > 0) ? mysqli_fetch_assoc($res) : null;
+    mysqli_stmt_close($stmt);
+    if (!$row) {
+      return false;
+    }
+    $dName = strtoupper(trim($row['department_name'] ?? ''));
+    $pName = strtoupper(trim($row['program_name'] ?? ''));
+
+    if ($dName === 'BCA' || $dName === 'MCA' || $dName === 'MBA') {
+      return true;
+    }
+    if (strpos($pName, 'BACHELOR OF COMPUTER APPLICATIONS') !== false ||
+        strpos($pName, 'MASTER OF COMPUTER APPLICATIONS') !== false ||
+        strpos($pName, 'MBA') !== false) {
+      return true;
+    }
+    return false;
+  }
+
+  public function isTrackEligible($trackId, $classId = null, $semesterId = null, $departmentId = null)
+  {
+    $trackId = intval($trackId);
+    if ($trackId <= 0) {
+      return false;
+    }
+
+    // Check First Year (FY/FE) restriction for all specializations/tracks
+    if ($classId !== null && intval($classId) > 0) {
+      $cName = $this->getClassNameById($classId);
+      if ($cName === 'FY' || $cName === 'FE' || stripos($cName, 'FIRST YEAR') !== false) {
+        return false;
+      }
+    }
+
+    if ($trackId !== 2) {
+      // Tracks 1 (Honours Degree), 3 (Minor Degree), 4 (Minor Multidisciplinary)
+      return true;
+    }
+
+    // Track 2: Honours with Research
+    // Official rule: Available ONLY to BE students in Semester 7 and Semester 8.
+    // 1. Program / Class validation
+    if ($classId === null || intval($classId) <= 0) {
+      return false;
+    }
+    $cName = $this->getClassNameById($classId);
+    if ($cName !== 'BE') {
+      return false;
+    }
+
+    // 2. Semester validation
+    if ($semesterId === null || intval($semesterId) <= 0) {
+      return false;
+    }
+    $sem = intval($semesterId);
+    if ($sem !== 7 && $sem !== 8) {
+      return false;
+    }
+
+    // 3. Department / Program validation: non-BE programs (e.g. BCA, MCA, MBA) are ineligible
+    if ($departmentId !== null && intval($departmentId) > 0) {
+      if ($this->isNonBeDepartment($departmentId)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  public function getEligibleTracks($classId = null, $semesterId = null, $departmentId = null)
+  {
+    if (!($this->conn instanceof mysqli)) {
+      return [];
+    }
+
+    // FY students are not offered specializations
+    if ($classId !== null && intval($classId) > 0) {
+      $cName = $this->getClassNameById($classId);
+      if ($cName === 'FY' || $cName === 'FE' || stripos($cName, 'FIRST YEAR') !== false) {
+        return [];
+      }
+    }
+
+    $res = mysqli_query($this->conn, "SELECT specialization_id, specialization_name, track_code, sem_from, sem_to, offering_program FROM st_specialization_master WHERE is_track = 1 ORDER BY specialization_id ASC");
+    if (!$res) {
+      return [];
+    }
+
+    $tracks = [];
+    while ($row = mysqli_fetch_assoc($res)) {
+      $tId = intval($row['specialization_id']);
+      if ($this->isTrackEligible($tId, $classId, $semesterId, $departmentId)) {
+        $tracks[] = [
+          'specialization_id' => $tId,
+          'specialization_name' => $row['specialization_name'],
+          'track_code' => $row['track_code'] ?? ''
+        ];
+      }
+    }
+
+    return $tracks;
+  }
+
+  public function getEligibleSpecializations($departmentId, $trackId, $classId = null)
+  {
+    if (!($this->conn instanceof mysqli)) {
+      return [];
+    }
+    $departmentId = intval($departmentId);
+    $trackId = intval($trackId);
+
+    if ($classId !== null) {
+      $classId = intval($classId);
+      $cStmt = mysqli_prepare($this->conn, "SELECT class_name FROM st_class_master WHERE class_id = ? LIMIT 1");
+      if ($cStmt) {
+        mysqli_stmt_bind_param($cStmt, "i", $classId);
+        mysqli_stmt_execute($cStmt);
+        $cRes = mysqli_stmt_get_result($cStmt);
+        if ($cRes && ($cRow = mysqli_fetch_assoc($cRes))) {
+          $cName = strtoupper($cRow['class_name'] ?? '');
+          if ($cName === 'FY' || $cName === 'FE' || stripos($cName, 'FIRST YEAR') !== false) {
+            mysqli_stmt_close($cStmt);
+            return [];
+          }
+        }
+        mysqli_stmt_close($cStmt);
+      }
+    }
+
+    if ($trackId === 2) {
+      if ($this->isNonBeDepartment($departmentId)) {
+        return [];
+      }
+      if ($classId !== null) {
+        $cName = $this->getClassNameById($classId);
+        if ($cName !== 'BE') {
+          return [];
+        }
+      }
+    }
+
+    if ($trackId === 4) {
+      return [
+        ['specialization_id' => 4, 'specialization_name' => 'Minor Multidisciplinary']
+      ];
+    }
+
+    $res = mysqli_query($this->conn, "SELECT specialization_id, specialization_name, honors_eligibility, minor_eligibility FROM st_specialization_master WHERE is_track = 0 ORDER BY specialization_id ASC");
+    if (!$res) {
+      return [];
+    }
+
+    $dStmt = mysqli_prepare($this->conn, "SELECT department_name, program_name FROM st_department_master WHERE department_id = ? LIMIT 1");
+    if (!$dStmt) {
+      return [];
+    }
+    mysqli_stmt_bind_param($dStmt, "i", $departmentId);
+    mysqli_stmt_execute($dStmt);
+    $dRes = mysqli_stmt_get_result($dStmt);
+    $deptRow = ($dRes && mysqli_num_rows($dRes) > 0) ? mysqli_fetch_assoc($dRes) : null;
+    mysqli_stmt_close($dStmt);
+
+    if (!$deptRow) {
+      return [];
+    }
+
+    $eligible = [];
+    while ($row = mysqli_fetch_assoc($res)) {
+      $isOk = false;
+      if ($trackId === 1 || $trackId === 2) {
+        $isOk = $this->matchesEligibilityString($deptRow, $row['honors_eligibility']);
+      } elseif ($trackId === 3) {
+        $isOk = $this->matchesEligibilityString($deptRow, $row['minor_eligibility']);
+      } else {
+        $isOk = $this->matchesEligibilityString($deptRow, $row['honors_eligibility']) ||
+                $this->matchesEligibilityString($deptRow, $row['minor_eligibility']);
+      }
+
+      if ($isOk) {
+        $eligible[] = [
+          'specialization_id' => intval($row['specialization_id']),
+          'specialization_name' => $row['specialization_name']
+        ];
+      }
+    }
+
+    return $eligible;
+  }
+
+  public function getEligibleSubjects($specializationId, $semesterId, $departmentId = null, $trackId = null)
+  {
+    if (!($this->conn instanceof mysqli)) {
+      return [];
+    }
+    $specializationId = intval($specializationId);
+    $semesterId = intval($semesterId);
+    $departmentId = intval($departmentId);
+    $trackId = intval($trackId);
+
+    if ($specializationId <= 0 || $semesterId <= 0) {
+      return [];
+    }
+
+    if ($departmentId > 0 && !$this->isDepartmentEligibleForSpecialization($departmentId, $specializationId, $trackId)) {
+      return [];
+    }
+
+    $stmt = mysqli_prepare($this->conn, "SELECT subject_id, subject_code, subject_name 
+                                         FROM st_specialization_subject_master 
+                                         WHERE specialization_id = ? AND semester_id = ? AND is_active = 1 
+                                         ORDER BY subject_code, subject_name");
+    if (!$stmt) {
+      return [];
+    }
+    mysqli_stmt_bind_param($stmt, "ii", $specializationId, $semesterId);
+    mysqli_stmt_execute($stmt);
+    $res = mysqli_stmt_get_result($stmt);
+    $subjects = [];
+    if ($res) {
+      while ($row = mysqli_fetch_assoc($res)) {
+        $code = trim($row['subject_code'] ?? '');
+        $name = trim($row['subject_name'] ?? '');
+        $display = !empty($code) ? ($code . ' — ' . $name) : $name;
+        $subjects[] = [
+          'subject_id' => intval($row['subject_id']),
+          'subject_code' => $code,
+          'subject_name' => $display,
+          'raw_name' => $name
+        ];
+      }
+    }
+    mysqli_stmt_close($stmt);
+    return $subjects;
+  }
+
+  public function isSubjectAvailable($subjectId, $departmentId, $semesterId, $specializationId, $trackId = null)
+  {
+    if (!($this->conn instanceof mysqli)) {
       return false;
     }
     $subjectId = intval($subjectId);
     $departmentId = intval($departmentId);
     $semesterId = intval($semesterId);
     $specializationId = intval($specializationId);
-    mysqli_stmt_bind_param($stmt, "iiii", $subjectId, $departmentId, $semesterId, $specializationId);
+
+    if ($subjectId <= 0 || $semesterId <= 0 || $specializationId <= 0) {
+      return false;
+    }
+
+    $stmt = mysqli_prepare($this->conn, "SELECT subject_id, department_id FROM st_specialization_subject_master WHERE subject_id = ? AND semester_id = ? AND specialization_id = ? AND is_active = 1 LIMIT 1");
+    if (!$stmt) {
+      return false;
+    }
+    mysqli_stmt_bind_param($stmt, "iii", $subjectId, $semesterId, $specializationId);
     mysqli_stmt_execute($stmt);
     $result = mysqli_stmt_get_result($stmt);
-    $available = $result && mysqli_num_rows($result) > 0;
+    $row = ($result && mysqli_num_rows($result) > 0) ? mysqli_fetch_assoc($result) : null;
     mysqli_stmt_close($stmt);
-    return $available;
+
+    if (!$row) {
+      $stmtLegacy = mysqli_prepare($this->conn, "SELECT subject_id FROM st_specialization_subject_master WHERE subject_id = ? AND department_id = ? AND semester_id = ? AND specialization_id = ? AND is_active = 1 LIMIT 1");
+      if ($stmtLegacy) {
+        mysqli_stmt_bind_param($stmtLegacy, "iiii", $subjectId, $departmentId, $semesterId, $specializationId);
+        mysqli_stmt_execute($stmtLegacy);
+        $resLegacy = mysqli_stmt_get_result($stmtLegacy);
+        $legacyOk = ($resLegacy && mysqli_num_rows($resLegacy) > 0);
+        mysqli_stmt_close($stmtLegacy);
+        if ($legacyOk) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    if ($departmentId > 0) {
+      if (!$this->isDepartmentEligibleForSpecialization($departmentId, $specializationId, $trackId)) {
+        return false;
+      }
+    }
+
+    return true;
   }
 
   public function syncStudentSemesterHistory($studentId, $semesterId)
@@ -458,7 +932,7 @@ class DBController
     
     // Fetch current snapshot from st_student_master
     $sql = "SELECT academic_year_id, class_id, department_id, division_id, roll_no, specialization_id, specialization_subject_id,
-                   minor_course_id, minor_subject_id, cgpa
+                   minor_course_id, minor_subject_id, cgpa, specialization_track_id
             FROM st_student_master
             WHERE student_id = ?
             LIMIT 1";
@@ -485,6 +959,7 @@ class DBController
       $minorCourseId = ($row['minor_course_id'] !== null && intval($row['minor_course_id']) > 0) ? intval($row['minor_course_id']) : null;
       $minorSubId = ($row['minor_subject_id'] !== null && intval($row['minor_subject_id']) > 0) ? intval($row['minor_subject_id']) : null;
       $cgpa = $row['cgpa'] !== null ? floatval($row['cgpa']) : null;
+      $trackId = ($row['specialization_track_id'] !== null && intval($row['specialization_track_id']) > 0) ? intval($row['specialization_track_id']) : null;
       
       // Dynamic period-aware mentor resolution
       $mentorId = null;
@@ -499,8 +974,8 @@ class DBController
       $upsertSql = "INSERT INTO st_student_semester_history (
                       student_id, academic_year_id, class_id, semester_id, department_id, division_id, roll_no,
                       specialization_id, specialization_subject_id, minor_course_id, minor_subject_id,
-                      cgpa, mentor_id, status
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active')
+                      cgpa, mentor_id, specialization_track_id, status
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active')
                     ON DUPLICATE KEY UPDATE
                       academic_year_id = IF(status = 'Active', VALUES(academic_year_id), academic_year_id),
                       class_id = IF(status = 'Active', VALUES(class_id), class_id),
@@ -512,16 +987,15 @@ class DBController
                       minor_course_id = IF(status = 'Active', VALUES(minor_course_id), minor_course_id),
                       minor_subject_id = IF(status = 'Active', VALUES(minor_subject_id), minor_subject_id),
                       cgpa = IF(status = 'Active', VALUES(cgpa), cgpa),
-                      mentor_id = COALESCE(VALUES(mentor_id), mentor_id)";
+                      mentor_id = COALESCE(VALUES(mentor_id), mentor_id),
+                      specialization_track_id = IF(status = 'Active', VALUES(specialization_track_id), specialization_track_id)";
                       
       $upStmt = mysqli_prepare($this->conn, $upsertSql);
       if ($upStmt) {
-        // studentId(i), ayId(i), classId(i), semesterId(i), deptId(i), divId(i), rollNo(s),
-        // specId(i), specSubId(i), minorCourseId(i), minorSubId(i), cgpa(d), mentorId(i)
-        mysqli_stmt_bind_param($upStmt, "iiiiiisiiiidi",
+        mysqli_stmt_bind_param($upStmt, "iiiiiisiiiidii",
           $studentId, $ayId, $classId, $semesterId, $deptId, $divId, $rollNo,
           $specId, $specSubId, $minorCourseId, $minorSubId,
-          $cgpa, $mentorId
+          $cgpa, $mentorId, $trackId
         );
         $res = mysqli_stmt_execute($upStmt);
         mysqli_stmt_close($upStmt);
@@ -531,6 +1005,7 @@ class DBController
       mysqli_stmt_close($stmt);
     }
     return false;
+
   }
 
   public function finalizeStudentSemester($studentId, $semesterId)

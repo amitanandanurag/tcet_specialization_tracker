@@ -19,7 +19,7 @@ foreach ($files as $file) {
 }
 
 if (empty($lintErrors)) {
-    echo "All PHP files passed syntax check!\n";
+    echo "All " . count(iterator_to_array($files)) . " PHP files passed syntax check!\n";
 } else {
     echo "Found syntax errors in " . count($lintErrors) . " files:\n";
     foreach ($lintErrors as $p => $err) {
