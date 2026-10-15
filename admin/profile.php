@@ -37,7 +37,11 @@ if ($currentUserId <= 0 || $currentRoleId <= 0) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile']) && $currentUserId > 0 && $currentRoleId > 0) {
-  $profileName = trim((string) ($_POST['profile_name'] ?? ''));
+  if (!DBController::validateCsrfToken()) {
+    $profileAlertType = 'danger';
+    $profileAlertMessage = 'Security validation failed. Please refresh and try again.';
+  } else {
+    $profileName = trim((string) ($_POST['profile_name'] ?? ''));
   $profileEmail = trim((string) ($_POST['profile_email'] ?? ''));
   $profilePhone = trim((string) ($_POST['profile_phone'] ?? ''));
   $hasPhotoUpload = isset($_FILES['profile_photo']) && is_array($_FILES['profile_photo']) && intval($_FILES['profile_photo']['error'] ?? 4) !== 4;
@@ -161,6 +165,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile']) && 
       $profileAlertType = 'danger';
       $profileAlertMessage = 'Unable to update profile right now.';
     }
+  }
   }
 }
 
@@ -484,6 +489,7 @@ if ($currentUserId > 0 && $currentRoleId > 0) {
           <?php } ?>
 
           <form class="form-horizontal" method="POST" enctype="multipart/form-data">
+            <?php echo DBController::getCsrfInputField(); ?>
             <div class="box-body">
               <div class="form-group">
                 <label class="col-sm-3 control-label">Name</label>

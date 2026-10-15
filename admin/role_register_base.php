@@ -23,6 +23,7 @@
             <h3 class="erp-card-title">New <?php echo htmlspecialchars($roleLabel); ?> Account Details</h3>
           </div>
           <form method="post" action="<?php echo htmlspecialchars($processFile); ?>" autocomplete="off">
+            <?php echo DBController::getCsrfInputField(); ?>
             <div style="padding: 20px;">
               <input type="hidden" name="role_id" value="<?php echo intval($roleId); ?>">
 

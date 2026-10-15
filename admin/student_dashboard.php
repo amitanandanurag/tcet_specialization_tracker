@@ -9,8 +9,9 @@ if ((int) ($usertype ?? 0) !== 5) {
     exit;
 }
 
+// Server-side authenticated identity lookup: strictly bound to session $userid
 if (!empty($userid)) {
-    $userCheckSql = "SELECT student_id FROM st_user_master WHERE user_id = ? AND student_id > 0 LIMIT 1";
+    $userCheckSql = "SELECT student_id FROM st_user_master WHERE user_id = ? LIMIT 1";
     $userCheckStmt = mysqli_prepare($db_handle->conn, $userCheckSql);
 
     if ($userCheckStmt) {
@@ -22,13 +23,32 @@ if (!empty($userid)) {
         }
         mysqli_stmt_close($userCheckStmt);
     }
+
+    // Fallback: If st_user_master.student_id was 0 or unlinked, check if st_student_master has matching student_id
+    if ($linkedStudentId <= 0) {
+        $directCheckSql = "SELECT student_id FROM st_student_master WHERE student_id = ? LIMIT 1";
+        $directCheckStmt = mysqli_prepare($db_handle->conn, $directCheckSql);
+        if ($directCheckStmt) {
+            mysqli_stmt_bind_param($directCheckStmt, 'i', $userid);
+            mysqli_stmt_execute($directCheckStmt);
+            $directCheckResult = mysqli_stmt_get_result($directCheckStmt);
+            if ($directCheckResult && ($directRow = mysqli_fetch_assoc($directCheckResult))) {
+                $linkedStudentId = intval($directRow['student_id']);
+            }
+            mysqli_stmt_close($directCheckStmt);
+        }
+    }
 }
 
 if ($linkedStudentId > 0) {
     $studentSql = "SELECT s.student_id, s.academic_year_id, s.registration_no, s.roll_no, s.grad_year,
                           s.cgpa, s.fname, s.mobile, s.email, s.status, s.created_at,
-                          c.class_name, sec.sections AS division_name, d.department_name,
-                          sp.specialization_name, sub.subject_name, current_history_subject.subject_name AS current_history_subject_name, ay.session_name,
+                          s.class_id, s.division_id, s.department_id, s.specialization_id, s.specialization_subject_id, s.current_semester_id,
+                          c.class_name,
+                          COALESCE(NULLIF(TRIM(divm.division_name), ''), NULLIF(TRIM(sec.sections), '')) AS division_name,
+                          d.department_name,
+                          sp.specialization_name, sub.subject_name, current_history_subject.subject_name AS current_history_subject_name,
+                          ay.session_name,
                           sem.semester_name AS current_semester_name,
                           COALESCE(
                               (SELECT NULLIF(TRIM(um.user_name), '') 
@@ -47,6 +67,7 @@ if ($linkedStudentId > 0) {
                    FROM st_student_master s
                    LEFT JOIN st_class_master c ON c.class_id = s.class_id
                    LEFT JOIN st_section_master sec ON sec.id = s.division_id
+                   LEFT JOIN st_division_master divm ON divm.division_id = s.division_id
                    LEFT JOIN st_department_master d ON d.department_id = s.department_id
                    LEFT JOIN st_specialization_master sp ON sp.specialization_id = s.specialization_id
                    LEFT JOIN st_student_semester_history current_history ON current_history.student_id = s.student_id AND current_history.semester_id = s.current_semester_id
@@ -76,10 +97,12 @@ if ($student && (int) $student['status'] === 1) {
     $statusClass = 'label-success';
 }
 
-function student_val($value)
-{
-    $value = trim((string) ($value ?? ''));
-    return $value !== '' ? htmlspecialchars($value) : 'N/A';
+if (!function_exists('student_val')) {
+    function student_val($value, $fallback = 'Not Available')
+    {
+        $valStr = trim((string) ($value ?? ''));
+        return $valStr !== '' ? htmlspecialchars($valStr) : $fallback;
+    }
 }
 ?>
 
@@ -127,17 +150,22 @@ function student_val($value)
                     <div class="erp-metric-item">
                         <span class="erp-metric-label">Roll Number</span>
                         <span class="erp-metric-value text-mono"><?= student_val($student['roll_no']) ?></span>
-                        <span class="erp-metric-sub">Division <?= student_val($student['division_name']) ?></span>
+                        <span class="erp-metric-sub">Division: <?= student_val($student['division_name']) ?></span>
                     </div>
                     <div class="erp-metric-item">
                         <span class="erp-metric-label">Class</span>
                         <span class="erp-metric-value"><?= student_val($student['class_name']) ?></span>
-                        <span class="erp-metric-sub"><?= student_val($student['department_name']) ?></span>
+                        <span class="erp-metric-sub">Dept: <?= student_val($student['department_name']) ?></span>
                     </div>
                     <div class="erp-metric-item">
                         <span class="erp-metric-label">Current Semester</span>
-                        <span class="erp-metric-value"><?= student_val($student['current_semester_name'] ?? ('Semester ' . ($student['current_semester_id'] ?? ''))) ?></span>
-                        <span class="erp-metric-sub"><?= student_val($student['session_name'] ?? '2026-27') ?></span>
+                        <span class="erp-metric-value"><?= !empty($student['current_semester_name']) ? htmlspecialchars($student['current_semester_name']) : (!empty($student['current_semester_id']) ? 'Semester ' . htmlspecialchars($student['current_semester_id']) : 'Not Available') ?></span>
+                        <span class="erp-metric-sub"><?= !empty($student['session_name']) ? 'AY ' . htmlspecialchars($student['session_name']) : 'Academic Year' ?></span>
+                    </div>
+                    <div class="erp-metric-item">
+                        <span class="erp-metric-label">Academic Year</span>
+                        <span class="erp-metric-value"><?= student_val($student['session_name']) ?></span>
+                        <span class="erp-metric-sub">Academic Session</span>
                     </div>
                     <div class="erp-metric-item">
                         <span class="erp-metric-label">Aggregate CGPA</span>
@@ -167,8 +195,8 @@ function student_val($value)
                                 <div class="erp-detail-label">Assigned Faculty Mentor</div>
                                 <div class="erp-detail-value">
                                     <?php 
-                                    $mentorName = student_val($student['current_mentor_name']);
-                                    if ($mentorName !== 'N/A' && $mentorName !== 'Not Assigned') {
+                                    $mentorName = student_val($student['current_mentor_name'], 'Not Assigned');
+                                    if ($mentorName !== 'Not Available' && $mentorName !== 'Not Assigned') {
                                         echo '<span class="erp-mentor-faculty"><i class="fa fa-user"></i> ' . $mentorName . '</span>';
                                     } else {
                                         echo '<span class="erp-mentor-unassigned"><i class="fa fa-exclamation-circle"></i> Not Assigned</span>';
@@ -204,87 +232,46 @@ function student_val($value)
                             </div>
                             <div class="erp-detail-item">
                                 <div class="erp-detail-label">Registered On</div>
-                                <div class="erp-detail-value"><?= !empty($student['created_at']) ? date('d-m-Y', strtotime($student['created_at'])) : 'N/A' ?></div>
+                                <div class="erp-detail-value"><?= !empty($student['created_at']) && $student['created_at'] !== '0000-00-00 00:00:00' ? date('d-m-Y', strtotime($student['created_at'])) : 'Not Available' ?></div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- ACADEMIC PROGRESSION JOURNEY MILESTONE STRIP -->
+            <!-- ACADEMIC PROGRESSION & SEMESTER HISTORY -->
             <?php
             $studentId = intval($student['student_id']);
             $academicHistory = $db_handle->getStudentAcademicHistory($studentId);
-            $currentSemNum = intval($student['current_semester_id'] ?? 5);
-            $allSemesters = [3 => 'SEM III', 4 => 'SEM IV', 5 => 'SEM V', 6 => 'SEM VI', 7 => 'SEM VII', 8 => 'SEM VIII'];
-            $historyBySem = [];
-            foreach ($academicHistory as $h) {
-                $historyBySem[intval($h['semester_id'])] = $h;
-            }
+            $currentSemNum = intval($student['current_semester_id'] ?? 0);
             ?>
-            <div class="erp-detail-card">
-                <div class="erp-detail-card-header" style="justify-content: space-between;">
-                    <div>
-                        <i class="fa fa-road"></i> Academic Progression Journey
-                    </div>
-                    <span class="text-muted" style="font-size: 11px; font-weight: normal;">
-                        Current Stage: <strong><?= htmlspecialchars($student['current_semester_name'] ?? ('Semester ' . $currentSemNum)) ?></strong>
-                    </span>
-                </div>
-                <div class="erp-progression-track">
-                    <?php foreach ($allSemesters as $semNum => $semLabel): 
-                        $isPast = $semNum < $currentSemNum;
-                        $isCurrent = $semNum === $currentSemNum;
-                        $isFuture = $semNum > $currentSemNum;
-                        $hasData = isset($historyBySem[$semNum]);
-                        
-                        $stepClass = $isCurrent ? 'is-current' : ($isPast ? 'is-completed' : '');
-                        $badgeText = $isCurrent ? 'Current' : ($isPast ? 'Completed' : 'Upcoming');
-                        $badgeClass = $isCurrent ? 'label-primary' : ($isPast ? 'label-success' : 'label-default');
-                    ?>
-                        <div class="erp-progression-step <?= $stepClass ?>">
-                            <div class="erp-progression-step-title"><?= $semLabel ?></div>
-                            <span class="label <?= $badgeClass ?>" style="font-size: 9px; padding: 1px 5px; margin-bottom: 4px;"><?= $badgeText ?></span>
-                            <span class="erp-progression-step-subject" title="<?= htmlspecialchars($hasData ? ($historyBySem[$semNum]['subject_name'] ?: 'Enrolled') : '') ?>">
-                                <?php if ($hasData): ?>
-                                    <?= htmlspecialchars($historyBySem[$semNum]['subject_name'] ?: 'Enrolled') ?>
-                                <?php else: ?>
-                                    <?= $isFuture ? 'Future Stage' : 'Not Enrolled' ?>
-                                <?php endif; ?>
-                            </span>
-                        </div>
-                    <?php endforeach; ?>
-                </div>
-            </div>
-
-            <!-- SEMESTER ACADEMIC HISTORY LEDGER -->
             <div class="box box-solid">
                 <div class="box-header with-border">
-                    <h3 class="box-title"><i class="fa fa-history text-muted"></i> Semester Registration & Mentor Ledger</h3>
+                    <h3 class="box-title"><i class="fa fa-history text-muted"></i> Academic Progression & Semester History</h3>
                     <div class="box-tools pull-right">
-                        <span class="text-muted" style="font-size: 12px;"><?= count($academicHistory) ?> Records</span>
+                        <span class="text-muted" style="font-size: 12px;"><?= count($academicHistory) ?> <?= count($academicHistory) === 1 ? 'Record' : 'Records' ?></span>
                     </div>
                 </div>
                 <div class="box-body table-responsive no-padding">
-                    <table class="table table-bordered table-hover table-striped">
-                        <thead>
-                            <tr>
-                                <th>Semester</th>
-                                <th>Academic Year</th>
-                                <th>Division</th>
-                                <th>Roll No</th>
-                                <th>Specialization</th>
-                                <th>Enrolled Subject</th>
-                                <th>Assigned Mentor</th>
-                                <th class="col-num">CGPA</th>
-                                <th class="col-center">Status</th>
-                                <th>Enrolled Date</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php if (!empty($academicHistory)): ?>
+                    <?php if (!empty($academicHistory)): ?>
+                        <table class="table table-bordered table-hover table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Semester</th>
+                                    <th>Academic Year</th>
+                                    <th>Division</th>
+                                    <th>Roll No</th>
+                                    <th>Specialization</th>
+                                    <th>Enrolled Subject</th>
+                                    <th>Assigned Mentor</th>
+                                    <th class="col-num">CGPA</th>
+                                    <th class="col-center">Status</th>
+                                    <th>Enrolled Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
                                 <?php foreach ($academicHistory as $hrow): 
-                                    $isCurrentRow = intval($hrow['semester_id']) === $currentSemNum;
+                                    $isCurrentRow = ($currentSemNum > 0 && intval($hrow['semester_id']) === $currentSemNum);
                                     $statusBadge = ($hrow['history_status'] === 'Active' || $isCurrentRow) ? 'label-primary' : 'label-success';
                                     $statusText = ($hrow['history_status'] === 'Active' || $isCurrentRow) ? 'Active (Current)' : 'Completed';
                                 ?>
@@ -294,7 +281,7 @@ function student_val($value)
                                         </td>
                                         <td><?= htmlspecialchars($hrow['academic_year_name']) ?></td>
                                         <td><?= htmlspecialchars($hrow['division_name']) ?></td>
-                                        <td><span class="text-mono"><?= htmlspecialchars($hrow['roll_no'] ?: ($student['roll_no'] ?? 'N/A')) ?></span></td>
+                                        <td><span class="text-mono"><?= htmlspecialchars($hrow['roll_no'] ?: ($student['roll_no'] ?? 'Not Available')) ?></span></td>
                                         <td><?= htmlspecialchars($hrow['specialization_name']) ?></td>
                                         <td><strong><?= htmlspecialchars($hrow['subject_name']) ?></strong></td>
                                         <td>
@@ -306,18 +293,19 @@ function student_val($value)
                                                 <span class="erp-mentor-unassigned">Not Assigned</span>
                                             <?php endif; ?>
                                         </td>
-                                        <td class="col-num font-weight-bold"><?= htmlspecialchars($hrow['cgpa'] ?? 'N/A') ?></td>
+                                        <td class="col-num font-weight-bold"><?= !empty($hrow['cgpa']) ? htmlspecialchars($hrow['cgpa']) : 'Not Available' ?></td>
                                         <td class="col-center"><span class="label <?= $statusBadge ?>"><?= $statusText ?></span></td>
-                                        <td><span class="text-muted"><?= htmlspecialchars($hrow['enrolled_at']) ?></span></td>
+                                        <td><span class="text-muted"><?= !empty($hrow['enrolled_at']) && $hrow['enrolled_at'] !== '0000-00-00 00:00:00' ? htmlspecialchars($hrow['enrolled_at']) : 'Not Available' ?></span></td>
                                     </tr>
                                 <?php endforeach; ?>
-                            <?php else: ?>
-                                <tr>
-                                    <td colspan="10" class="text-center text-muted" style="padding: 20px;">No historical semester records recorded.</td>
-                                </tr>
-                            <?php endif; ?>
-                        </tbody>
-                    </table>
+                            </tbody>
+                        </table>
+                    <?php else: ?>
+                        <div class="text-center" style="padding: 32px 16px;">
+                            <p style="font-size: 13px; color: #475569; margin-bottom: 4px; font-weight: 500;">No semester progression records are available for this student.</p>
+                            <span class="text-muted" style="font-size: 12px;">Semester history will appear here once academic enrollment and progression data is recorded.</span>
+                        </div>
+                    <?php endif; ?>
                 </div>
             </div>
         <?php endif; ?>
@@ -325,3 +313,4 @@ function student_val($value)
 </div>
 
 <?php include "header/footer.php"; ?>
+

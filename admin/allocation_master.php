@@ -25,8 +25,10 @@ $error_msg   = '';
 // HANDLE FORM SUBMIT
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['role_id'])) {
- 
-    $role_id        = (int) $_POST['role_id'];
+    if (!DBController::validateCsrfToken()) {
+        $error_msg = "Security token validation failed. Please refresh and try again.";
+    } else {
+        $role_id        = (int) $_POST['role_id'];
     $selected_menus = $_POST['menu_ids'] ?? [];
     $selected_subs  = $_POST['sub_menu_ids'] ?? [];
  
@@ -65,6 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['role_id'])) {
     }
  
     $success_msg = "Saved successfully!";
+    }
 }
 // ─────────────────────────────────────────────
 // FETCH ALL MENUS
@@ -176,6 +179,7 @@ $allocations_json = json_encode($allocations);
     <?php endif; ?>
 
     <form method="POST" action="">
+      <?php echo DBController::getCsrfInputField(); ?>
 
       <div class="row">
         <div class="col-md-8 col-md-offset-2">

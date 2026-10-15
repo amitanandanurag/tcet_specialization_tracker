@@ -260,6 +260,11 @@ if (isset($_GET['action']) && $_GET['action'] === 'load_students') {
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'assign_selected') {
   header('Content-Type: application/json');
 
+  if (!DBController::validateCsrfToken()) {
+    echo json_encode(array('success' => false, 'message' => 'Security token expired. Please refresh the page.'));
+    exit();
+  }
+
   $mentorId = intval($_POST['mentor_id'] ?? 0);
   $studentIds = $_POST['student_ids'] ?? array();
   $semesterId = $_POST['semester_id'] ?? '';
@@ -278,6 +283,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'assign_filtered') {
   header('Content-Type: application/json');
+
+  if (!DBController::validateCsrfToken()) {
+    echo json_encode(array('success' => false, 'message' => 'Security token expired. Please refresh the page.'));
+    exit();
+  }
 
   $mentorId = intval($_POST['mentor_id'] ?? 0);
   $filters = array(

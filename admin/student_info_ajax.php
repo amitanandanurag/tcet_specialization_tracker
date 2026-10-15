@@ -1,5 +1,7 @@
 <?php
-session_start();
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_start();
+}
 error_reporting(E_ALL);
 ini_set('display_errors', 0);
 ini_set('log_errors', 1);
@@ -7,9 +9,23 @@ ini_set('log_errors', 1);
 require "../database/db_connect.php";
 $db_handle = new DBController();
 
+// Enforce session authentication
+if (empty($_SESSION['user_id']) || empty($_SESSION['role_id'])) {
+    http_response_code(403);
+    echo json_encode(['draw' => intval($_REQUEST['draw'] ?? 0), 'recordsTotal' => 0, 'recordsFiltered' => 0, 'data' => [], 'error' => 'Unauthorized access. Please login.']);
+    exit();
+}
+
 // Get current user's role and department
-$user_id   = $_SESSION['user_id'] ?? 0;
-$user_role = $_SESSION['role_id'] ?? 0;
+$user_id   = intval($_SESSION['user_id'] ?? 0);
+$user_role = intval($_SESSION['role_id'] ?? 0);
+
+// Only Super Admin (1), Admin (2), Coordinator (3), and Mentor (4) can view student directory
+if ($user_role > 4) {
+    http_response_code(403);
+    echo json_encode(['draw' => intval($_REQUEST['draw'] ?? 0), 'recordsTotal' => 0, 'recordsFiltered' => 0, 'data' => [], 'error' => 'Forbidden access for current role.']);
+    exit();
+}
 
 $department_id = '';
 

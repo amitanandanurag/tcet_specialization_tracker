@@ -33,8 +33,12 @@ $messageType = '';
 
 // Handle mapping creation/updating
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'save_mapping') {
-  $mentorId = intval($_POST['mentor_id'] ?? 0);
-  $subjectId = intval($_POST['subject_id'] ?? 0);
+  if (!DBController::validateCsrfToken()) {
+    $message = "Security validation failed. Please refresh the page.";
+    $messageType = "danger";
+  } else {
+    $mentorId = intval($_POST['mentor_id'] ?? 0);
+    $subjectId = intval($_POST['subject_id'] ?? 0);
 
   if ($mentorId <= 0 || $subjectId <= 0) {
     $message = "Please select both a mentor and a specialization subject.";
@@ -107,39 +111,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
   }
 }
+}
 
 // Handle mapping deletion
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete_mapping') {
-  $mappingId = intval($_POST['mapping_id'] ?? 0);
-  if ($mappingId > 0) {
-    mysqli_begin_transaction($db_handle->conn);
-    try {
-      // Find mentor_id first
-      $mQuery = mysqli_query($db_handle->conn, "SELECT mentor_id FROM st_mentor_subject_mapping WHERE mapping_id = $mappingId");
-      $mId = 0;
-      if ($mQuery && ($mRow = mysqli_fetch_assoc($mQuery))) {
-        $mId = intval($mRow['mentor_id']);
+  if (!DBController::validateCsrfToken()) {
+    $message = "Security validation failed. Please refresh the page.";
+    $messageType = "danger";
+  } else {
+    $mappingId = intval($_POST['mapping_id'] ?? 0);
+    if ($mappingId > 0) {
+      mysqli_begin_transaction($db_handle->conn);
+      try {
+        // Find mentor_id first
+        $mQuery = mysqli_query($db_handle->conn, "SELECT mentor_id FROM st_mentor_subject_mapping WHERE mapping_id = $mappingId");
+        $mId = 0;
+        if ($mQuery && ($mRow = mysqli_fetch_assoc($mQuery))) {
+          $mId = intval($mRow['mentor_id']);
+        }
+        
+        $del = mysqli_query($db_handle->conn, "DELETE FROM st_mentor_subject_mapping WHERE mapping_id = $mappingId");
+        if (!$del) {
+          throw new Exception("Database error deleting mapping.");
+        }
+        
+        $removedCount = 0;
+        if ($mId > 0) {
+          // recalculateMentorStudents will remove all active allocations because the mapping is now deleted
+          $recalc = $db_handle->recalculateMentorStudents($mId);
+          $removedCount = $recalc['removed'];
+        }
+        
+        mysqli_commit($db_handle->conn);
+        $message = "Mapping deleted successfully! All current allocations for this mentor were removed (Total: $removedCount).";
+        $messageType = "success";
+      } catch (Throwable $e) {
+        mysqli_rollback($db_handle->conn);
+        $message = "Error deleting mapping: " . htmlspecialchars($e->getMessage());
+        $messageType = "danger";
       }
-      
-      $del = mysqli_query($db_handle->conn, "DELETE FROM st_mentor_subject_mapping WHERE mapping_id = $mappingId");
-      if (!$del) {
-        throw new Exception("Database error deleting mapping.");
-      }
-      
-      $removedCount = 0;
-      if ($mId > 0) {
-        // recalculateMentorStudents will remove all active allocations because the mapping is now deleted
-        $recalc = $db_handle->recalculateMentorStudents($mId);
-        $removedCount = $recalc['removed'];
-      }
-      
-      mysqli_commit($db_handle->conn);
-      $message = "Mapping deleted successfully! All current allocations for this mentor were removed (Total: $removedCount).";
-      $messageType = "success";
-    } catch (Throwable $e) {
-      mysqli_rollback($db_handle->conn);
-      $message = "Error deleting mapping: " . htmlspecialchars($e->getMessage());
-      $messageType = "danger";
     }
   }
 }
@@ -262,6 +272,7 @@ include "header/header.php";
             </div>
           </div>
           <form method="POST" action="mentor_subject.php">
+            <?php echo DBController::getCsrfInputField(); ?>
             <input type="hidden" name="action" value="save_mapping">
             <div class="erp-card-body" style="padding: 16px;">
               <div class="form-group">
@@ -345,6 +356,7 @@ include "header/header.php";
                     </td>
                     <td class="col-center">
                       <form method="POST" action="mentor_subject.php" onsubmit="return confirm('Are you sure you want to remove this mapping? Any active allocations will be recalculated.');" style="display:inline;">
+                        <?php echo DBController::getCsrfInputField(); ?>
                         <input type="hidden" name="action" value="delete_mapping">
                         <input type="hidden" name="mapping_id" value="<?php echo intval($map['mapping_id']); ?>">
                         <button type="submit" class="btn btn-erp-danger btn-xs" title="Remove Mapping">

@@ -100,9 +100,27 @@ $customMasters = array(
         'label' => 'Is Exclusive',
         'type' => 'boolean_select',
         'default' => '0'
+      ),
+      array(
+        'name' => 'offering_program',
+        'label' => 'Offering Program',
+        'type' => 'text',
+        'default' => ''
+      ),
+      array(
+        'name' => 'honors_eligibility',
+        'label' => 'Honors Eligibility',
+        'type' => 'text',
+        'default' => ''
+      ),
+      array(
+        'name' => 'minor_eligibility',
+        'label' => 'Minor Eligibility',
+        'type' => 'text',
+        'default' => ''
       )
     ),
-    'displayFields' => array('specialization_name', 'min_cgpa', 'kt_allowed', 'sem_from', 'sem_to', 'is_exclusive')
+    'displayFields' => array('specialization_name', 'offering_program', 'sem_from', 'sem_to', 'honors_eligibility', 'minor_eligibility')
   ),
   'specialization_subject' => array(
     'title' => 'Specialization Subject',
@@ -114,7 +132,7 @@ $customMasters = array(
         'label' => 'Subject Code',
         'type' => 'text',
         'required' => true,
-        'unique' => true
+        'unique' => false
       ),
       array(
         'name' => 'subject_name',
@@ -124,18 +142,21 @@ $customMasters = array(
         'unique' => false
       ),
       array(
+        'name' => 'department_id',
+        'label' => 'Department',
+        'type' => 'select',
+        'lookupTable' => 'st_department_master',
+        'lookupKey' => 'department_id',
+        'lookupLabel' => 'department_name',
+        'required' => false
+      ),
+      array(
         'name' => 'semester_id',
         'label' => 'Semester',
         'type' => 'select',
         'lookupTable' => 'st_semester_master',
         'lookupKey' => 'semester_id',
         'lookupLabel' => 'semester_name',
-        'required' => true
-      ),
-      array(
-        'name' => 'subject_type',
-        'label' => 'Subject Type',
-        'type' => 'text',
         'required' => true
       ),
       array(
@@ -148,18 +169,6 @@ $customMasters = array(
         'required' => true
       ),
       array(
-        'name' => 'is_open_elective',
-        'label' => 'Is Open Elective?',
-        'type' => 'boolean_select',
-        'required' => true
-      ),
-      array(
-        'name' => 'is_research_component',
-        'label' => 'Is Research Component?',
-        'type' => 'boolean_select',
-        'required' => true
-      ),
-      array(
         'name' => 'academic_year_id',
         'label' => 'Academic Year',
         'type' => 'select',
@@ -169,16 +178,19 @@ $customMasters = array(
         'required' => false
       ),
       array(
-        'name' => 'batch_id',
-        'label' => 'Batch',
-        'type' => 'select',
-        'lookupTable' => 'st_batch_master',
-        'lookupKey' => 'batch_id',
-        'lookupLabel' => 'batch_name',
+        'name' => 'honors_eligibility',
+        'label' => 'Honors Eligibility',
+        'type' => 'text',
+        'required' => false
+      ),
+      array(
+        'name' => 'minor_eligibility',
+        'label' => 'Minor Eligibility',
+        'type' => 'text',
         'required' => false
       )
     ),
-    'displayFields' => array('subject_code', 'subject_name', 'semester_id', 'subject_type', 'specialization_id', 'is_open_elective', 'is_research_component', 'academic_year_id', 'batch_id')
+    'displayFields' => array('subject_code', 'subject_name', 'department_id', 'semester_id', 'specialization_id', 'academic_year_id')
   ),
   'minor_course' => array(
     'title' => 'Minor Course',
@@ -731,7 +743,22 @@ ensure_menu_metadata_columns($db_handle->conn);
 
 $availableMenuIcons = get_menu_icon_options();
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['master_action'], $_POST['master_type'])) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+  if (!DBController::validateCsrfToken()) {
+    $alertType = 'danger';
+    $alertMessage = 'Security validation failed (CSRF token expired). Please refresh the page.';
+    if ($isAjaxRequest) {
+      if (ob_get_length()) {
+        ob_clean();
+      }
+      header('Content-Type: application/json');
+      echo json_encode(array('status' => 'error', 'message' => $alertMessage));
+      exit();
+    }
+  }
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['master_action'], $_POST['master_type']) && DBController::validateCsrfToken()) {
   $masterType = $_POST['master_type'];
   $action = $_POST['master_action'];
 
@@ -1497,6 +1524,7 @@ if ($isAjaxRequest && $ajaxResponse !== null) {
 normalize_sub_menu_sequence_by_menu($db_handle->conn);
 
 $customLookupMaps = array(
+  'st_department_master' => get_lookup_map($db_handle->conn, 'st_department_master', 'department_id', 'department_name'),
   'st_specialization_master' => get_lookup_map($db_handle->conn, 'st_specialization_master', 'specialization_id', 'specialization_name'),
   'st_minorcourse' => get_lookup_map($db_handle->conn, 'st_minorcourse', 'course_id', 'course_name'),
   'st_semester_master' => get_lookup_map($db_handle->conn, 'st_semester_master', 'semester_id', 'semester_name'),

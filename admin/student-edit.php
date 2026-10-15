@@ -67,6 +67,7 @@ if (isset($_REQUEST['id'])) {
 </head>
 <body>
 <form action="edit_process.php" name="editform" method="POST" onsubmit="return validateform()" enctype="multipart/form-data">
+    <?php echo DBController::getCsrfInputField(); ?>
     <input type="hidden" name="student_id" value="<?php echo $student_id; ?>">
     
     <div class="box box-default" style="padding: 10px;">

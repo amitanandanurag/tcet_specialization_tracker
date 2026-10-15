@@ -1,7 +1,29 @@
 <?php
-session_start();
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_start();
+}
 require "../database/db_connect.php";
 $db_handle = new DBController();
+
+// Enforce session authentication
+if (empty($_SESSION['user_id']) || empty($_SESSION['role_id'])) {
+    http_response_code(403);
+    echo json_encode(['recordsTotal' => 0, 'recordsFiltered' => 0, 'data' => [], 'error' => 'Unauthorized access. Please login.']);
+    exit();
+}
+
+$userRole = intval($_SESSION['role_id']);
+$targetRoleId = intval($roleId ?? 0);
+
+// Role 1 (Super Admin) & Role 2 (Admin) can access any role table
+// Role 3 (Coordinator) can only view Role 4 (Mentors)
+if ($userRole > 2) {
+    if (!($userRole === 3 && $targetRoleId === 4)) {
+        http_response_code(403);
+        echo json_encode(['recordsTotal' => 0, 'recordsFiltered' => 0, 'data' => [], 'error' => 'Forbidden access for current role.']);
+        exit();
+    }
+}
 
 $requestData = $_REQUEST;
 
