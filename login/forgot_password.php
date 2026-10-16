@@ -1,47 +1,227 @@
 <?php
-session_start();
-require "../database/db_connect.php";
+require_once __DIR__ . "/../database/db_connect.php";
+DBController::startSecureSession();
+
 $db_handle = new DBController();
+$db_handle->ensurePasswordResetTable();
 
 $message = "";
 $messageType = ""; // "success" or "error"
 
-if (isset($_POST['reset_btn'])) {
+$clientIp = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+$mode = 'request'; // 'request' or 'reset'
+$tokenParam = trim($_GET['token'] ?? '');
+$activeResetRecord = null;
 
-    $email = mysqli_real_escape_string($db_handle->conn, $_POST['email']);
+// Validate token if provided
+if ($tokenParam !== '') {
+    $mode = 'reset';
+    $tokenHash = hash('sha256', $tokenParam);
 
-    if (strpos($email, "@tcetmumbai.in") === false) {
-        $message = "🚫 Use institute email only!";
+    $stmt = mysqli_prepare($db_handle->conn, "SELECT reset_id, user_id, email, expires_at FROM st_password_resets WHERE token_hash = ? AND consumed_at IS NULL AND expires_at > NOW() LIMIT 1");
+    if ($stmt) {
+        mysqli_stmt_bind_param($stmt, "s", $tokenHash);
+        mysqli_stmt_execute($stmt);
+        $res = mysqli_stmt_get_result($stmt);
+        if ($res && ($row = mysqli_fetch_assoc($res))) {
+            $activeResetRecord = $row;
+        }
+        mysqli_stmt_close($stmt);
+    }
+
+    if (!$activeResetRecord) {
+        $message = "This password reset link is invalid or has expired. Please request a new one.";
+        $messageType = "error";
+        $mode = 'invalid_token';
+    }
+}
+
+// -------------------------------------------------------------
+// POST Handler: Request Reset Link
+// -------------------------------------------------------------
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['request_reset_btn'])) {
+    if (!DBController::validateCsrfToken()) {
+        $message = "Security validation failed. Please refresh the page and try again.";
         $messageType = "error";
     } else {
+        $email = trim($_POST['email'] ?? '');
 
-        $check = $db_handle->query("SELECT user_id FROM st_user_master WHERE email_id='$email'");
+        // Basic rate limiting: max 5 requests per IP in last 15 minutes
+        $rateStmt = mysqli_prepare($db_handle->conn, "SELECT COUNT(*) as cnt FROM st_password_resets WHERE ip_address = ? AND created_at > DATE_SUB(NOW(), INTERVAL 15 MINUTE)");
+        $requestCount = 0;
+        if ($rateStmt) {
+            mysqli_stmt_bind_param($rateStmt, "s", $clientIp);
+            mysqli_stmt_execute($rateStmt);
+            $rRes = mysqli_stmt_get_result($rateStmt);
+            if ($rRes && ($rRow = mysqli_fetch_assoc($rRes))) {
+                $requestCount = intval($rRow['cnt']);
+            }
+            mysqli_stmt_close($rateStmt);
+        }
 
-        if ($check && mysqli_num_rows($check) > 0) {
-
-            $row = mysqli_fetch_assoc($check);
-            $user_id = $row['user_id'];
-
-            $new_password = "Tcet@1234";
-
-            $update = $db_handle->query("UPDATE st_login SET password='$new_password' WHERE user_id='$user_id'");
-
-            if ($update) {
-                $message = "✓ Password reset successful! Your new password is: <strong>Tcet@1234</strong>";
-                $messageType = "success";
-            } else {
-                $message = "❌ Error resetting password!";
-                $messageType = "error";
+        if ($requestCount >= 5) {
+            $message = "Too many reset attempts from this network. Please wait a few minutes before trying again.";
+            $messageType = "error";
+        } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL) || strpos(strtolower($email), "@tcetmumbai.in") === false) {
+            $message = "Please enter a valid TCET institute email address (@tcetmumbai.in).";
+            $messageType = "error";
+        } else {
+            // Lookup user using prepared statement
+            $userStmt = mysqli_prepare($db_handle->conn, "SELECT u.user_id, u.user_name FROM st_user_master u INNER JOIN st_login l ON l.user_id = u.user_id WHERE u.email_id = ? LIMIT 1");
+            $foundUserId = 0;
+            $foundUserName = '';
+            if ($userStmt) {
+                mysqli_stmt_bind_param($userStmt, "s", $email);
+                mysqli_stmt_execute($userStmt);
+                $uRes = mysqli_stmt_get_result($userStmt);
+                if ($uRes && ($uRow = mysqli_fetch_assoc($uRes))) {
+                    $foundUserId = intval($uRow['user_id']);
+                    $foundUserName = $uRow['user_name'] ?? '';
+                }
+                mysqli_stmt_close($userStmt);
             }
 
-        } else {
-            $message = "❌ Email not found!";
+            if ($foundUserId > 0) {
+                // Generate cryptographically secure token
+                $plainToken = bin2hex(random_bytes(32));
+                $tokenHash = hash('sha256', $plainToken);
+
+                // Invalidate any previous unconsumed tokens for this user
+                $invStmt = mysqli_prepare($db_handle->conn, "UPDATE st_password_resets SET consumed_at = NOW() WHERE user_id = ? AND consumed_at IS NULL");
+                if ($invStmt) {
+                    mysqli_stmt_bind_param($invStmt, "i", $foundUserId);
+                    mysqli_stmt_execute($invStmt);
+                    mysqli_stmt_close($invStmt);
+                }
+
+                // Insert token with 15-minute expiry
+                $insStmt = mysqli_prepare($db_handle->conn, "INSERT INTO st_password_resets (user_id, email, token_hash, expires_at, ip_address) VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL 15 MINUTE), ?)");
+                if ($insStmt) {
+                    mysqli_stmt_bind_param($insStmt, "isss", $foundUserId, $email, $tokenHash, $clientIp);
+                    mysqli_stmt_execute($insStmt);
+                    mysqli_stmt_close($insStmt);
+                }
+
+                // Build reset link
+                $scheme = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? "https" : "http";
+                $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+                $resetUrl = "{$scheme}://{$host}/st/login/forgot_password.php?token={$plainToken}";
+
+                // Send email notification if mail transport is configured
+                $mailHeaders = "MIME-Version: 1.0\r\n";
+                $mailHeaders .= "Content-type: text/html; charset=UTF-8\r\n";
+                $mailHeaders .= "From: TCET ERP System <no-reply@tcetmumbai.in>\r\n";
+                $mailSubject = "TCET ERP - Password Reset Request";
+                $mailBody = "<html><body>"
+                    . "<p>Hello " . htmlspecialchars($foundUserName) . ",</p>"
+                    . "<p>A password reset request was received for your TCET Specialization Tracker account.</p>"
+                    . "<p>To reset your password, please click the secure link below (valid for 15 minutes):</p>"
+                    . "<p><a href=\"" . htmlspecialchars($resetUrl) . "\">" . htmlspecialchars($resetUrl) . "</a></p>"
+                    . "<p>If you did not request this, please ignore this email. Your password will remain unchanged.</p>"
+                    . "</body></html>";
+
+                @mail($email, $mailSubject, $mailBody, $mailHeaders);
+
+                if (method_exists($db_handle, 'writeAuditLog')) {
+                    $db_handle->writeAuditLog($foundUserId, 'PASSWORD_RESET_REQUESTED', 'st_password_resets', null, "Password reset requested for {$email}", $email, $clientIp);
+                }
+            }
+
+            // Universal generic message: do not reveal whether account exists
+            $message = "If the provided email is registered in our system, password reset instructions have been sent. Please check your inbox and spam folder.";
+            $messageType = "success";
+        }
+    }
+}
+
+// -------------------------------------------------------------
+// POST Handler: Submit New Password
+// -------------------------------------------------------------
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['set_new_password_btn'])) {
+    if (!DBController::validateCsrfToken()) {
+        $message = "Security validation failed. Please refresh the page and try again.";
+        $messageType = "error";
+    } elseif (!$activeResetRecord) {
+        $message = "This password reset link is invalid or has expired.";
+        $messageType = "error";
+        $mode = 'invalid_token';
+    } else {
+        $newPassword = $_POST['new_password'] ?? '';
+        $confirmPassword = $_POST['confirm_password'] ?? '';
+
+        if (strlen($newPassword) < 8) {
+            $message = "Password must be at least 8 characters long.";
             $messageType = "error";
+        } elseif (!preg_match('/[A-Z]/', $newPassword) || !preg_match('/[a-z]/', $newPassword) || !preg_match('/[0-9]/', $newPassword)) {
+            $message = "Password must contain at least one uppercase letter, one lowercase letter, and one number.";
+            $messageType = "error";
+        } elseif ($newPassword !== $confirmPassword) {
+            $message = "Passwords do not match. Please re-enter.";
+            $messageType = "error";
+        } else {
+            mysqli_begin_transaction($db_handle->conn);
+            try {
+                $targetUserId = intval($activeResetRecord['user_id']);
+                $resetId = intval($activeResetRecord['reset_id']);
+
+                // Ensure token is still active and not consumed (concurrency check)
+                $lockStmt = mysqli_prepare($db_handle->conn, "SELECT reset_id FROM st_password_resets WHERE reset_id = ? AND consumed_at IS NULL AND expires_at > NOW() FOR UPDATE");
+                mysqli_stmt_bind_param($lockStmt, "i", $resetId);
+                mysqli_stmt_execute($lockStmt);
+                $lockRes = mysqli_stmt_get_result($lockStmt);
+
+                if (!$lockRes || mysqli_num_rows($lockRes) === 0) {
+                    mysqli_rollback($db_handle->conn);
+                    $message = "This reset link has already been used or expired.";
+                    $messageType = "error";
+                    $mode = 'invalid_token';
+                } else {
+                    mysqli_stmt_close($lockStmt);
+
+                    // Hash password using secure bcrypt helper
+                    $hashedPassword = DBController::hashPassword($newPassword);
+
+                    // Update login password
+                    $updLogin = mysqli_prepare($db_handle->conn, "UPDATE st_login SET password = ? WHERE user_id = ?");
+                    mysqli_stmt_bind_param($updLogin, "si", $hashedPassword, $targetUserId);
+                    mysqli_stmt_execute($updLogin);
+                    mysqli_stmt_close($updLogin);
+
+                    // Mark token as consumed
+                    $markConsumed = mysqli_prepare($db_handle->conn, "UPDATE st_password_resets SET consumed_at = NOW() WHERE reset_id = ?");
+                    mysqli_stmt_bind_param($markConsumed, "i", $resetId);
+                    mysqli_stmt_execute($markConsumed);
+                    mysqli_stmt_close($markConsumed);
+
+                    // Clear first login flag if present
+                    if ($db_handle->columnExists('st_user_master', 'is_first_login')) {
+                        $clearFirst = mysqli_prepare($db_handle->conn, "UPDATE st_user_master SET is_first_login = 0 WHERE user_id = ?");
+                        if ($clearFirst) {
+                            mysqli_stmt_bind_param($clearFirst, "i", $targetUserId);
+                            mysqli_stmt_execute($clearFirst);
+                            mysqli_stmt_close($clearFirst);
+                        }
+                    }
+
+                    mysqli_commit($db_handle->conn);
+
+                    if (method_exists($db_handle, 'writeAuditLog')) {
+                        $db_handle->writeAuditLog($targetUserId, 'PASSWORD_RESET_COMPLETED', 'st_login', $targetUserId, "Password reset completed successfully", $activeResetRecord['email'], $clientIp);
+                    }
+
+                    $message = "Password reset successful! You can now log in with your new password.";
+                    $messageType = "success";
+                    $mode = 'completed';
+                }
+            } catch (Throwable $e) {
+                mysqli_rollback($db_handle->conn);
+                $message = "An error occurred while resetting your password. Please try again.";
+                $messageType = "error";
+            }
         }
     }
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -270,34 +450,13 @@ if (isset($_POST['reset_btn'])) {
     </style>
 
     <script>
-        window.onload = function () {
-            const msg = document.getElementById("msgBox");
-
-            if (msg && msg.innerText.trim() !== "") {
-                const successMessage = "Password reset successful!";
-                if (msg.innerText.includes(successMessage)) {
-                    setTimeout(() => {
-                        try {
-                            parent.closeForgotPasswordPopup();
-                        } catch(e) {
-                            parent.location.reload();
-                        }
-                    }, 2500);
-                } else {
-                    setTimeout(() => {
-                        msg.style.transition = "opacity 0.5s";
-                        msg.style.opacity = "0";
-                        setTimeout(() => {
-                            msg.style.display = "none";
-                        }, 500);
-                    }, 4000);
-                }
-            }
-        };
-
         function closeModal() {
             try {
-                parent.closeForgotPasswordPopup();
+                if (window.parent && window.parent.closeForgotPasswordPopup) {
+                    window.parent.closeForgotPasswordPopup();
+                } else {
+                    window.location.href = "index.php";
+                }
             } catch(e) {
                 window.location.href = "index.php";
             }
@@ -306,44 +465,91 @@ if (isset($_POST['reset_btn'])) {
 </head>
 
 <body>
-
     <div class="erp-modal-container">
         <div class="erp-modal-header">
             <img src="images/tcet_logo.png" alt="TCET Mumbai Logo" class="erp-header-logo">
             <div>
-                <h2 class="erp-modal-title">Forgot Password</h2>
-                <p class="erp-modal-subtitle">Reset your TCET ERP account password</p>
+                <h2 class="erp-modal-title">
+                    <?php echo ($mode === 'reset') ? 'Create New Password' : 'Forgot Password'; ?>
+                </h2>
+                <p class="erp-modal-subtitle">
+                    <?php echo ($mode === 'reset') ? 'Enter and confirm your new secure password' : 'Reset your TCET ERP account password securely'; ?>
+                </p>
             </div>
         </div>
 
         <div class="erp-modal-body">
-            <div class="helper-text">
-                <i class="fa fa-info-circle" style="color: var(--erp-primary); margin-right: 4px;"></i>
-                Enter your registered institute email. The temporary password will be reset to <strong>Tcet@1234</strong>.
-            </div>
-
             <?php if (!empty($message)) { ?>
-                <div id="msgBox" class="<?php echo $messageType; ?>"><?php echo $message; ?></div>
+                <div id="msgBox" class="<?php echo htmlspecialchars($messageType); ?>">
+                    <?php echo htmlspecialchars($message); ?>
+                </div>
             <?php } ?>
 
-            <form method="POST" autocomplete="off">
-                <div class="erp-form-group">
-                    <label>Institute Email</label>
-                    <div class="erp-input-group">
-                        <span class="erp-input-icon"><i class="fa fa-envelope"></i></span>
-                        <input type="email" name="email" class="erp-input-control" placeholder="name@tcetmumbai.in" required>
-                    </div>
+            <?php if ($mode === 'request') { ?>
+                <div class="helper-text">
+                    <i class="fa fa-info-circle" style="color: var(--erp-primary); margin-right: 4px;"></i>
+                    Enter your registered institute email address. A time-limited, single-use password reset link will be sent to your inbox.
                 </div>
 
+                <form method="POST" autocomplete="off">
+                    <?php echo DBController::getCsrfInputField(); ?>
+                    <div class="erp-form-group">
+                        <label>Institute Email</label>
+                        <div class="erp-input-group">
+                            <span class="erp-input-icon"><i class="fa fa-envelope"></i></span>
+                            <input type="email" name="email" class="erp-input-control" placeholder="username@tcetmumbai.in" required>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 16px;">
+                        <button type="submit" name="request_reset_btn" class="btn-erp-reset-submit">
+                            <i class="fa fa-paper-plane"></i> Send Reset Link
+                        </button>
+                        <a href="#" class="btn-erp-back" onclick="closeModal(); return false;">Back to Login</a>
+                    </div>
+                </form>
+
+            <?php } elseif ($mode === 'reset') { ?>
+                <div class="helper-text">
+                    <i class="fa fa-shield-alt" style="color: var(--erp-primary); margin-right: 4px;"></i>
+                    Password must be at least 8 characters long and contain uppercase, lowercase, and numbers.
+                </div>
+
+                <form method="POST" autocomplete="off">
+                    <?php echo DBController::getCsrfInputField(); ?>
+                    <div class="erp-form-group">
+                        <label>New Password</label>
+                        <div class="erp-input-group">
+                            <span class="erp-input-icon"><i class="fa fa-lock"></i></span>
+                            <input type="password" name="new_password" class="erp-input-control" placeholder="••••••••" required minlength="8">
+                        </div>
+                    </div>
+
+                    <div class="erp-form-group">
+                        <label>Confirm New Password</label>
+                        <div class="erp-input-group">
+                            <span class="erp-input-icon"><i class="fa fa-check-circle"></i></span>
+                            <input type="password" name="confirm_password" class="erp-input-control" placeholder="••••••••" required minlength="8">
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 16px;">
+                        <button type="submit" name="set_new_password_btn" class="btn-erp-reset-submit">
+                            <i class="fa fa-key"></i> Update Password
+                        </button>
+                        <a href="forgot_password.php" class="btn-erp-back">Cancel / Request New Link</a>
+                    </div>
+                </form>
+
+            <?php } else { ?>
                 <div style="margin-top: 16px;">
-                    <button type="submit" name="reset_btn" class="btn-erp-reset-submit">
-                        <i class="fa fa-key"></i> Reset Password
-                    </button>
+                    <a href="forgot_password.php" class="btn-erp-reset-submit">
+                        <i class="fa fa-redo"></i> Request New Reset Link
+                    </a>
                     <a href="#" class="btn-erp-back" onclick="closeModal(); return false;">Back to Login</a>
                 </div>
-            </form>
+            <?php } ?>
         </div>
     </div>
-
 </body>
 </html>

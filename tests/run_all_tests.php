@@ -17,17 +17,24 @@ $suites = [
     'Specialization Mapping & Registration Suite' => __DIR__ . '/test_student_registration_specialization_mapping.php',
     'Honours with Research Eligibility Suite' => __DIR__ . '/test_honours_with_research_eligibility.php',
     'Progression Consistency Suite' => __DIR__ . '/test_progression_consistency.php',
+    'Batch 1 Critical Fixes Suite' => __DIR__ . '/test_batch1_critical_fixes.php',
+    'Batch 2 Remediation Suite' => __DIR__ . '/test_batch2_remediation.php',
+    'Dashboard Fix & Data Accuracy Suite' => __DIR__ . '/test_dashboard_accuracy.php',
+    'Semester-Wise Mentor Allocation Suite' => __DIR__ . '/test_semester_wise_mentor_allocation.php',
 ];
 
 $totalTests = 0;
 $totalPassed = 0;
 $totalFailed = 0;
 
+putenv('TCET_DB_NAME=tcet_st_test');
+putenv('TCET_TEST_DB=tcet_st_test');
+
 foreach ($suites as $name => $file) {
     echo ">>> Running $name..." . PHP_EOL;
     $output = [];
     $returnVar = 0;
-    exec("\"C:\\xampp\\php\\php.exe\" \"$file\"", $output, $returnVar);
+    exec("set \"TCET_DB_NAME=tcet_st_test\" && set \"TCET_TEST_DB=tcet_st_test\" && \"C:\\xampp\\php\\php.exe\" \"$file\"", $output, $returnVar);
     
     $outText = implode("\n", $output);
     

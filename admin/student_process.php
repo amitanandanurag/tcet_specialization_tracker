@@ -5,8 +5,20 @@ ini_set('display_errors', 1);
 require_once "../database/db_connect.php";
 $database = new DBController();
 
-// Get current user ID from session
+// Get current user ID and role from session
 $userid = intval($_SESSION['user_id'] ?? $_SESSION['user_session'] ?? 0);
+$userRole = intval($_SESSION['user_type'] ?? $_SESSION['role_id'] ?? 0);
+
+if ($userid <= 0) {
+    http_response_code(401);
+    die("Unauthorized: Please log in to perform this operation.");
+}
+
+// Only Super Admin (1), Admin (2), Coordinator (3), and Student (5) can submit admission forms
+if (!in_array($userRole, [1, 2, 3, 5], true)) {
+    http_response_code(403);
+    die("Forbidden: Your role is not authorized to submit admissions.");
+}
 
 if (isset($_POST['save'])) {
     if (!DBController::validateCsrfToken()) {
@@ -305,14 +317,34 @@ if (isset($_POST['save'])) {
     
     $mark_list = !empty($mark_list_files) ? "'" . implode(',', $mark_list_files) . "'" : 'NULL';
     
-    // Check if current user already has a linked student record
+    // Determine if this is an update to an existing student record
     $existingStudentId = 0;
-    if (!empty($userid)) {
-        $checkUserSql = "SELECT student_id FROM st_user_master WHERE user_id = " . intval($userid) . " AND student_id > 0 LIMIT 1";
-        $checkUserResult = mysqli_query($conn, $checkUserSql);
-        if ($checkUserResult && mysqli_num_rows($checkUserResult) > 0) {
-            $userRow = mysqli_fetch_assoc($checkUserResult);
-            $existingStudentId = intval($userRow['student_id']);
+    $editStudentId = intval($_POST['edit_student_id'] ?? 0);
+
+    if ($userRole === 5) {
+        // For student self-admission (role 5), look up their own linked student record
+        $checkUserSql = "SELECT student_id FROM st_user_master WHERE user_id = ? AND role_id = 5 LIMIT 1";
+        $checkUserStmt = mysqli_prepare($conn, $checkUserSql);
+        if ($checkUserStmt) {
+            mysqli_stmt_bind_param($checkUserStmt, "i", $userid);
+            mysqli_stmt_execute($checkUserStmt);
+            $checkUserResult = mysqli_stmt_get_result($checkUserStmt);
+            if ($checkUserResult && ($userRow = mysqli_fetch_assoc($checkUserResult))) {
+                $existingStudentId = intval($userRow['student_id']);
+            }
+            mysqli_stmt_close($checkUserStmt);
+        }
+    } elseif ($editStudentId > 0 && in_array($userRole, [1, 2, 3], true)) {
+        // For admin/coordinator, only treat as an update if an explicit edit ID is provided
+        $checkExistStmt = mysqli_prepare($conn, "SELECT student_id FROM st_student_master WHERE student_id = ? LIMIT 1");
+        if ($checkExistStmt) {
+            mysqli_stmt_bind_param($checkExistStmt, "i", $editStudentId);
+            mysqli_stmt_execute($checkExistStmt);
+            $checkExistRes = mysqli_stmt_get_result($checkExistStmt);
+            if ($checkExistRes && mysqli_num_rows($checkExistRes) > 0) {
+                $existingStudentId = $editStudentId;
+            }
+            mysqli_stmt_close($checkExistStmt);
         }
     }
 
@@ -481,11 +513,26 @@ if (isset($_POST['save'])) {
             mysqli_commit($conn);
         }
         
-        // Link the student to the current user
-        if (!empty($userid)) {
-            $updateUserSql = "UPDATE st_user_master SET student_id = $student_id WHERE user_id = " . intval($userid);
-            mysqli_query($conn, $updateUserSql);
+        // Link the student to the student's user account ONLY if role is student (role 5)
+        if ($userRole === 5 && !empty($userid)) {
+            $updateUserSql = "UPDATE st_user_master SET student_id = ? WHERE user_id = ? AND role_id = 5";
+            $updateUserStmt = mysqli_prepare($conn, $updateUserSql);
+            if ($updateUserStmt) {
+                mysqli_stmt_bind_param($updateUserStmt, "ii", $student_id, $userid);
+                mysqli_stmt_execute($updateUserStmt);
+                mysqli_stmt_close($updateUserStmt);
+            }
+        } elseif (!empty($_POST['email'])) {
+            // If admitted by admin/coordinator and a student user account already exists with this email, link it
+            $studentEmail = trim($_POST['email']);
+            $linkStudentUserStmt = mysqli_prepare($conn, "UPDATE st_user_master SET student_id = ? WHERE email_id = ? AND role_id = 5 AND (student_id = 0 OR student_id IS NULL)");
+            if ($linkStudentUserStmt) {
+                mysqli_stmt_bind_param($linkStudentUserStmt, "is", $student_id, $studentEmail);
+                mysqli_stmt_execute($linkStudentUserStmt);
+                mysqli_stmt_close($linkStudentUserStmt);
+            }
         }
+        // Note: NEVER update the logged-in administrator's or coordinator's user record!
         
         // Store in session and redirect to view page
         $_SESSION['student_admission_success'] = 'Student admitted successfully! Student ID: ' . $student_id;
@@ -497,8 +544,9 @@ if (isset($_POST['save'])) {
         if ($promotionTransaction) {
             mysqli_rollback($conn);
         }
-        echo "Error: " . mysqli_error($conn);
-        echo "<br><br>SQL Query: <pre>" . htmlspecialchars($sql) . "</pre>";
+        error_log("Student admission failed: " . mysqli_error($conn));
+        echo '<script type="text/javascript">alert("Error: Unable to save student admission record. Please check your inputs and try again.");</script>';
+        echo "<script>window.open('student_admission.php','_self')</script>";
     }
     exit;
 }

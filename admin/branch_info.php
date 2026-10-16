@@ -15,7 +15,7 @@ $branches_query = "SELECT
         THEN UPPER(SUBSTRING(d.department_name, 1, LOCATE(' ', d.department_name) - 1))
         ELSE UPPER(d.department_name)
     END as code,
-    (SELECT COUNT(*) FROM st_student_master WHERE department_id = d.department_id AND status = 0
+    (SELECT COUNT(*) FROM st_student_master WHERE department_id = d.department_id AND status = 1
     ) as total_students,
     (SELECT COUNT(*) FROM st_user_master WHERE department_id = d.department_id AND role_id = 2) as total_hods,
     (SELECT COUNT(*) FROM st_user_master WHERE department_id = d.department_id AND role_id IN (3,4)) as total_staff

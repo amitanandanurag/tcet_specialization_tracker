@@ -18,37 +18,38 @@ if ($linkedStudentId > 0 && !$isEditMode) {
   exit;
 }
 
-// If admission form not in session, attempt to prefill from linked student record
-if (($isEditMode || empty($admissionForm)) && !empty($userid)) {
-  $mapRes = $db_handle->query("SELECT student_id FROM st_user_master WHERE user_id = " . intval($userid) . " LIMIT 1");
-  if ($mapRes && ($mapRow = mysqli_fetch_assoc($mapRes))) {
-    $sid = intval($mapRow['student_id']);
-    if ($sid > 0) {
-      $sres = $db_handle->query("SELECT s.*, COALESCE(NULLIF(s.specialization_subject_id, 0), h.specialization_subject_id) AS current_subject_id
-                                FROM st_student_master s
-                                LEFT JOIN st_student_semester_history h
-                                  ON h.student_id = s.student_id AND h.semester_id = s.current_semester_id
-                                WHERE s.student_id = " . $sid . " LIMIT 1");
-      if ($sres && ($srow = mysqli_fetch_assoc($sres))) {
-        $admissionForm['registration_no'] = $srow['registration_no'] ?? '';
-        $admissionForm['roll_no'] = $srow['roll_no'] ?? '';
-        $admissionForm['class'] = $srow['class_id'] ?? '';
-        $admissionForm['current_semester_id'] = $srow['current_semester_id'] ?? '';
-        $admissionForm['batch'] = $srow['academic_year_id'] ?? '';
-        $admissionForm['graduation_year'] = $srow['grad_year'] ?? '';
-        $admissionForm['department_id'] = $srow['department_id'] ?? '';
-        $admissionForm['specialization_track_id'] = $srow['specialization_track_id'] ?? (!empty($srow['specialization_id']) && $srow['specialization_id'] <= 4 ? $srow['specialization_id'] : 1);
-        $admissionForm['specialization_id'] = $srow['specialization_id'] ?? '';
-        $admissionForm['cgpa'] = $srow['cgpa'] ?? '';
-        $admissionForm['minor_course_id'] = $srow['minor_course_id'] ?? '';
-        $admissionForm['minor_subject_id'] = $srow['minor_subject_id'] ?? '';
-        $admissionForm['minor_cgpa'] = '';
-        $admissionForm['unaided_subject'] = $srow['current_subject_id'] ?? $srow['specialization_subject_id'] ?? '';
-        $admissionForm['fname'] = $srow['fname'] ?? '';
-        $admissionForm['email'] = $srow['email'] ?? '';
-        $admissionForm['mobile'] = $srow['mobile'] ?? '';
-      }
-    }
+$sid = 0;
+if ((int) ($usertype ?? 0) === 5) {
+  $sid = $linkedStudentId;
+} elseif ($isEditMode && (!empty($_GET['student_id']) || !empty($_GET['id']))) {
+  $sid = intval($_GET['student_id'] ?? $_GET['id'] ?? 0);
+}
+
+// Prefill form only for student self-view or explicit edit mode with valid student id
+if (($isEditMode || (empty($admissionForm) && (int) ($usertype ?? 0) === 5)) && $sid > 0) {
+  $sres = $db_handle->query("SELECT s.*, COALESCE(NULLIF(s.specialization_subject_id, 0), h.specialization_subject_id) AS current_subject_id
+                            FROM st_student_master s
+                            LEFT JOIN st_student_semester_history h
+                              ON h.student_id = s.student_id AND h.semester_id = s.current_semester_id
+                            WHERE s.student_id = " . $sid . " LIMIT 1");
+  if ($sres && ($srow = mysqli_fetch_assoc($sres))) {
+    $admissionForm['registration_no'] = $srow['registration_no'] ?? '';
+    $admissionForm['roll_no'] = $srow['roll_no'] ?? '';
+    $admissionForm['class'] = $srow['class_id'] ?? '';
+    $admissionForm['current_semester_id'] = $srow['current_semester_id'] ?? '';
+    $admissionForm['batch'] = $srow['academic_year_id'] ?? '';
+    $admissionForm['graduation_year'] = $srow['grad_year'] ?? '';
+    $admissionForm['department_id'] = $srow['department_id'] ?? '';
+    $admissionForm['specialization_track_id'] = $srow['specialization_track_id'] ?? (!empty($srow['specialization_id']) && $srow['specialization_id'] <= 4 ? $srow['specialization_id'] : 1);
+    $admissionForm['specialization_id'] = $srow['specialization_id'] ?? '';
+    $admissionForm['cgpa'] = $srow['cgpa'] ?? '';
+    $admissionForm['minor_course_id'] = $srow['minor_course_id'] ?? '';
+    $admissionForm['minor_subject_id'] = $srow['minor_subject_id'] ?? '';
+    $admissionForm['minor_cgpa'] = '';
+    $admissionForm['unaided_subject'] = $srow['current_subject_id'] ?? $srow['specialization_subject_id'] ?? '';
+    $admissionForm['fname'] = $srow['fname'] ?? '';
+    $admissionForm['email'] = $srow['email'] ?? '';
+    $admissionForm['mobile'] = $srow['mobile'] ?? '';
   }
 }
 ?>
@@ -785,6 +786,9 @@ if (($isEditMode || empty($admissionForm)) && !empty($userid)) {
     <?php } ?>
     <form action="student_process.php" name="myform" method="POST" onsubmit="return validateform()" enctype="multipart/form-data">
       <?php echo DBController::getCsrfInputField(); ?>
+      <?php if ($sid > 0 && $isEditMode) { ?>
+        <input type="hidden" name="edit_student_id" value="<?php echo intval($sid); ?>">
+      <?php } ?>
       <div class="box box-default" style="padding: 10px;">
         <div class="box-header with-border">
           <h3 class="box-title">OFFICIAL DETAILS:- </h3>

@@ -1,6 +1,9 @@
 <?php
 require "header/header.php";
 
+$db_handle->ensureNptelCancellationTable();
+$db_handle->ensureSpecializationCourseSchema();
+
 $studentId = 0;
 $semesterId = 0;
 
@@ -198,47 +201,86 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($enRes && $enRow = mysqli_fetch_assoc($enRes)) {
                     $enrollmentId = intval($enRow['enrollment_id']);
                 }
-                
-                // Save cancellation details
-                $insertSql = "INSERT INTO st_nptel_cancellations (student_id, enrollment_id, course_name, reason, status) 
-                              VALUES (?, ?, ?, ?, 'Submitted by Student')";
-                $stmt = mysqli_prepare($db_handle->conn, $insertSql);
-                if ($stmt) {
-                    mysqli_stmt_bind_param($stmt, "iiss", $studentId, $enrollmentId, $courseName, $reason);
-                    mysqli_stmt_execute($stmt);
+
+                mysqli_begin_transaction($db_handle->conn);
+                try {
+                    // Save cancellation details with prepared statement
+                    $insertSql = "INSERT INTO st_nptel_cancellations (student_id, enrollment_id, course_name, reason, status) 
+                                  VALUES (?, ?, ?, ?, 'Submitted by Student')";
+                    $stmt = mysqli_prepare($db_handle->conn, $insertSql);
+                    if (!$stmt) {
+                        throw new Exception("Unable to prepare cancellation statement");
+                    }
+                    $enrollVal = ($enrollmentId > 0) ? $enrollmentId : null;
+                    mysqli_stmt_bind_param($stmt, "iiss", $studentId, $enrollVal, $courseName, $reason);
+                    $insExecuted = mysqli_stmt_execute($stmt);
                     mysqli_stmt_close($stmt);
-                }
 
-                // Write to st_offline_marks_entry
-                if ($existingEntryId > 0) {
-                    mysqli_query($db_handle->conn, "UPDATE st_offline_marks_entry SET nptel_status = 'Fail', remarks = '" . mysqli_real_escape_string($db_handle->conn, $reason) . "' WHERE entry_id = $existingEntryId");
-                } else {
-                    mysqli_query($db_handle->conn, "INSERT INTO st_offline_marks_entry (student_id, semester_id, course_name, nptel_status, remarks) VALUES ($studentId, $semesterId, '" . mysqli_real_escape_string($db_handle->conn, $courseName) . "', 'Fail', '" . mysqli_real_escape_string($db_handle->conn, $reason) . "')");
-                }
+                    if (!$insExecuted) {
+                        throw new Exception("Failed to insert cancellation record");
+                    }
 
-                $successMsg = 'NPTEL Fail status and cancellation form submitted successfully.';
+                    // Write to st_offline_marks_entry with prepared statement
+                    if ($existingEntryId > 0) {
+                        $mStmt = mysqli_prepare($db_handle->conn, "UPDATE st_offline_marks_entry SET nptel_status = 'Fail', remarks = ? WHERE entry_id = ?");
+                        if ($mStmt) {
+                            mysqli_stmt_bind_param($mStmt, "si", $reason, $existingEntryId);
+                            mysqli_stmt_execute($mStmt);
+                            mysqli_stmt_close($mStmt);
+                        }
+                    } else {
+                        $mStmt = mysqli_prepare($db_handle->conn, "INSERT INTO st_offline_marks_entry (student_id, semester_id, course_name, nptel_status, remarks) VALUES (?, ?, ?, 'Fail', ?)");
+                        if ($mStmt) {
+                            mysqli_stmt_bind_param($mStmt, "iiss", $studentId, $semesterId, $courseName, $reason);
+                            mysqli_stmt_execute($mStmt);
+                            mysqli_stmt_close($mStmt);
+                        }
+                    }
+
+                    if (method_exists($db_handle, 'writeAuditLog')) {
+                        $db_handle->writeAuditLog($userid, 'NPTEL_CANCELLATION_SUBMITTED', 'st_nptel_cancellations', $studentId, "Submitted NPTEL cancellation for course: {$courseName}");
+                    }
+
+                    mysqli_commit($db_handle->conn);
+                    $successMsg = 'NPTEL Fail status and cancellation form submitted successfully.';
+                } catch (Throwable $e) {
+                    mysqli_rollback($db_handle->conn);
+                    $errorMsg = 'An error occurred while submitting cancellation. Please try again.';
+                }
             }
         }
     }
   }
 }
 
-// Fetch uploaded certificates
+// Fetch uploaded certificates using prepared statement
 $certs = array();
-$certRes = mysqli_query($db_handle->conn, "SELECT * FROM st_minor_certificates WHERE student_id = $studentId ORDER BY submitted_at DESC");
-if ($certRes) {
-    while ($row = mysqli_fetch_assoc($certRes)) {
-        $certs[] = $row;
+$certStmt = mysqli_prepare($db_handle->conn, "SELECT id, student_id, enrollment_id, course_name, issuing_institution, completion_date, file_path, verification_status, submitted_at FROM st_minor_certificates WHERE student_id = ? ORDER BY submitted_at DESC");
+if ($certStmt) {
+    mysqli_stmt_bind_param($certStmt, "i", $studentId);
+    mysqli_stmt_execute($certStmt);
+    $certRes = mysqli_stmt_get_result($certStmt);
+    if ($certRes) {
+        while ($row = mysqli_fetch_assoc($certRes)) {
+            $certs[] = $row;
+        }
     }
+    mysqli_stmt_close($certStmt);
 }
 
-// Fetch submitted cancellations
+// Fetch submitted cancellations using prepared statement
 $cancellations = array();
-$cancelRes = mysqli_query($db_handle->conn, "SELECT * FROM st_nptel_cancellations WHERE student_id = $studentId ORDER BY submitted_at DESC");
-if ($cancelRes) {
-    while ($row = mysqli_fetch_assoc($cancelRes)) {
-        $cancellations[] = $row;
+$cancelStmt = mysqli_prepare($db_handle->conn, "SELECT cancellation_id, student_id, enrollment_id, course_name, reason, status, submitted_at FROM st_nptel_cancellations WHERE student_id = ? ORDER BY submitted_at DESC");
+if ($cancelStmt) {
+    mysqli_stmt_bind_param($cancelStmt, "i", $studentId);
+    mysqli_stmt_execute($cancelStmt);
+    $cancelRes = mysqli_stmt_get_result($cancelStmt);
+    if ($cancelRes) {
+        while ($row = mysqli_fetch_assoc($cancelRes)) {
+            $cancellations[] = $row;
+        }
     }
+    mysqli_stmt_close($cancelStmt);
 }
 ?>
 

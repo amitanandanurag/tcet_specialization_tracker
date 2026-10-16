@@ -2,8 +2,8 @@
 if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
 }
-header('Content-Type: application/json');
-require "../database/db_connect.php";
+@header('Content-Type: application/json');
+require_once __DIR__ . "/../database/db_connect.php";
 $db_handle = new DBController();
 
 // Authentication and Authorization Check (Admin only: Role 1 or 2)
@@ -20,7 +20,7 @@ if (!DBController::validateCsrfToken()) {
     exit();
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     $student_id = intval($_POST['id'] ?? 0);
     $delete_type = trim($_POST['delete_type'] ?? 'hard');
 
@@ -29,8 +29,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit();
     }
 
-    if ($delete_type === 'soft') {
-        $stmt = mysqli_prepare($db_handle->conn, "UPDATE st_student_master SET status = '1' WHERE student_id = ?");
+    if ($delete_type === 'soft' || $delete_type === 'deactivate') {
+        $stmt = mysqli_prepare($db_handle->conn, "UPDATE st_student_master SET status = 0 WHERE student_id = ?");
         if ($stmt) {
             mysqli_stmt_bind_param($stmt, "i", $student_id);
             $success = mysqli_stmt_execute($stmt);
@@ -40,6 +40,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $db_handle->writeAuditLog($_SESSION['user_id'], 'STUDENT_DEACTIVATED', 'st_student_master', $student_id, "Deactivated student ID {$student_id}");
                 }
                 echo json_encode(['status' => 'success', 'message' => 'Student moved to inactive list']);
+            } else {
+                echo json_encode(['status' => 'error', 'message' => 'Unable to update student status.']);
+            }
+        }
+    } elseif ($delete_type === 'reactivate' || $delete_type === 'activate') {
+        $stmt = mysqli_prepare($db_handle->conn, "UPDATE st_student_master SET status = 1 WHERE student_id = ?");
+        if ($stmt) {
+            mysqli_stmt_bind_param($stmt, "i", $student_id);
+            $success = mysqli_stmt_execute($stmt);
+            mysqli_stmt_close($stmt);
+            if ($success) {
+                if (method_exists($db_handle, 'writeAuditLog')) {
+                    $db_handle->writeAuditLog($_SESSION['user_id'], 'STUDENT_REACTIVATED', 'st_student_master', $student_id, "Reactivated student ID {$student_id}");
+                }
+                echo json_encode(['status' => 'success', 'message' => 'Student reactivated successfully']);
             } else {
                 echo json_encode(['status' => 'error', 'message' => 'Unable to update student status.']);
             }

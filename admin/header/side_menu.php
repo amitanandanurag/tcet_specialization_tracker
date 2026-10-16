@@ -437,8 +437,9 @@ function sidebar_seed_subject_management_menu($db_handle)
 		mysqli_query($db_handle->conn, "INSERT INTO st_sub_menu_master (menu_id, sort_order, sub_menu_name, sub_menu_icon, sub_menu_route) VALUES ({$menuId}, {$nextOrder}, '{$name}', '{$icon}', '{$route}')");
 		$subMenuId = intval(mysqli_insert_id($db_handle->conn));
 	}
-	if ($subMenuId <= 0) return;
-	foreach (array(1, 2, 3, 4) as $roleId) {
+	// Subject Management is strictly restricted to roles 1, 2, and 3 (Role 4 Mentor must NOT be allocated)
+	mysqli_query($db_handle->conn, "DELETE FROM st_menu_allocation_master WHERE role_id = 4 AND sub_menu_id = {$subMenuId}");
+	foreach (array(1, 2, 3) as $roleId) {
 		mysqli_query($db_handle->conn, "INSERT INTO st_menu_allocation_master (user_id, role_id, menu_id, sub_menu_id) SELECT 0, {$roleId}, {$menuId}, {$subMenuId} WHERE NOT EXISTS (SELECT 1 FROM st_menu_allocation_master WHERE user_id = 0 AND role_id = {$roleId} AND sub_menu_id = {$subMenuId})");
 	}
 }

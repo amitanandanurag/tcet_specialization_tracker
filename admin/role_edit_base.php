@@ -91,22 +91,57 @@ if ($roleId === 4) {
 		</select>
 	</div>
 
-	<?php if ($roleId === 4) { ?>
-		<div class="form-group">
-			<label>Specialization Subject <span style="color:red;">*</span></label>
-			<select name="subject_id" class="form-control" required>
-				<option value="">Select Specialization Subject</option>
-				<?php
-				$subSql = "SELECT subject_id, subject_name FROM st_specialization_subject_master ORDER BY subject_name ASC";
-				$subResult = $db_handle->query($subSql);
-				while ($sub = $subResult->fetch_assoc()) {
-					$subSelected = (intval($sub['subject_id']) === $currentSubjectId) ? 'selected' : '';
-				?>
-					<option value="<?php echo intval($sub['subject_id']); ?>" <?php echo $subSelected; ?>>
-						<?php echo htmlspecialchars($sub['subject_name']); ?>
-					</option>
-				<?php } ?>
-			</select>
+	<?php if ($roleId === 4) { 
+		$allocRes = $db_handle->query("
+			SELECT msm.mapping_id, ssm.subject_name,
+			       COALESCE(sem.semester_name, CONCAT('Semester ', msm.semester_id)) AS semester_name,
+			       COALESCE(ay.session_name, CONCAT('AY ', msm.academic_year_id)) AS academic_year_name,
+			       msm.is_active
+			FROM st_mentor_subject_mapping msm
+			JOIN st_specialization_subject_master ssm ON ssm.subject_id = msm.subject_id
+			LEFT JOIN st_semester_master sem ON sem.semester_id = msm.semester_id
+			LEFT JOIN st_session_master ay ON ay.session_id = msm.academic_year_id
+			WHERE msm.mentor_id = $userId
+			ORDER BY msm.academic_year_id DESC, msm.semester_id ASC
+		");
+	?>
+		<div class="form-group" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; padding: 12px;">
+			<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+				<label style="margin: 0; font-size: 13px; font-weight: 600; color: #334155;">Active Semester & Subject Allocations</label>
+				<a href="mentor_subject.php" class="btn btn-xs btn-erp-secondary"><i class="fa fa-external-link"></i> Manage Allocations</a>
+			</div>
+			<?php if ($allocRes && $allocRes->num_rows > 0) { ?>
+				<div style="max-height: 150px; overflow-y: auto;">
+					<table class="table table-condensed table-bordered" style="margin: 0; font-size: 12px; background: #fff;">
+						<thead>
+							<tr>
+								<th>Subject</th>
+								<th>Semester</th>
+								<th>Academic Year</th>
+								<th>Status</th>
+							</tr>
+						</thead>
+						<tbody>
+							<?php while ($al = $allocRes->fetch_assoc()) { ?>
+								<tr>
+									<td><strong><?php echo htmlspecialchars($al['subject_name']); ?></strong></td>
+									<td><?php echo htmlspecialchars($al['semester_name']); ?></td>
+									<td><?php echo htmlspecialchars($al['academic_year_name']); ?></td>
+									<td>
+										<?php if (intval($al['is_active']) === 1) { ?>
+											<span class="label label-success">Active</span>
+										<?php } else { ?>
+											<span class="label label-default">Inactive</span>
+										<?php } ?>
+									</td>
+								</tr>
+							<?php } ?>
+						</tbody>
+					</table>
+				</div>
+			<?php } else { ?>
+				<p class="text-muted" style="margin: 0; font-size: 12px;">No active semester allocations. Configure in <a href="mentor_subject.php">Mentor Subject Assignment</a>.</p>
+			<?php } ?>
 		</div>
 	<?php } ?>
 

@@ -179,13 +179,21 @@ if ($hod_result) {
 // ========================
 // 2. FETCH TOP SUMMARY CARDS DATA (ROLE & DEPARTMENT AWARE)
 // ========================
-$student_count_sql = "SELECT COUNT(*) as total FROM st_student_master WHERE status = '0'";
-if ($is_scoped_user && $logged_dept_id) {
-    $student_count_sql .= " AND department_id = " . intval($logged_dept_id);
+if ($usertype == 4) {
+    // Mentor - only allocated active students
+    $student_count_sql = "SELECT COUNT(s.student_id) as total
+            FROM st_student_master s
+            INNER JOIN st_mentor_student_mapping m ON s.student_id = m.student_id
+            WHERE s.status = 1 AND m.mentor_id = " . intval($logged_user_id);
+} else {
+    $student_count_sql = "SELECT COUNT(*) as total FROM st_student_master WHERE status = 1";
+    if ($is_scoped_user && $logged_dept_id) {
+        $student_count_sql .= " AND department_id = " . intval($logged_dept_id);
+    }
 }
-$students_query = $student_count_sql;
-$students_result = mysqli_query($db_handle->conn, $students_query);
-$total_students = $students_result ? mysqli_fetch_assoc($students_result)['total'] : 0;
+$students_result = mysqli_query($db_handle->conn, $student_count_sql);
+$total_students = ($students_result && $row = mysqli_fetch_assoc($students_result)) ? (int)$row['total'] : 0;
+$rowcount = $total_students;
 
 // USERS CARD - count users only from st_user_master
 if ($is_scoped_user && $logged_dept_id) {
@@ -214,6 +222,11 @@ if ($is_scoped_user && $logged_dept_id) {
 $mentor_result = mysqli_query($db_handle->conn, $mentor_query);
 $total_mentor = $mentor_result ? mysqli_fetch_assoc($mentor_result)['total'] : 0;
 
+$dept_join_cond = "";
+if ($is_scoped_user && $logged_dept_id) {
+    $dept_join_cond = " AND s.department_id = " . intval($logged_dept_id);
+}
+
 $spec_query = "SELECT 
     sm.specialization_id,
     sm.specialization_name,
@@ -222,15 +235,9 @@ $spec_query = "SELECT
     SUM(CASE WHEN s.status = 0 THEN 1 ELSE 0 END) as pending,
     0 as rejected
 FROM st_specialization_master sm
-LEFT JOIN st_student_master s ON sm.specialization_id = s.specialization_id";
-
-// Add department filter for scoped users (coordinator/HOD)
-if ($is_scoped_user && $logged_dept_id) {
-    $spec_query .= " WHERE s.department_id = " . intval($logged_dept_id) . " OR s.student_id IS NULL";
-}
-
-$spec_query .= " GROUP BY sm.specialization_id, sm.specialization_name
-ORDER BY sm.specialization_id";
+LEFT JOIN st_student_master s ON sm.specialization_id = s.specialization_id" . $dept_join_cond . "
+GROUP BY sm.specialization_id, sm.specialization_name
+ORDER BY sm.specialization_id ASC";
 
 $spec_result = mysqli_query($db_handle->conn, $spec_query);
 $spec_data = [];
@@ -249,9 +256,33 @@ if ($spec_result) {
 
 $spec_labels = [];
 $spec_totals = [];
+$spec_colors = [];
+$spec_hover_colors = [];
+
+// Curated palette of distinct AdminLTE-compatible colors
+$palette = [
+    '#3c8dbc', '#00a65a', '#f39c12', '#dd4b39', '#00c0ef',
+    '#605ca8', '#d81b60', '#39cccc', '#01ff70', '#ff851b',
+    '#795548', '#607d8b', '#20c997', '#6f42c1', '#fd7e14',
+    '#17a2b8', '#28a745', '#ffc107', '#dc3545', '#6c757d',
+    '#4a148c', '#1b5e20', '#b71c1c', '#0d47a1', '#e65100'
+];
+$hover_palette = [
+    '#367fa9', '#008d4c', '#e08e0b', '#d73925', '#00acd6',
+    '#555299', '#ca195a', '#30bbbb', '#00e765', '#ff7701',
+    '#6d4c41', '#546e7a', '#1baa80', '#59369a', '#e86d00',
+    '#138496', '#218838', '#d39e00', '#bd2130', '#5a6268',
+    '#38006b', '#144617', '#8e0000', '#002171', '#bf360c'
+];
+
+$p_count = count($palette);
+$color_idx = 0;
 foreach ($spec_data as $sd) {
-    $spec_labels[] = '"' . $sd['name'] . '"';
+    $spec_labels[] = json_encode($sd['name']);
     $spec_totals[] = $sd['total'];
+    $spec_colors[] = "'" . $palette[$color_idx % $p_count] . "'";
+    $spec_hover_colors[] = "'" . $hover_palette[$color_idx % $p_count] . "'";
+    $color_idx++;
 }
 
 // 4. Branch-wise Distribution from Database
@@ -260,7 +291,7 @@ $branch_query = "SELECT
     d.department_name as code,
     COUNT(s.student_id) as count
 FROM st_department_master d
-LEFT JOIN st_student_master s ON d.department_id = s.department_id AND s.status = '0'";
+LEFT JOIN st_student_master s ON d.department_id = s.department_id AND s.status = 1";
 
 $branch_query .= " GROUP BY d.department_id, d.department_name
 ORDER BY d.department_id";
@@ -317,7 +348,7 @@ $recent_query = "SELECT
     COALESCE(e.enrolled_at, s.created_at) as created_at
 FROM st_student_master s
 LEFT JOIN st_enrollment e ON s.student_id = e.student_id
-WHERE s.status = 0
+WHERE s.status = 1
 ORDER BY COALESCE(e.enrolled_at, s.created_at) DESC
 LIMIT 5";
 
@@ -391,28 +422,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_hod'])) {
     }
 }
 
-if ($usertype == 4) {
-    // Mentor - only allocated students
-    $sql = "SELECT s.*
-            FROM st_student_master s
-            INNER JOIN st_mentor_student_mapping m
-                ON s.student_id = m.student_id
-            WHERE s.status = '0'
-            AND m.mentor_id = '".intval($logged_user_id)."'";
-} else {
-    $sql = "SELECT * FROM st_student_master WHERE status='0'";
-
-    // HOD
-    if ($is_scoped_user && $logged_dept_id) {
-        $sql .= " AND department_id = '".intval($logged_dept_id)."'";
-    }
-}
-
-$result = $db_handle->conn->query($sql);
-$rowcount = mysqli_num_rows($result);
-
-$result1 = $db_handle->conn->query("SELECT * FROM st_user_master where 1=1" . ($is_scoped_user && $logged_dept_id ? " AND department_id = " . intval($logged_dept_id) : ""));
-$rowcount_user = mysqli_num_rows($result1);
+// Student and user counts already computed in Section 2 above using optimized COUNT(*) queries.
 ?>
 
 <!-- Additional CSS for dashboard (only what's not already in header) -->
@@ -672,18 +682,22 @@ $rowcount_user = mysqli_num_rows($result1);
                         <table class="table table-hover table-bordered text-center">
                             <thead class="bg-gray">
                                 <tr>
-                                    <th>Specialization</th>
-                                    <th>Total Applied</th>
-                                    <th>Approved</th>
-                                    <th>Pending</th>
-                                    <th>Rejected</th>
+                                    <th class="text-left" style="width: 36%;">Specialization</th>
+                                    <th style="width: 16%;">Total Applied</th>
+                                    <th style="width: 16%;">Approved</th>
+                                    <th style="width: 16%;">Pending</th>
+                                    <th style="width: 16%;">Rejected</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php foreach ($spec_data as $id => $sd): ?>
+                                <?php 
+                                // Display exactly the first four configured specializations by default
+                                $table_spec_data = array_slice($spec_data, 0, 4, true);
+                                foreach ($table_spec_data as $id => $sd): 
+                                ?>
                                 <tr>
-                                    <td class="text-left"><strong><?php echo $sd['name']; ?></strong></td>
-                                    <td><span class="counter" data-target="<?php echo $sd['total']; ?>">0</span></td>
+                                    <td class="text-left"><strong><?php echo htmlspecialchars($sd['name']); ?></strong></td>
+                                    <td><span class="counter font-weight-bold" data-target="<?php echo $sd['total']; ?>">0</span></td>
                                     <td><span class="status-badge status-available counter" data-target="<?php echo $sd['approved']; ?>">0</span></td>
                                     <td><span class="status-badge status-meeting counter" data-target="<?php echo $sd['pending']; ?>">0</span></td>
                                     <td>
@@ -1132,8 +1146,8 @@ $rowcount_user = mysqli_num_rows($result1);
                 labels: [<?php echo implode(',', $spec_labels); ?>],
                 datasets: [{
                     data: [<?php echo implode(',', $spec_totals); ?>],
-                    backgroundColor: ['#00c0ef', '#f39c12', '#00a65a'],
-                    hoverBackgroundColor: ['#00acd6', '#e08e0b', '#008d4c']
+                    backgroundColor: [<?php echo implode(',', $spec_colors); ?>],
+                    hoverBackgroundColor: [<?php echo implode(',', $spec_hover_colors); ?>]
                 }]
             },
             options: {

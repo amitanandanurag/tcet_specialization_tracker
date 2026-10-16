@@ -1,12 +1,12 @@
 <?php
-if (session_status() !== PHP_SESSION_ACTIVE) {
+if (session_status() !== PHP_SESSION_ACTIVE && php_sapi_name() !== 'cli') {
   session_start();
 }
 
-require "../database/db_connect.php";
+require_once __DIR__ . "/../database/db_connect.php";
 $db_handle = new DBController();
 
-if (!isset($_SESSION['user_session'])) {
+if (php_sapi_name() !== 'cli' && !isset($_SESSION['user_session'])) {
   header("location: ../index.php");
   exit();
 }
@@ -42,7 +42,10 @@ function mentor_allocation_fetch_mentors($db_handle)
 
 function mentor_allocation_build_student_where($conn, $filters, $loginRole, $loginDepartment)
 {
-  $where = " WHERE sm.status = '0' ";
+  $statusFilter = isset($filters['student_status']) && $filters['student_status'] !== ''
+      ? intval($filters['student_status'])
+      : 1;
+  $where = " WHERE sm.status = {$statusFilter} ";
 
    if ($loginRole == 3) {          // change 3 to your Department role id
         $where .= " AND sm.department_id = '".intval($loginDepartment)."' ";
@@ -134,30 +137,55 @@ function mentor_allocation_assign_students($db_handle, $mentorId, $studentIds, $
     return false;
   }
 
+  // Verify mentor exists and is active
+  $mCheck = mysqli_query($db_handle->conn, "SELECT user_id, COALESCE(NULLIF(TRIM(user_name), ''), email_id) AS mentor_name, department_id FROM st_user_master WHERE user_id = $mentorId AND role_id = 4 LIMIT 1");
+  if (!$mCheck || mysqli_num_rows($mCheck) === 0) {
+    return false;
+  }
+  $mRow = mysqli_fetch_assoc($mCheck);
+  $mentorName = $mRow['mentor_name'];
+
+  $allocatedCount = 0;
   mysqli_begin_transaction($db_handle->conn);
 
   try {
     foreach ($cleanIds as $studentId) {
-      $studentRes = mysqli_query($db_handle->conn, "SELECT current_semester_id, academic_year_id FROM st_student_master WHERE student_id = {$studentId}");
-      $semId = 1;
-      $ayId = 1;
-      if ($studentRes && $studentRow = mysqli_fetch_assoc($studentRes)) {
-        $semId = intval($studentRow['current_semester_id'] ?? 1);
-        $ayId = intval($studentRow['academic_year_id'] ?? 1);
+      $studentRes = mysqli_query($db_handle->conn, "SELECT student_id, fname, registration_no, current_semester_id, academic_year_id, department_id, specialization_subject_id FROM st_student_master WHERE student_id = {$studentId}");
+      if (!$studentRes || !($studentRow = mysqli_fetch_assoc($studentRes))) {
+        continue;
       }
-      
-      if ($semesterId !== '') {
-        $semId = intval($semesterId);
+      $semId = ($semesterId !== '') ? intval($semesterId) : intval($studentRow['current_semester_id'] ?? 1);
+      $ayId = intval($studentRow['academic_year_id'] ?? 1);
+      $subjId = intval($studentRow['specialization_subject_id'] ?? 0);
+      $deptId = intval($studentRow['department_id'] ?? 0);
+
+      // Verify active mentor allocation exists for this exact 4-dimension key
+      $allocSql = "
+        SELECT mapping_id 
+        FROM st_mentor_subject_mapping 
+        WHERE mentor_id = {$mentorId} 
+          AND subject_id = {$subjId} 
+          AND semester_id = {$semId} 
+          AND academic_year_id = {$ayId} 
+          AND is_active = 1
+          AND (department_id IS NULL OR department_id = 0 OR department_id = {$deptId})
+        LIMIT 1
+      ";
+      $allocCheck = mysqli_query($db_handle->conn, $allocSql);
+      if (!$allocCheck || mysqli_num_rows($allocCheck) === 0) {
+        // Mentor is not allocated to this student's context!
+        continue;
       }
 
-      if (!mysqli_query($db_handle->conn, "DELETE FROM st_mentor_student_mapping WHERE student_id = {$studentId} AND academic_year_id = {$ayId}")) {
-        throw new Exception('Unable to clear existing mentor mapping.');
+      $ok = $db_handle->allocateStudentToMentor($studentId, $mentorId, $semId, $ayId);
+      if ($ok) {
+        $allocatedCount++;
       }
+    }
 
-      $insertSql = "INSERT INTO st_mentor_student_mapping (mentor_id, student_id, semester_id, academic_year_id) VALUES ({$mentorId}, {$studentId}, {$semId}, {$ayId})";
-      if (!mysqli_query($db_handle->conn, $insertSql)) {
-        throw new Exception('Unable to save mentor mapping.');
-      }
+    if ($allocatedCount === 0 && !empty($cleanIds)) {
+      mysqli_rollback($db_handle->conn);
+      return false;
     }
 
     mysqli_commit($db_handle->conn);
@@ -167,6 +195,7 @@ function mentor_allocation_assign_students($db_handle, $mentorId, $studentIds, $
     return false;
   }
 }
+
 
 if (isset($_GET['action']) && $_GET['action'] === 'load_students') {
   header('Content-Type: application/json');
@@ -257,7 +286,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'load_students') {
   exit();
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'assign_selected') {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && $_POST['action'] === 'assign_selected') {
   header('Content-Type: application/json');
 
   if (!DBController::validateCsrfToken()) {
@@ -281,7 +310,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
   exit();
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'assign_filtered') {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && $_POST['action'] === 'assign_filtered') {
   header('Content-Type: application/json');
 
   if (!DBController::validateCsrfToken()) {
@@ -317,6 +346,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     echo json_encode(array('success' => false, 'message' => 'Unable to allocate filtered students.'));
   }
   exit();
+}
+
+if (php_sapi_name() === 'cli' && basename($_SERVER['SCRIPT_FILENAME'] ?? '') !== 'mentor_allocation.php') {
+  return;
 }
 
 $mentors = mentor_allocation_fetch_mentors($db_handle);

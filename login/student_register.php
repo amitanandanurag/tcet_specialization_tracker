@@ -19,94 +19,170 @@ function getNextId(mysqli $conn, string $table, string $column): int
 // ================= REGISTER LOGIC =================
 if (isset($_POST['register'])) {
 
-    $username = trim($_POST['username']);
-    $email = trim($_POST['email']);
-    $phone = trim($_POST['phone']);
-    $department = $_POST['department'];
+    // 1. CSRF VALIDATION
+    if (!DBController::validateCsrfToken($_POST['csrf_token'] ?? null)) {
+        $message = "Invalid or missing security token (CSRF). Please refresh the page and try again.";
+    } else {
+        $username = trim($_POST['username'] ?? '');
+        $email = trim($_POST['email'] ?? '');
+        $phone = trim($_POST['phone'] ?? '');
+        $department = intval($_POST['department'] ?? 0);
+        $passwordInput = (string)($_POST['password'] ?? '');
+        $confirmPassword = (string)($_POST['confirm_password'] ?? '');
 
-    // VALIDATIONS
-    if (!preg_match("/^[A-Za-z_ ]{3,20}$/", $username)) {
-        $message = "Username must be 3-20 characters (letters, space, underscore)";
-    }
-    elseif (!preg_match("/^[0-9]{10}$/", $phone)) {
-        $message = "Phone must be 10 digits";
-    }
-    elseif (strpos($email, "@tcetmumbai.in") === false) {
-        $message = "Use institute email only!";
-    }
-    else {
+        // 2. INPUT VALIDATIONS
+        if (!preg_match("/^[A-Za-z_ ]{3,20}$/", $username)) {
+            $message = "Username must be 3-20 characters (letters, space, underscore)";
+        }
+        elseif (!preg_match("/^[0-9]{10}$/", $phone)) {
+            $message = "Phone must be 10 digits";
+        }
+        elseif (!filter_var($email, FILTER_VALIDATE_EMAIL) || strpos(strtolower($email), "@tcetmumbai.in") === false) {
+            $message = "Use institute email only (name@tcetmumbai.in)!";
+        }
+        elseif ($department <= 0) {
+            $message = "Please select a valid department.";
+        }
+        elseif ($passwordInput !== '' && strlen($passwordInput) < 8) {
+            $message = "Password must be at least 8 characters long.";
+        }
+        elseif ($passwordInput !== '' && $confirmPassword !== '' && $passwordInput !== $confirmPassword) {
+            $message = "Password and confirm password do not match.";
+        }
+        else {
+            // Determine password to use
+            $userProvidedPassword = ($passwordInput !== '');
+            if ($userProvidedPassword) {
+                $plainPassword = $passwordInput;
+            } else {
+                // Secure random fallback credentials if not entered
+                $plainPassword = "Tcet@" . bin2hex(random_bytes(3));
+            }
 
-        $username = mysqli_real_escape_string($db_handle->conn, $username);
-        $email = mysqli_real_escape_string($db_handle->conn, $email);
-        $phone = mysqli_real_escape_string($db_handle->conn, $phone);
-        $department = mysqli_real_escape_string($db_handle->conn, $department);
+            // 3. DUPLICATE ACCOUNT CHECK VIA PREPARED STATEMENTS
+            $emailExists = false;
 
-        $password = "Tcet@1234";
-        $role_id = 5;
+            $checkUserStmt = mysqli_prepare($db_handle->conn, "SELECT 1 FROM st_user_master WHERE email_id = ? LIMIT 1");
+            if ($checkUserStmt) {
+                mysqli_stmt_bind_param($checkUserStmt, 's', $email);
+                mysqli_stmt_execute($checkUserStmt);
+                mysqli_stmt_store_result($checkUserStmt);
+                if (mysqli_stmt_num_rows($checkUserStmt) > 0) {
+                    $emailExists = true;
+                }
+                mysqli_stmt_close($checkUserStmt);
+            }
 
-        $check = $db_handle->query("SELECT * FROM st_user_master WHERE email_id='$email'");
+            if (!$emailExists) {
+                $checkLoginStmt = mysqli_prepare($db_handle->conn, "SELECT 1 FROM st_login WHERE username = ? LIMIT 1");
+                if ($checkLoginStmt) {
+                    mysqli_stmt_bind_param($checkLoginStmt, 's', $email);
+                    mysqli_stmt_execute($checkLoginStmt);
+                    mysqli_stmt_store_result($checkLoginStmt);
+                    if (mysqli_stmt_num_rows($checkLoginStmt) > 0) {
+                        $emailExists = true;
+                    }
+                    mysqli_stmt_close($checkLoginStmt);
+                }
+            }
 
-        if ($check && mysqli_num_rows($check) > 0) {
-            $message = "Email already exists!";
-        } else {
+            if ($emailExists) {
+                $message = "An account with this email already exists!";
+            } else {
+                // 4. PREPARE HASHED PASSWORD (NEVER PLAINTEXT)
+                $hashedPassword = DBController::hashPassword($plainPassword);
+                $role_id = 5; // Student Role
 
-            $user_id = getNextId($db_handle->conn, 'st_user_master', 'user_id');
-            $login_id = getNextId($db_handle->conn, 'st_login', 'login_id');
-            $student_id = getNextId($db_handle->conn, 'st_student_master', 'student_id');
+                $user_id = getNextId($db_handle->conn, 'st_user_master', 'user_id');
+                $login_id = getNextId($db_handle->conn, 'st_login', 'login_id');
+                $student_id = getNextId($db_handle->conn, 'st_student_master', 'student_id');
 
-            mysqli_begin_transaction($db_handle->conn);
+                mysqli_begin_transaction($db_handle->conn);
 
-            // Insert minimal student record so admission form can be prefilled
-            $regNo = '';
-            $classId = 0;
-            $divisionId = 0;
-            $gradYear = 'NULL';
-            $rollNo = '';
-            $specId = 'NULL';
-            $specSubId = 'NULL';
-            $minorCourse = 'NULL';
-            $minorSubject = 'NULL';
-            $cgpa = 'NULL';
-            $fname = $username;
-            $mobile = $phone;
-            $createdAt = date('Y-m-d H:i:s');
+                try {
+                    // Insert minimal student record
+                    $regNo = '';
+                    $classId = 0;
+                    $divisionId = 0;
+                    $rollNo = '';
+                    $fname = $username;
+                    $mobile = $phone;
+                    $createdAt = date('Y-m-d H:i:s');
+                    $studentStatus = 1; // Standard Active / Enrolled status
 
-            $sqlStudent = "INSERT INTO st_student_master (student_id, registration_no, class_id, division_id, grad_year, roll_no, department_id, specialization_id, specialization_subject_id, minor_course_id, minor_subject_id, cgpa, fname, mobile, email, mark_list, status, m_sem1, m_sem2, m_sem3, created_at, academic_year_id, current_semester_id)
-                           VALUES ($student_id, '" . mysqli_real_escape_string($db_handle->conn, $regNo) . "', $classId, $divisionId, $gradYear, '" . mysqli_real_escape_string($db_handle->conn, $rollNo) . "', $department, $specId, $specSubId, $minorCourse, $minorSubject, $cgpa, '" . mysqli_real_escape_string($db_handle->conn, $fname) . "', '" . mysqli_real_escape_string($db_handle->conn, $mobile) . "', '" . mysqli_real_escape_string($db_handle->conn, $email) . "', '', 1, '', '', '', '$createdAt', NULL, NULL)";
+                    $sqlStudent = "INSERT INTO st_student_master (
+                        student_id, registration_no, class_id, division_id, grad_year, roll_no, department_id,
+                        specialization_id, specialization_subject_id, minor_course_id, minor_subject_id, cgpa,
+                        fname, mobile, email, mark_list, status, m_sem1, m_sem2, m_sem3, created_at, academic_year_id, current_semester_id
+                    ) VALUES (
+                        ?, ?, ?, ?, NULL, ?, ?, NULL, NULL, NULL, NULL, NULL, ?, ?, ?, '', ?, '', '', '', ?, NULL, NULL
+                    )";
 
-            if ($db_handle->query($sqlStudent)) {
-                // Insert user with linked student_id
-                $sql1 = "INSERT INTO st_user_master 
-                (user_id, user_name, email_id, phone_number, department_id, role_id, student_id)
-                VALUES ($user_id,'$username','$email','$phone',$department,$role_id,$student_id)";
+                    $stmtStudent = mysqli_prepare($db_handle->conn, $sqlStudent);
+                    if (!$stmtStudent) {
+                        throw new Exception("Student statement preparation failed");
+                    }
+                    mysqli_stmt_bind_param($stmtStudent, 'isiisissis',
+                        $student_id, $regNo, $classId, $divisionId, $rollNo, $department,
+                        $fname, $mobile, $email, $studentStatus, $createdAt
+                    );
+                    if (!mysqli_stmt_execute($stmtStudent)) {
+                        mysqli_stmt_close($stmtStudent);
+                        throw new Exception("Student record insert execution failed");
+                    }
+                    mysqli_stmt_close($stmtStudent);
 
-                if ($db_handle->query($sql1)) {
-                    $sql2 = "INSERT INTO st_login(login_id, username, password, user_id)
-                             VALUES($login_id,'$email','$password',$user_id)";
+                    // Insert user with linked student_id
+                    $isFirstLogin = $userProvidedPassword ? 0 : 1;
+                    $sqlUser = "INSERT INTO st_user_master 
+                        (user_id, user_name, email_id, phone_number, department_id, role_id, student_id, is_first_login)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+                    $stmtUser = mysqli_prepare($db_handle->conn, $sqlUser);
+                    if (!$stmtUser) {
+                        throw new Exception("User statement preparation failed");
+                    }
+                    mysqli_stmt_bind_param($stmtUser, 'isssiiii',
+                        $user_id, $username, $email, $phone, $department, $role_id, $student_id, $isFirstLogin
+                    );
+                    if (!mysqli_stmt_execute($stmtUser)) {
+                        mysqli_stmt_close($stmtUser);
+                        throw new Exception("User record insert execution failed");
+                    }
+                    mysqli_stmt_close($stmtUser);
 
-                    if ($db_handle->query($sql2)) {
-                        mysqli_commit($db_handle->conn);
+                    // Insert login with securely hashed password
+                    $sqlLogin = "INSERT INTO st_login (login_id, username, password, user_id) VALUES (?, ?, ?, ?)";
+                    $stmtLogin = mysqli_prepare($db_handle->conn, $sqlLogin);
+                    if (!$stmtLogin) {
+                        throw new Exception("Login statement preparation failed");
+                    }
+                    mysqli_stmt_bind_param($stmtLogin, 'issi', $login_id, $email, $hashedPassword, $user_id);
+                    if (!mysqli_stmt_execute($stmtLogin)) {
+                        mysqli_stmt_close($stmtLogin);
+                        throw new Exception("Login record insert execution failed");
+                    }
+                    mysqli_stmt_close($stmtLogin);
 
-                        // ✅ STORE IN SESSION (SHOW ONCE)
-                        $_SESSION['show_credentials'] = true;
-                        $_SESSION['registered_username'] = $email;
-                        $_SESSION['registered_password'] = $password;
+                    mysqli_commit($db_handle->conn);
 
-                        header("Location: " . $_SERVER['PHP_SELF']);
-                        exit();
-
-                    } else {
-                        mysqli_rollback($db_handle->conn);
-                        $message = "Login Insert Error";
+                    if (method_exists($db_handle, 'writeAuditLog')) {
+                        $db_handle->writeAuditLog($user_id, 'STUDENT_REGISTERED', 'st_user_master', $user_id, "Student {$email} registered successfully");
                     }
 
-                } else {
+                    // Store safe feedback for registration completion
+                    $_SESSION['registration_success'] = true;
+                    $_SESSION['registered_username'] = $email;
+                    if (!$userProvidedPassword) {
+                        $_SESSION['temp_password'] = $plainPassword;
+                    }
+
+                    header("Location: " . $_SERVER['PHP_SELF']);
+                    exit();
+
+                } catch (Throwable $e) {
                     mysqli_rollback($db_handle->conn);
-                    $message = "User Insert Error";
+                    $message = "Registration could not be completed at this time. Please try again.";
                 }
-            } else {
-                mysqli_rollback($db_handle->conn);
-                $message = "Student Insert Error";
             }
         }
     }
@@ -405,11 +481,15 @@ function validateStudentRegisterForm(event) {
     var email = document.querySelector('input[name="email"]');
     var phone = document.querySelector('input[name="phone"]');
     var department = document.querySelector('select[name="department"]');
+    var password = document.querySelector('input[name="password"]');
+    var confirmPassword = document.querySelector('input[name="confirm_password"]');
 
     var usernameValue = username ? username.value.trim() : '';
     var emailValue = email ? email.value.trim() : '';
     var phoneValue = phone ? phone.value.trim() : '';
     var departmentValue = department ? department.value.trim() : '';
+    var passwordValue = password ? password.value : '';
+    var confirmPasswordValue = confirmPassword ? confirmPassword.value : '';
 
     var emailPattern = /^[^\s@]+@tcetmumbai\.in$/i;
     var phonePattern = /^[0-9]{10}$/;
@@ -457,6 +537,18 @@ function validateStudentRegisterForm(event) {
         return false;
     }
 
+    if (passwordValue && passwordValue.length < 8) {
+        event.preventDefault();
+        showRegisterError('Password must be at least 8 characters long.');
+        return false;
+    }
+
+    if (passwordValue && confirmPasswordValue && passwordValue !== confirmPasswordValue) {
+        event.preventDefault();
+        showRegisterError('Passwords do not match.');
+        return false;
+    }
+
     return true;
 }
 
@@ -468,31 +560,26 @@ window.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 
-<?php if (isset($_SESSION['show_credentials']) && $_SESSION['show_credentials']) { ?>
+<?php if (isset($_SESSION['registration_success']) && $_SESSION['registration_success']) { ?>
 <script>
 window.addEventListener('load', function () {
     if (window.parent && window.parent !== window) {
         try {
             var parentDocument = window.parent.document;
             var usernameField = parentDocument.getElementById('username');
-            var passwordField = parentDocument.getElementById('password');
-
             if (usernameField) {
                 usernameField.value = <?php echo json_encode($_SESSION['registered_username']); ?>;
-            }
-
-            if (passwordField) {
-                passwordField.value = <?php echo json_encode($_SESSION['registered_password']); ?>;
-            }
-
-            if (usernameField) {
-                usernameField.focus();
+                var passwordField = parentDocument.getElementById('password');
+                if (passwordField) {
+                    passwordField.focus();
+                } else {
+                    usernameField.focus();
+                }
             }
         } catch (error) {
             window.parent.postMessage({
                 type: 'student-registration-success',
-                username: <?php echo json_encode($_SESSION['registered_username']); ?>,
-                password: <?php echo json_encode($_SESSION['registered_password']); ?>
+                username: <?php echo json_encode($_SESSION['registered_username']); ?>
             }, window.location.origin);
         }
     }
@@ -514,24 +601,31 @@ window.addEventListener('load', function () {
         <div id="msgBox"><?php echo htmlspecialchars($message); ?></div>
         <?php } ?>
 
-        <?php if (isset($_SESSION['show_credentials']) && $_SESSION['show_credentials']) { ?>
+        <?php if (isset($_SESSION['registration_success']) && $_SESSION['registration_success']) { ?>
         <div id="credentialsBox">
             <div class="credentials-title"><i class="fa fa-check-circle"></i> Registration Successful</div>
-            <p style="color: var(--erp-text-secondary); margin: 6px 0 12px; font-size: 12px;">Your student account has been created. Please note your temporary login credentials:</p>
+            <p style="color: var(--erp-text-secondary); margin: 6px 0 12px; font-size: 12px;">Your student account has been created successfully.</p>
             <div id="credText">
                 <div><strong>Username:</strong> <?php echo htmlspecialchars($_SESSION['registered_username']); ?></div>
-                <div style="margin-top: 6px;"><strong>Password:</strong> <?php echo htmlspecialchars($_SESSION['registered_password']); ?></div>
+                <?php if (!empty($_SESSION['temp_password'])) { ?>
+                <div style="margin-top: 6px;"><strong>Temporary Password:</strong> <?php echo htmlspecialchars($_SESSION['temp_password']); ?></div>
+                <p style="margin-top: 8px; font-size: 11px; color: #b45309;"><i class="fa fa-info-circle"></i> Please change your password upon your first sign in.</p>
+                <button type="button" class="btn-copy" style="margin-top: 8px;" onclick="copyCredentials()"><i class="fa fa-copy"></i> Copy Credentials</button>
+                <?php } else { ?>
+                <div style="margin-top: 6px; font-size: 12px; color: #15803d;"><i class="fa fa-shield-alt"></i> Password securely encrypted. Sign in with your password.</div>
+                <?php } ?>
             </div>
-            <button type="button" class="btn-copy" onclick="copyCredentials()"><i class="fa fa-copy"></i> Copy Credentials</button>
             <button type="button" class="btn-proceed" onclick="proceedToEnrollment()">Proceed to Sign In <i class="fa fa-arrow-right"></i></button>
         </div>
         <?php
-        unset($_SESSION['show_credentials']);
+        unset($_SESSION['registration_success']);
         unset($_SESSION['registered_username']);
-        unset($_SESSION['registered_password']);
+        unset($_SESSION['temp_password']);
         ?>
         <?php } else { ?>
         <form method="POST" autocomplete="off">
+            <?php echo DBController::getCsrfInputField(); ?>
+
             <div class="erp-form-group">
                 <label>Username</label>
                 <div class="erp-input-group">
@@ -569,6 +663,22 @@ window.addEventListener('load', function () {
                         }
                         ?>
                     </select>
+                </div>
+            </div>
+
+            <div class="erp-form-group">
+                <label>Password</label>
+                <div class="erp-input-group">
+                    <span class="erp-input-icon"><i class="fa fa-lock"></i></span>
+                    <input type="password" name="password" class="erp-input-control" placeholder="Create password (minimum 8 characters)" required autocomplete="new-password">
+                </div>
+            </div>
+
+            <div class="erp-form-group">
+                <label>Confirm Password</label>
+                <div class="erp-input-group">
+                    <span class="erp-input-icon"><i class="fa fa-lock"></i></span>
+                    <input type="password" name="confirm_password" class="erp-input-control" placeholder="Re-enter password" required autocomplete="new-password">
                 </div>
             </div>
 
