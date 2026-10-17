@@ -1,5 +1,7 @@
 <?php
-include('header.php');
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_start();
+}
 include_once("../database/db_connect.php");
 ?>
 <!DOCTYPE html>
@@ -8,271 +10,554 @@ include_once("../database/db_connect.php");
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TCET</title>
+    <title>TCET Mumbai — Academic ERP Portal Login</title>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    
     <style>
-        html,
-        body {
-            height: 100%;
-            margin: 0;
-            overflow: hidden;
+        :root {
+            --erp-primary: #423cbc;
+            --erp-primary-hover: #352fa1;
+            --erp-primary-dark: #2a2485;
+            --erp-primary-light: #eef2ff;
+            --erp-primary-border: #c7d2fe;
+            --erp-bg: #f8fafc;
+            --erp-surface: #ffffff;
+            --erp-border: #e2e8f0;
+            --erp-border-input: #cbd5e1;
+            --erp-text-main: #0f172a;
+            --erp-text-body: #334155;
+            --erp-text-secondary: #475569;
+            --erp-text-muted: #64748b;
+            --erp-radius: 4px;
         }
 
-        body {
-            background: #2c3e50;
-            font-family: Arial, sans-serif;
-            display: flex;
-            justify-content: flex-end;
-            align-items: center;
-        }
-
-        .w3layouts-main {
-            display: flex;
-            justify-content: flex-end;
-            align-items: center;
-            height: 100%;
-            width: 100%;
-        }
-
-        .bg-layer {
-            background: rgba(0, 0, 0, 0.7);
-
-            height: 100%;
-            width: 40%;
-
-            display: flex;
-            justify-content: center;
-            align-items: center;
-
-            border-radius: 0;
+        * {
+            box-sizing: border-box;
             margin: 0;
             padding: 0;
         }
 
-        .header-main {
-            background: #34495e;
-            padding: 40px 30px;
-
-            width: 80%;
-            max-width: 420px;
-
-            border-radius: 12px;
+        html,
+        body {
+            min-height: 100%;
+            background-color: var(--erp-bg);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            font-size: 13px;
+            color: var(--erp-text-body);
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
         }
 
-        .main-icon img {
-            border-radius: 50%;
-            margin-bottom: 10px;
+        .erp-login-wrapper {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            padding: 24px 16px;
         }
 
-        .school-name {
-            font-size: 20px;
-            font-weight: bold;
+        /* Institutional Top Header Bar */
+        .erp-login-topbar {
+            width: 100%;
+            max-width: 940px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 4px 16px;
+        }
+
+        .erp-topbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            color: var(--erp-text-main);
+        }
+
+        .erp-topbar-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--erp-primary-dark);
+            letter-spacing: 0.3px;
+        }
+
+        .erp-topbar-link {
+            font-size: 12px;
+            color: var(--erp-text-muted);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            transition: color 0.15s ease;
+        }
+
+        .erp-topbar-link:hover {
+            color: var(--erp-primary);
+            text-decoration: underline;
+        }
+
+        /* Main Institutional Card */
+        .erp-login-card {
+            width: 100%;
+            max-width: 940px;
+            background: var(--erp-surface);
+            border: 1px solid var(--erp-border);
+            border-radius: 6px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+            display: flex;
+            overflow: hidden;
+            margin: auto 0;
+        }
+
+        /* Left Column: Institutional Brand Pane */
+        .erp-brand-pane {
+            flex: 1;
+            background: #f8fafc;
+            border-right: 1px solid var(--erp-border);
+            padding: 44px 40px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .erp-brand-header {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .erp-brand-logo {
+            height: 72px;
+            width: auto;
+            object-fit: contain;
             margin-bottom: 20px;
-            font-family: 'Lucida Sans Unicode', sans-serif;
-            color: #ffffff; 
         }
 
-        .header-left-bottom {
-            margin-top: 20px;
+        .erp-inst-name {
+            font-size: 16px;
+            font-weight: 800;
+            color: var(--erp-text-main);
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            line-height: 1.35;
+            margin-bottom: 6px;
         }
 
-        .login-field {
+        .erp-inst-affil {
+            font-size: 12px;
+            color: var(--erp-text-secondary);
+            font-weight: 500;
+            line-height: 1.4;
+            margin-bottom: 18px;
+        }
+
+        .erp-brand-divider {
+            width: 100%;
+            height: 1px;
+            background: var(--erp-border);
+            margin: 16px 0;
+        }
+
+        .erp-portal-name {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--erp-primary);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-bottom: 4px;
+        }
+
+        .erp-portal-desc {
+            font-size: 12px;
+            color: var(--erp-text-muted);
+            line-height: 1.45;
+        }
+
+        .erp-brand-meta {
+            margin-top: 24px;
+            font-size: 11px;
+            color: var(--erp-text-muted);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 500;
+        }
+
+        /* Right Column: Sign In Form Pane */
+        .erp-form-pane {
+            width: 440px;
+            padding: 40px 38px;
+            background: var(--erp-surface);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .erp-form-header {
+            margin-bottom: 22px;
+        }
+
+        .erp-form-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--erp-text-main);
+            margin-bottom: 4px;
+            letter-spacing: -0.01em;
+        }
+
+        .erp-form-subtitle {
+            font-size: 12px;
+            color: var(--erp-text-muted);
+        }
+
+        .erp-form-group {
+            margin-bottom: 16px;
+        }
+
+        .erp-form-label {
+            display: block;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--erp-text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-bottom: 6px;
+        }
+
+        .erp-input-group {
             display: flex;
             align-items: stretch;
-            width: 100%;
-            height: 48px;
-            margin-bottom: 15px;
-            border-radius: 6px;
-            overflow: hidden;
+            border: 1px solid var(--erp-border-input);
+            border-radius: var(--erp-radius);
             background: #ffffff;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
+            overflow: hidden;
         }
 
-        .login-field-icon {
-            width: 48px;
-            flex: 0 0 48px;
+        .erp-input-group:focus-within {
+            border-color: var(--erp-primary);
+            box-shadow: 0 0 0 3px rgba(66, 60, 188, 0.12);
+        }
+
+        .erp-input-group.erp-input-invalid {
+            border-color: #dc2626 !important;
+        }
+
+        .erp-input-icon {
+            width: 38px;
             display: flex;
             align-items: center;
             justify-content: center;
-            background: #eef4fb;
-            color: #34495e;
+            background: #f8fafc;
+            color: var(--erp-text-muted);
+            border-right: 1px solid var(--erp-border);
+            font-size: 13px;
         }
 
-        .login-field-input {
+        .erp-input-control {
             flex: 1;
-            width: 100%;
-            height: 100%;
             border: none;
             outline: none;
-            padding: 0 14px;
-            font-size: 14px;
-            background: #ffffff;
-            color: #1f2d3d;
+            padding: 9px 12px;
+            font-size: 13px;
+            color: var(--erp-text-main);
+            background: transparent;
+            font-family: inherit;
         }
 
-        .login-field-input::placeholder {
-            color: #8b97a3;
+        .erp-input-control::placeholder {
+            color: #94a3b8;
+            font-size: 12px;
         }
 
-        .password-toggle {
-            width: 48px;
-            flex: 0 0 48px;
+        .erp-pwd-toggle {
+            width: 38px;
             border: none;
-            border-left: 1px solid #d7e2ec;
-            background: #eef4fb;
-            color: #34495e;
+            background: #f8fafc;
+            border-left: 1px solid var(--erp-border);
+            color: var(--erp-text-muted);
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
             padding: 0;
+            transition: color 0.15s ease;
         }
 
-        .password-toggle:focus {
-            outline: none;
+        .erp-pwd-toggle:hover {
+            color: var(--erp-text-main);
         }
 
-        .login-check {
-            text-align: left;
-            margin-bottom: 15px;
+        .erp-input-error-msg {
+            color: #dc2626;
+            font-size: 11px;
+            margin-top: 4px;
+            font-weight: 500;
         }
 
-        .bottom {
-            margin-top: 20px;
+        .erp-form-options {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 18px;
+            font-size: 12px;
         }
 
+        .erp-checkbox-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            color: var(--erp-text-body);
+            font-weight: 500;
+            user-select: none;
+        }
+
+        .erp-checkbox-label input[type="checkbox"] {
+            accent-color: var(--erp-primary);
+            width: 14px;
+            height: 14px;
+            cursor: pointer;
+        }
+
+        .erp-forgot-link {
+            color: var(--erp-primary);
+            text-decoration: none;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .erp-forgot-link:hover {
+            text-decoration: underline;
+        }
+
+        .btn-erp-login {
+            width: 100%;
+            height: 38px;
+            background: var(--erp-primary);
+            color: #ffffff;
+            border: 1px solid var(--erp-primary-dark);
+            border-radius: var(--erp-radius);
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            cursor: pointer;
+            transition: background-color 0.15s ease, border-color 0.15s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .btn-erp-login:hover {
+            background: var(--erp-primary-hover);
+        }
+
+        .btn-erp-login:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        .erp-login-alert {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #991b1b;
+            padding: 9px 12px;
+            border-radius: var(--erp-radius);
+            font-size: 12px;
+            font-weight: 500;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .erp-login-divider {
+            position: relative;
+            text-align: center;
+            margin: 20px 0 16px;
+        }
+
+        .erp-login-divider::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            border-top: 1px solid var(--erp-border);
+        }
+
+        .erp-login-divider span {
+            position: relative;
+            background: #ffffff;
+            padding: 0 10px;
+            font-size: 11px;
+            color: var(--erp-text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .btn-erp-register {
+            width: 100%;
+            height: 36px;
+            background: #ffffff;
+            color: var(--erp-text-secondary);
+            border: 1px solid var(--erp-border-input);
+            border-radius: var(--erp-radius);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .btn-erp-register:hover {
+            background: #f8fafc;
+            color: var(--erp-text-main);
+            border-color: var(--erp-text-muted);
+        }
+
+        /* Footer */
+        .erp-login-footer {
+            width: 100%;
+            max-width: 940px;
+            padding-top: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 11px;
+            color: var(--erp-text-muted);
+        }
+
+        .erp-login-footer a {
+            color: var(--erp-primary);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .erp-login-footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* Overlay Popups */
         .overlay {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-
             display: none;
             justify-content: center;
             align-items: center;
-
-            background: transparent;
+            background: rgba(15, 23, 42, 0.6);
             z-index: 1000;
+            padding: 16px;
         }
-
 
         .popup {
             position: relative;
-
-            width: 520px;
-            height: 620px;
-
-            border-radius: 16px;
-
-            background: rgba(255, 255, 255, 0.96);
-
-            display: flex;
-            justify-content: center;
-            align-items: center;
-
-            box-shadow: 0 20px 55px rgba(0, 0, 0, 0.35);
+            width: 100%;
+            max-width: 480px;
+            height: 490px;
+            max-height: 90vh;
+            border-radius: 6px;
+            background: #ffffff;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            border: 1px solid var(--erp-border);
         }
 
-        /* iframe */
+        #forgotPasswordPopup .popup {
+            height: 390px;
+        }
+
         .popup iframe {
             width: 100%;
             height: 100%;
             border: none;
-
             display: block;
         }
 
-        .popup span {
+        .popup .close-btn {
             position: absolute;
-            top: 15px;
-            right: 18px;
-            font-size: 24px;
-            font-weight: bold;
-            color: #64748b;
+            top: 12px;
+            right: 14px;
+            font-size: 18px;
+            line-height: 1;
+            color: var(--erp-text-muted);
             cursor: pointer;
-            transition: color 0.2s ease;
+            z-index: 10;
+            background: #ffffff;
+            width: 28px;
+            height: 28px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--erp-border);
+            transition: all 0.15s ease;
         }
 
-        .popup span:hover {
-            color: #334155;
+        .popup .close-btn:hover {
+            color: var(--erp-text-main);
+            background: #f1f5f9;
+            border-color: var(--erp-border-dark);
         }
 
-        .btn {
-            background: #1abc9c;
-            color: #fff;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
-            width: 100%;
-            height: 48px;
-            cursor: pointer;
-            transition: background 0.3s;
-            font-size: 15px;
-        }
+        /* Responsive Breakpoints */
+        @media (max-width: 820px) {
+            .erp-login-card {
+                flex-direction: column;
+                max-width: 440px;
+            }
 
-        .btn:hover {
-            background: #16a085;
-        }
+            .erp-brand-pane {
+                border-right: none;
+                border-bottom: 1px solid var(--erp-border);
+                padding: 28px 24px;
+                align-items: center;
+                text-align: center;
+            }
 
-        .copyright {
-            margin-top: 10px;
-        }
+            .erp-brand-header {
+                align-items: center;
+            }
 
-        .copyright a {
-            color: #ED2C02;
-            /* Bright red */
-        }
+            .erp-brand-logo {
+                height: 60px;
+                margin-bottom: 14px;
+            }
 
-        .alert {
-            padding: 20px;
-            background-color: #f44336;
-            color: white;
-            margin-bottom: 20px;
-            border-radius: 5px;
-        }
+            .erp-brand-meta {
+                justify-content: center;
+                margin-top: 14px;
+            }
 
-        .closebtn {
-            margin-left: 15px;
-            color: white;
-            font-weight: bold;
-            float: right;
-            font-size: 22px;
-            line-height: 20px;
-            cursor: pointer;
-            transition: 0.3s;
-        }
+            .erp-form-pane {
+                width: 100%;
+                padding: 28px 24px;
+            }
 
-        .closebtn:hover {
-            color: black;
+            .erp-login-topbar,
+            .erp-login-footer {
+                flex-direction: column;
+                gap: 6px;
+                text-align: center;
+            }
         }
-
-        #login-form {
-            width: 100%;
-        }
-
-        /* Inputs */
-        .icon1 input {
-            width: 100%;
-            height: 45px;
-            padding: 10px 10px 10px 40px;
-            border-radius: 6px;
-            border: none;
-        }
-
-        /
     </style>
+
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="script/validation.min.js"></script>
-<script src="script/login.js"></script>
+    <script src="script/validation.min.js"></script>
+    <script src="script/login.js"></script>
     <script>
-        addEventListener("load", function () {
-            setTimeout(hideURLbar, 0);
-        }, false);
-
-        function hideURLbar() {
-            window.scrollTo(0, 1);
-        }
-
-
         function openRegister() {
             document.getElementById("registerPopup").style.display = "flex";
         }
@@ -329,80 +614,118 @@ include_once("../database/db_connect.php");
                 }
             }
         });
-        
-
     </script>
 </head>
 
 <body>
 
-    <div class="w3layouts-main">
-        <div class="bg-layer"><br /><br /><br /><br /><br />
-            <div class="header-main">
-                <div class="main-icon">
-                    <img src="images/school_logo.jpg" alt="logo" width='150px' height='150px'>
+    <div class="erp-login-wrapper">
+        <!-- Institutional Top Bar -->
+        <div class="erp-login-topbar">
+            <div class="erp-topbar-brand">
+                <span class="erp-topbar-title">TCET Academic ERP</span>
+            </div>
+            <a href="https://www.tcetmumbai.in" target="_blank" class="erp-topbar-link">
+                <i class="fa fa-external-link"></i> tcetmumbai.in
+            </a>
+        </div>
+
+        <!-- Main 2-Column Institutional Login Card -->
+        <div class="erp-login-card">
+            <!-- Left Pane: Institutional Branding -->
+            <div class="erp-brand-pane">
+                <div class="erp-brand-header">
+                    <img src="images/tcet_logo.png" alt="TCET Mumbai Crest" class="erp-brand-logo">
+                    <h1 class="erp-inst-name">Thakur College of Engineering & Technology</h1>
+                    <p class="erp-inst-affil">An Autonomous Institute Affiliated to University of Mumbai</p>
+                    
+                    <div class="erp-brand-divider"></div>
+                    
+                    <div class="erp-portal-name">Specialization Tracker & ERP</div>
+                    <p class="erp-portal-desc">Centralized portal for student specialization management, academic progression, and faculty mentoring.</p>
                 </div>
-                <div class="school-name"> SPECIALIZATION TRACKER </div>
-                <div class="header-left-bottom">
-                    <form id="login-form">
-                        <div class="login-field">
-                            <div class="login-field-icon"><i class="fa fa-user"></i></div>
-                            <input type="text" class="login-field-input" placeholder="Enter username" name="username" id="username" required="" />
+
+                <div class="erp-brand-meta">
+                    <span>Student</span> &bull; <span>Faculty</span> &bull; <span>Coordinator</span> &bull; <span>Administration</span>
+                </div>
+            </div>
+
+            <!-- Right Pane: Sign In Form -->
+            <div class="erp-form-pane">
+                <div class="erp-form-header">
+                    <h2 class="erp-form-title">Welcome Back</h2>
+                    <p class="erp-form-subtitle">Sign in to continue to the TCET ERP portal</p>
+                </div>
+
+                <form id="login-form">
+                    <div class="erp-form-group">
+                        <label for="username" class="erp-form-label">Username or Registration No.</label>
+                        <div class="erp-input-group">
+                            <span class="erp-input-icon"><i class="fa fa-user"></i></span>
+                            <input type="text" class="erp-input-control" placeholder="Enter username or registration no." name="username" id="username" required autocomplete="username">
                         </div>
-                        <div class="login-field">
-                            <div class="login-field-icon"><i class="fa fa-lock"></i></div>
-                            <input type="password" class="login-field-input" placeholder="Enter password" name="password" id="password" required="" />
-                            <button type="button" class="password-toggle" id="passwordToggle" aria-label="Show password" onclick="togglePasswordVisibility()">
+                    </div>
+
+                    <div class="erp-form-group">
+                        <label for="password" class="erp-form-label">Password</label>
+                        <div class="erp-input-group">
+                            <span class="erp-input-icon"><i class="fa fa-lock"></i></span>
+                            <input type="password" class="erp-input-control" placeholder="Enter password" name="password" id="password" required autocomplete="current-password">
+                            <button type="button" class="erp-pwd-toggle" id="passwordToggle" aria-label="Show password" onclick="togglePasswordVisibility()">
                                 <i id="passwordToggleIcon" class="fa fa-eye"></i>
                             </button>
-                        </div> 
-                        <div class="login-check">
-                            <label class="checkbox">
-                                <input type="checkbox" name="checkbox" checked="">
-                                <i></i> Keep me logged in
-                            </label>
                         </div>
-                        <div id="error" style="color:red;"></div>
-                        <div class="bottom">
-                            <button type="submit" class="btn" name="login_button" id="login_button">Log In</button>
-                            <div style="margin-top:15px; text-align:center;">
-                                <span style="color:#fff;">Are you Student?</span><br>
-                                <button type="button" class="btn" onclick="openRegister()">
-                                    Register
-                                </button>
-                            </div>
-                    </form>
-                </div>
+                    </div>
+
+                    <div class="erp-form-options">
+                        <label class="erp-checkbox-label">
+                            <input type="checkbox" name="checkbox" checked>
+                            <span>Keep me logged in</span>
+                        </label>
+                        <a href="javascript:void(0);" onclick="openForgotPassword()" class="erp-forgot-link">Forgot password?</a>
+                    </div>
+
+                    <div id="error" style="display:none;"></div>
+
+                    <button type="submit" class="btn-erp-login" name="login_button" id="login_button">
+                        <i class="fa fa-sign-in" style="margin-right: 4px;"></i> Sign In
+                    </button>
+
+                    <div class="erp-login-divider">
+                        <span>Student Access</span>
+                    </div>
+
+                    <button type="button" class="btn-erp-register" onclick="openRegister()">
+                        <i class="fa fa-graduation-cap"></i> New Student Registration
+                    </button>
+                </form>
             </div>
-            <div id="registerPopup" class="overlay">
-                <div class="popup">
+        </div>
 
-                    <span style="float:right; cursor:pointer;" onclick="closePopup()">❌</span>
+        <!-- Institutional Footer -->
+        <div class="erp-login-footer">
+            <span>&copy; <?php echo date('Y'); ?> Thakur College of Engineering & Technology. All rights reserved.</span>
+            <a href="https://www.tcetmumbai.in" target="_blank">Official Website</a>
+        </div>
+    </div>
 
-                    <iframe src="student_register.php" width="100%" height="500px" style="border:none;"></iframe>
+    <!-- Student Registration Modal Popup -->
+    <div id="registerPopup" class="overlay">
+        <div class="popup">
+            <span class="close-btn" onclick="closePopup()" title="Close">&times;</span>
+            <iframe src="student_register.php" style="width:100%; height:100%; border:none;"></iframe>
+        </div>
+    </div>
 
-                </div>
-            </div>
-            <div id="forgotPasswordPopup" class="overlay">
-                <div class="popup">
-
-                    <span style="float:right; cursor:pointer;" onclick="closeForgotPasswordPopup()">❌</span>
-
-                    <iframe src="forgot_password.php" width="100%" height="500px" style="border:none;"></iframe>
-
-                </div>
-            </div>
-                <div style="text-align:center; margin-top:10px;">
-                <button type="button" class="btn" onclick="openForgotPassword()" style="color:white; background-color:transparent; border:1px solid white; padding:8px 16px; border-radius:4px; cursor:pointer;">Forgot Password?</button>
-            </div>
-            <div class="copyright">
-                <p>© 2019. All rights reserved | Designed by <a href="tcetmumbai.in"
-                        target="_blank">/a></p>
-            </div>
+    <!-- Forgot Password Modal Popup -->
+    <div id="forgotPasswordPopup" class="overlay">
+        <div class="popup">
+            <span class="close-btn" onclick="closeForgotPasswordPopup()" title="Close">&times;</span>
+            <iframe src="forgot_password.php" style="width:100%; height:100%; border:none;"></iframe>
         </div>
     </div>
 
 </body>
-
 </html>
+
 

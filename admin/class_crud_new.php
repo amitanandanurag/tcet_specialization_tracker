@@ -100,9 +100,27 @@ $customMasters = array(
         'label' => 'Is Exclusive',
         'type' => 'boolean_select',
         'default' => '0'
+      ),
+      array(
+        'name' => 'offering_program',
+        'label' => 'Offering Program',
+        'type' => 'text',
+        'default' => ''
+      ),
+      array(
+        'name' => 'honors_eligibility',
+        'label' => 'Honors Eligibility',
+        'type' => 'text',
+        'default' => ''
+      ),
+      array(
+        'name' => 'minor_eligibility',
+        'label' => 'Minor Eligibility',
+        'type' => 'text',
+        'default' => ''
       )
     ),
-    'displayFields' => array('specialization_name', 'min_cgpa', 'kt_allowed', 'sem_from', 'sem_to', 'is_exclusive')
+    'displayFields' => array('specialization_name', 'offering_program', 'sem_from', 'sem_to', 'honors_eligibility', 'minor_eligibility')
   ),
   'specialization_subject' => array(
     'title' => 'Specialization Subject',
@@ -114,7 +132,7 @@ $customMasters = array(
         'label' => 'Subject Code',
         'type' => 'text',
         'required' => true,
-        'unique' => true
+        'unique' => false
       ),
       array(
         'name' => 'subject_name',
@@ -124,18 +142,21 @@ $customMasters = array(
         'unique' => false
       ),
       array(
+        'name' => 'department_id',
+        'label' => 'Department',
+        'type' => 'select',
+        'lookupTable' => 'st_department_master',
+        'lookupKey' => 'department_id',
+        'lookupLabel' => 'department_name',
+        'required' => false
+      ),
+      array(
         'name' => 'semester_id',
         'label' => 'Semester',
         'type' => 'select',
         'lookupTable' => 'st_semester_master',
         'lookupKey' => 'semester_id',
         'lookupLabel' => 'semester_name',
-        'required' => true
-      ),
-      array(
-        'name' => 'subject_type',
-        'label' => 'Subject Type',
-        'type' => 'text',
         'required' => true
       ),
       array(
@@ -148,18 +169,6 @@ $customMasters = array(
         'required' => true
       ),
       array(
-        'name' => 'is_open_elective',
-        'label' => 'Is Open Elective?',
-        'type' => 'boolean_select',
-        'required' => true
-      ),
-      array(
-        'name' => 'is_research_component',
-        'label' => 'Is Research Component?',
-        'type' => 'boolean_select',
-        'required' => true
-      ),
-      array(
         'name' => 'academic_year_id',
         'label' => 'Academic Year',
         'type' => 'select',
@@ -169,16 +178,19 @@ $customMasters = array(
         'required' => false
       ),
       array(
-        'name' => 'batch_id',
-        'label' => 'Batch',
-        'type' => 'select',
-        'lookupTable' => 'st_batch_master',
-        'lookupKey' => 'batch_id',
-        'lookupLabel' => 'batch_name',
+        'name' => 'honors_eligibility',
+        'label' => 'Honors Eligibility',
+        'type' => 'text',
+        'required' => false
+      ),
+      array(
+        'name' => 'minor_eligibility',
+        'label' => 'Minor Eligibility',
+        'type' => 'text',
         'required' => false
       )
     ),
-    'displayFields' => array('subject_code', 'subject_name', 'semester_id', 'subject_type', 'specialization_id', 'is_open_elective', 'is_research_component', 'academic_year_id', 'batch_id')
+    'displayFields' => array('subject_code', 'subject_name', 'department_id', 'semester_id', 'specialization_id', 'academic_year_id')
   ),
   'minor_course' => array(
     'title' => 'Minor Course',
@@ -411,50 +423,43 @@ function render_custom_field_control($prefix, $field, $value, $lookupMaps)
   $fieldType = $field['type'];
   $requiredAttr = !empty($field['required']) ? ' required' : '';
   $currentValue = (string) $value;
+  $isFullWidth = ($fieldType === 'textarea' || !empty($field['full_width']));
+  $colClass = $isFullWidth ? 'col-xs-12 col-sm-12 col-md-12 col-full' : 'col-xs-12 col-sm-6 col-md-6';
 
   ob_start();
-  if ($fieldType === 'textarea') {
-    ?>
-    <div class="form-group">
-      <label for="<?php echo htmlspecialchars($fieldId); ?>" class="control-label"><?php echo htmlspecialchars($fieldLabel); ?></label>
-      <textarea name="<?php echo htmlspecialchars($fieldName); ?>" id="<?php echo htmlspecialchars($fieldId); ?>" class="form-control"<?php echo $requiredAttr; ?>><?php echo htmlspecialchars($currentValue); ?></textarea>
+  ?>
+  <div class="<?php echo $colClass; ?> erp-field-col">
+    <div class="form-group erp-form-group">
+      <label for="<?php echo htmlspecialchars($fieldId); ?>" class="control-label">
+        <?php echo htmlspecialchars($fieldLabel); ?>
+        <?php if (!empty($field['required'])) { ?><span class="text-danger">*</span><?php } ?>
+      </label>
+      <?php if ($fieldType === 'textarea') { ?>
+        <textarea name="<?php echo htmlspecialchars($fieldName); ?>" id="<?php echo htmlspecialchars($fieldId); ?>" class="form-control"<?php echo $requiredAttr; ?>><?php echo htmlspecialchars($currentValue); ?></textarea>
+      <?php } elseif ($fieldType === 'select') { 
+        $lookupTable = $field['lookupTable'];
+        $options = isset($lookupMaps[$lookupTable]) ? $lookupMaps[$lookupTable] : array();
+      ?>
+        <select name="<?php echo htmlspecialchars($fieldName); ?>" id="<?php echo htmlspecialchars($fieldId); ?>" class="form-control"<?php echo $requiredAttr; ?>>
+          <option value="">Select <?php echo htmlspecialchars($fieldLabel); ?></option>
+          <?php foreach ($options as $optionValue => $optionLabel) { ?>
+            <option value="<?php echo htmlspecialchars($optionValue); ?>" <?php echo ((string) $optionValue === $currentValue) ? 'selected' : ''; ?>><?php echo htmlspecialchars($optionLabel); ?></option>
+          <?php } ?>
+        </select>
+      <?php } elseif ($fieldType === 'boolean_select') { ?>
+        <select name="<?php echo htmlspecialchars($fieldName); ?>" id="<?php echo htmlspecialchars($fieldId); ?>" class="form-control"<?php echo $requiredAttr; ?>>
+          <option value="0" <?php echo ($currentValue === '0' || $currentValue === '') ? 'selected' : ''; ?>>No</option>
+          <option value="1" <?php echo ($currentValue === '1') ? 'selected' : ''; ?>>Yes</option>
+        </select>
+      <?php } else { 
+        $stepAttr = isset($field['step']) ? ' step="' . htmlspecialchars((string) $field['step']) . '"' : '';
+        $inputType = ($fieldType === 'number') ? 'number' : 'text';
+      ?>
+        <input type="<?php echo $inputType; ?>" name="<?php echo htmlspecialchars($fieldName); ?>" id="<?php echo htmlspecialchars($fieldId); ?>" class="form-control" value="<?php echo htmlspecialchars($currentValue); ?>"<?php echo $requiredAttr . $stepAttr; ?>>
+      <?php } ?>
     </div>
-    <?php
-  } elseif ($fieldType === 'select') {
-    $lookupTable = $field['lookupTable'];
-    $options = isset($lookupMaps[$lookupTable]) ? $lookupMaps[$lookupTable] : array();
-    ?>
-    <div class="form-group">
-      <label for="<?php echo htmlspecialchars($fieldId); ?>" class="control-label"><?php echo htmlspecialchars($fieldLabel); ?></label>
-      <select name="<?php echo htmlspecialchars($fieldName); ?>" id="<?php echo htmlspecialchars($fieldId); ?>" class="form-control"<?php echo $requiredAttr; ?>>
-        <option value="">Select <?php echo htmlspecialchars($fieldLabel); ?></option>
-        <?php foreach ($options as $optionValue => $optionLabel) { ?>
-          <option value="<?php echo htmlspecialchars($optionValue); ?>" <?php echo ((string) $optionValue === $currentValue) ? 'selected' : ''; ?>><?php echo htmlspecialchars($optionLabel); ?></option>
-        <?php } ?>
-      </select>
-    </div>
-    <?php
-  } elseif ($fieldType === 'boolean_select') {
-    ?>
-    <div class="form-group">
-      <label for="<?php echo htmlspecialchars($fieldId); ?>" class="control-label"><?php echo htmlspecialchars($fieldLabel); ?></label>
-      <select name="<?php echo htmlspecialchars($fieldName); ?>" id="<?php echo htmlspecialchars($fieldId); ?>" class="form-control"<?php echo $requiredAttr; ?>>
-        <option value="0" <?php echo ($currentValue === '0' || $currentValue === '') ? 'selected' : ''; ?>>No</option>
-        <option value="1" <?php echo ($currentValue === '1') ? 'selected' : ''; ?>>Yes</option>
-      </select>
-    </div>
-    <?php
-  } else {
-    $stepAttr = isset($field['step']) ? ' step="' . htmlspecialchars((string) $field['step']) . '"' : '';
-    $inputType = ($fieldType === 'number') ? 'number' : 'text';
-    ?>
-    <div class="form-group">
-      <label for="<?php echo htmlspecialchars($fieldId); ?>" class="control-label"><?php echo htmlspecialchars($fieldLabel); ?></label>
-      <input type="<?php echo $inputType; ?>" name="<?php echo htmlspecialchars($fieldName); ?>" id="<?php echo htmlspecialchars($fieldId); ?>" class="form-control" value="<?php echo htmlspecialchars($currentValue); ?>"<?php echo $requiredAttr . $stepAttr; ?>>
-    </div>
-    <?php
-  }
-
+  </div>
+  <?php
   return ob_get_clean();
 }
 
@@ -731,7 +736,22 @@ ensure_menu_metadata_columns($db_handle->conn);
 
 $availableMenuIcons = get_menu_icon_options();
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['master_action'], $_POST['master_type'])) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+  if (!DBController::validateCsrfToken()) {
+    $alertType = 'danger';
+    $alertMessage = 'Security validation failed (CSRF token expired). Please refresh the page.';
+    if ($isAjaxRequest) {
+      if (ob_get_length()) {
+        ob_clean();
+      }
+      header('Content-Type: application/json');
+      echo json_encode(array('status' => 'error', 'message' => $alertMessage));
+      exit();
+    }
+  }
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['master_action'], $_POST['master_type']) && DBController::validateCsrfToken()) {
   $masterType = $_POST['master_type'];
   $action = $_POST['master_action'];
 
@@ -1497,6 +1517,7 @@ if ($isAjaxRequest && $ajaxResponse !== null) {
 normalize_sub_menu_sequence_by_menu($db_handle->conn);
 
 $customLookupMaps = array(
+  'st_department_master' => get_lookup_map($db_handle->conn, 'st_department_master', 'department_id', 'department_name'),
   'st_specialization_master' => get_lookup_map($db_handle->conn, 'st_specialization_master', 'specialization_id', 'specialization_name'),
   'st_minorcourse' => get_lookup_map($db_handle->conn, 'st_minorcourse', 'course_id', 'course_name'),
   'st_semester_master' => get_lookup_map($db_handle->conn, 'st_semester_master', 'semester_id', 'semester_name'),
@@ -1578,27 +1599,32 @@ if ($subMenuResult) {
 ?>
 
 <div class="content-wrapper">
-  <section class="content-header">
-    <ol class="breadcrumb">
-      <li><a href="index.php"><i class="fa fa-dashboard"></i> Home</a></li>
-      <li class="active">Master CRUD</li>
-    </ol>
-  </section>
+  <!-- Institutional ERP Page Header -->
+  <div class="erp-page-header">
+    <div class="erp-page-title-wrap">
+      <h1 class="erp-page-title">Master Data Configuration</h1>
+      <p class="erp-page-subtitle">Configure institutional master records, degree specializations, curriculum subjects, and navigation structure</p>
+    </div>
+    <div class="erp-breadcrumb">
+      <a href="index.php"><i class="fa fa-dashboard"></i> Home</a>
+      <span class="sep">/</span>
+      <span class="active-item">Master Data</span>
+    </div>
+  </div>
 
-  <section class="content" style="margin-top: 20px;">
-    <div class="box" style="padding: 10px;">
-      <h3><i class="fa fa-cogs"></i> Master Data</h3>
+  <section class="content erp-master-container" style="padding-top: 0;">
+    <?php if ($alertMessage !== '') { ?>
+      <div class="alert alert-<?php echo htmlspecialchars($alertType); ?> alert-dismissible" style="border-radius: var(--erp-radius-sm); margin-bottom: 16px;">
+        <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+        <?php echo htmlspecialchars($alertMessage); ?>
+      </div>
+    <?php } ?>
 
-      <?php if ($alertMessage !== '') { ?>
-        <div class="alert alert-<?php echo htmlspecialchars($alertType); ?> alert-dismissible" style="margin-top: 15px;">
-          <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
-          <?php echo htmlspecialchars($alertMessage); ?>
-        </div>
-      <?php } ?>
+    <div id="ajax-status-message" style="margin-bottom: 16px;"></div>
 
-      <div id="ajax-status-message" style="margin-top: 15px;"></div>
-
-      <ul class="nav nav-tabs" style="margin-top: 20px;">
+    <!-- Master Data Navigation Tabs Container -->
+    <div class="erp-tabs-wrapper">
+      <ul class="nav nav-tabs erp-master-tabs" role="tablist">
         <li class="<?php echo ($activeTab === 'class-list') ? 'active' : ''; ?>"><a data-toggle="tab" href="#class-list">Class</a></li>
         <li class="<?php echo ($activeTab === 'section-list') ? 'active' : ''; ?>"><a data-toggle="tab" href="#section-list">Section</a></li>
         <li class="<?php echo ($activeTab === 'department-list') ? 'active' : ''; ?>"><a data-toggle="tab" href="#department-list">Departments</a></li>
@@ -1611,45 +1637,57 @@ if ($subMenuResult) {
         <li class="<?php echo ($activeTab === 'menu-list') ? 'active' : ''; ?>"><a data-toggle="tab" href="#menu-list">Menu</a></li>
         <li class="<?php echo ($activeTab === 'sub-menu-list') ? 'active' : ''; ?>"><a data-toggle="tab" href="#sub-menu-list">Sub Menu</a></li>
       </ul>
+    </div>
 
-      <div class="tab-content" style="padding-top: 20px;">
-        <?php foreach ($masters as $type => $meta) {
-          $listTabId = $type . '-list';
-          $addTabId = $type . '-add';
-          $title = $meta['title'];
-          $rows = $masterRows[$type];
-        ?>
+    <div class="tab-content" style="padding-top: 10px;">
+      <?php foreach ($masters as $type => $meta) {
+        $listTabId = $type . '-list';
+        $addTabId = $type . '-add';
+        $title = $meta['title'];
+        $rows = $masterRows[$type];
+      ?>
 
-          <div id="<?php echo $listTabId; ?>" class="tab-pane fade <?php echo ($activeTab === $listTabId) ? 'in active' : ''; ?>">
-            <div class="clearfix" style="margin-bottom: 15px;">
-              <button
-                type="button"
-                class="btn btn-success pull-right open-add-modal"
-                data-toggle="modal"
-                data-target="#addMasterModal"
-                data-master-type="<?php echo htmlspecialchars($type); ?>"
-                data-master-title="<?php echo htmlspecialchars($title); ?>"
-              >
-                <i class="fa fa-plus"></i>
-              </button>
+        <div id="<?php echo $listTabId; ?>" class="tab-pane fade <?php echo ($activeTab === $listTabId) ? 'in active' : ''; ?>">
+          <div class="erp-table-card">
+            <div class="erp-card-header">
+              <div class="erp-card-title-wrap" style="display: flex; align-items: baseline; gap: 8px;">
+                <h3 class="erp-card-title"><?php echo htmlspecialchars($title); ?> Master Records</h3>
+                <span class="text-muted" style="font-size: 13px; font-weight: 400;">(<?php echo count($rows); ?> records)</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <div class="erp-search-box hidden-xs">
+                  <i class="fa fa-search search-icon"></i>
+                  <input type="text" class="form-control erp-live-search" placeholder="Filter <?php echo htmlspecialchars($title); ?>..." data-target="#table-<?php echo htmlspecialchars($type); ?>">
+                </div>
+                <button
+                  type="button"
+                  class="btn btn-erp-primary open-add-modal"
+                  data-toggle="modal"
+                  data-target="#addMasterModal"
+                  data-master-type="<?php echo htmlspecialchars($type); ?>"
+                  data-master-title="<?php echo htmlspecialchars($title); ?>"
+                >
+                  Add <?php echo htmlspecialchars($title); ?>
+                </button>
+              </div>
             </div>
-            <div class="table-responsive">
-              <table class="table table-bordered table-striped text-center">
+            <div class="table-responsive" style="padding: 0;">
+              <table id="table-<?php echo htmlspecialchars($type); ?>" class="table erp-table table-bordered table-striped text-center">
                 <thead>
                   <tr>
-                    <th style="width: 80px;">No.</th>
+                    <th style="width: 70px;">No.</th>
                     <th><?php echo htmlspecialchars($title); ?> Name</th>
                     <?php if ($type === 'menu') { ?>
-                    <th>Icon</th>
+                    <th style="width: 120px;">Icon</th>
                     <?php } ?>
-                    <th style="width: 100px;">Edit</th>
-                    <th style="width: 100px;">Delete</th>
+                    <th style="width: 90px;">Edit</th>
+                    <th style="width: 90px;">Delete</th>
                   </tr>
                 </thead>
                 <tbody>
                 <?php if (empty($rows)) { ?>
                   <tr>
-                    <td colspan="<?php echo ($type === 'menu') ? '5' : '4'; ?>">No <?php echo htmlspecialchars(strtolower($title)); ?> found.</td>
+                    <td colspan="<?php echo ($type === 'menu') ? '5' : '4'; ?>" class="text-muted" style="padding: 24px;">No <?php echo htmlspecialchars(strtolower($title)); ?> records found.</td>
                   </tr>
                 <?php } else {
                   $serialNumber = 1;
@@ -1660,14 +1698,14 @@ if ($subMenuResult) {
                 ?>
                   <tr>
                     <td><?php echo $serialNumber; ?></td>
-                    <td><?php echo htmlspecialchars($name); ?></td>
+                    <td class="text-left font-weight-bold" style="padding-left: 16px;"><strong><?php echo htmlspecialchars($name); ?></strong></td>
                     <?php if ($type === 'menu') { ?>
                     <td><i class="<?php echo htmlspecialchars($menuIconValue); ?>" aria-hidden="true"></i></td>
                     <?php } ?>
                     <td>
                       <button
                         type="button"
-                        class="btn btn-sm btn-primary open-edit-modal"
+                        class="btn-erp-icon edit-btn open-edit-modal"
                         data-toggle="modal"
                         data-target="#editMasterModal"
                         data-master-type="<?php echo htmlspecialchars($type); ?>"
@@ -1675,6 +1713,7 @@ if ($subMenuResult) {
                         data-master-name="<?php echo htmlspecialchars($name, ENT_QUOTES); ?>"
                         data-menu-icon="<?php echo htmlspecialchars($menuIconValue, ENT_QUOTES); ?>"
                         data-master-title="<?php echo htmlspecialchars($title, ENT_QUOTES); ?>"
+                        title="Edit Record"
                       >
                         <i class="fa fa-pencil"></i>
                       </button>
@@ -1684,7 +1723,7 @@ if ($subMenuResult) {
                         <input type="hidden" name="master_action" value="delete">
                         <input type="hidden" name="master_type" value="<?php echo htmlspecialchars($type, ENT_QUOTES); ?>">
                         <input type="hidden" name="master_id" value="<?php echo $id; ?>">
-                        <button type="submit" class="btn btn-sm btn-danger">
+                        <button type="submit" class="btn-erp-icon del-btn" title="Delete Record">
                           <i class="fa fa-trash"></i>
                         </button>
                       </form>
@@ -1699,63 +1738,89 @@ if ($subMenuResult) {
               </table>
             </div>
           </div>
+        </div>
 
-        <?php } ?>
+      <?php } ?>
 
-        <?php foreach ($customMasters as $type => $meta) {
-          $listTabId = $type . '-list';
-          $title = $meta['title'];
-          $rows = $customMasterRows[$type];
-          $formFields = $meta['formFields'];
-          $isEditingThisType = ($customEditType === $type && $customEditId > 0 && !empty($customEditRow));
-        ?>
-          <div id="<?php echo $listTabId; ?>" class="tab-pane fade <?php echo ($activeTab === $listTabId) ? 'in active' : ''; ?>">
-            <?php if ($isEditingThisType) { ?>
-              <div class="box box-warning" style="padding: 10px; margin-bottom: 20px;">
-                <div class="box-header with-border">
-                  <h4 class="box-title">Edit <?php echo htmlspecialchars($title); ?></h4>
+      <?php foreach ($customMasters as $type => $meta) {
+        $listTabId = $type . '-list';
+        $title = $meta['title'];
+        $rows = $customMasterRows[$type];
+        $formFields = $meta['formFields'];
+        $isEditingThisType = ($customEditType === $type && $customEditId > 0 && !empty($customEditRow));
+      ?>
+        <div id="<?php echo $listTabId; ?>" class="tab-pane fade <?php echo ($activeTab === $listTabId) ? 'in active' : ''; ?>">
+          <?php if ($isEditingThisType) { ?>
+            <!-- EDIT FORM CARD -->
+            <div class="erp-form-card">
+              <div class="erp-card-header">
+                <div class="erp-card-title-wrap">
+                  <h4 class="erp-card-title">Edit <?php echo htmlspecialchars($title); ?></h4>
+                  <p class="erp-card-subtitle">Update <?php echo htmlspecialchars(strtolower($title)); ?> configuration details</p>
                 </div>
-                <form method="POST" class="form-horizontal" style="margin-top: 15px;">
+              </div>
+              <div class="erp-card-body">
+                <form method="POST">
                   <input type="hidden" name="custom_master_action" value="update">
                   <input type="hidden" name="custom_master_type" value="<?php echo htmlspecialchars($type, ENT_QUOTES); ?>">
                   <input type="hidden" name="custom_master_id" value="<?php echo $customEditId; ?>">
-                  <?php foreach ($formFields as $field) {
-                    echo render_custom_field_control('edit_' . $type, $field, $customEditRow[$field['name']] ?? '', $customLookupMaps);
-                  } ?>
-                  <div class="form-group">
-                    <div class="col-sm-offset-2 col-sm-10" style="padding-left: 0;">
-                      <button type="submit" class="btn btn-primary">Update</button>
-                      <a href="class_crud_new.php?tab=<?php echo urlencode($listTabId); ?>" class="btn btn-default">Cancel</a>
-                    </div>
+                  <div class="row erp-form-grid">
+                    <?php foreach ($formFields as $field) {
+                      echo render_custom_field_control('edit_' . $type, $field, $customEditRow[$field['name']] ?? '', $customLookupMaps);
+                    } ?>
+                  </div>
+                  <div class="erp-form-actions">
+                    <a href="class_crud_new.php?tab=<?php echo urlencode($listTabId); ?>" class="btn btn-erp-secondary">Cancel</a>
+                    <button type="submit" class="btn btn-erp-primary">Update <?php echo htmlspecialchars($title); ?></button>
                   </div>
                 </form>
               </div>
-            <?php } ?>
+            </div>
+          <?php } ?>
 
-            <div class="box box-default" style="padding: 10px; margin-bottom: 20px;">
-              <div class="box-header with-border">
-                <h4 class="box-title">Add <?php echo htmlspecialchars($title); ?></h4>
+          <!-- ADD FORM CARD -->
+          <div class="erp-form-card">
+            <div class="erp-card-header">
+              <div class="erp-card-title-wrap">
+                <h4 class="erp-card-title">Add <?php echo htmlspecialchars($title); ?></h4>
+                <p class="erp-card-subtitle">Enter details below to register a new <?php echo htmlspecialchars(strtolower($title)); ?> offering</p>
               </div>
-              <form method="POST" class="form-horizontal" style="margin-top: 15px;">
+            </div>
+            <div class="erp-card-body">
+              <form method="POST">
                 <input type="hidden" name="custom_master_action" value="add">
                 <input type="hidden" name="custom_master_type" value="<?php echo htmlspecialchars($type, ENT_QUOTES); ?>">
-                <?php foreach ($formFields as $field) {
-                  $defaultValue = isset($field['default']) ? $field['default'] : '';
-                  echo render_custom_field_control('add_' . $type, $field, $defaultValue, $customLookupMaps);
-                } ?>
-                <div class="form-group">
-                  <div class="col-sm-offset-2 col-sm-10" style="padding-left: 0;">
-                    <button type="submit" class="btn btn-success">Save</button>
-                  </div>
+                <div class="row erp-form-grid">
+                  <?php foreach ($formFields as $field) {
+                    $defaultValue = isset($field['default']) ? $field['default'] : '';
+                    echo render_custom_field_control('add_' . $type, $field, $defaultValue, $customLookupMaps);
+                  } ?>
+                </div>
+                <div class="erp-form-actions">
+                  <button type="reset" class="btn btn-erp-secondary">Reset</button>
+                  <button type="submit" class="btn btn-erp-primary">Save <?php echo htmlspecialchars($title); ?></button>
                 </div>
               </form>
             </div>
+          </div>
 
-            <div class="table-responsive">
-              <table class="table table-bordered table-striped text-center">
+          <!-- LISTING TABLE CARD -->
+          <div class="erp-table-card">
+            <div class="erp-card-header">
+              <div class="erp-card-title-wrap" style="display: flex; align-items: baseline; gap: 8px;">
+                <h3 class="erp-card-title"><?php echo htmlspecialchars($title); ?> Directory</h3>
+                <span class="text-muted" style="font-size: 13px; font-weight: 400;">(<?php echo count($rows); ?> records)</span>
+              </div>
+              <div class="erp-search-box">
+                <i class="fa fa-search search-icon"></i>
+                <input type="text" class="form-control erp-live-search" placeholder="Filter <?php echo htmlspecialchars($title); ?>..." data-target="#table-<?php echo htmlspecialchars($type); ?>">
+              </div>
+            </div>
+            <div class="table-responsive" style="padding: 0;">
+              <table id="table-<?php echo htmlspecialchars($type); ?>" class="table erp-table table-bordered table-striped text-center">
                 <thead>
                   <tr>
-                    <th style="width: 80px;">No.</th>
+                    <th style="width: 70px;">No.</th>
                     <?php foreach ($meta['displayFields'] as $displayField) {
                       $headerLabel = '';
                       foreach ($formFields as $field) {
@@ -1770,14 +1835,14 @@ if ($subMenuResult) {
                     ?>
                       <th><?php echo htmlspecialchars($headerLabel); ?></th>
                     <?php } ?>
-                    <th style="width: 100px;">Edit</th>
-                    <th style="width: 100px;">Delete</th>
+                    <th style="width: 90px;">Edit</th>
+                    <th style="width: 90px;">Delete</th>
                   </tr>
                 </thead>
                 <tbody>
                   <?php if (empty($rows)) { ?>
                     <tr>
-                      <td colspan="<?php echo count($meta['displayFields']) + 3; ?>">No <?php echo htmlspecialchars(strtolower($title)); ?> found.</td>
+                      <td colspan="<?php echo count($meta['displayFields']) + 3; ?>" class="text-muted" style="padding: 24px;">No <?php echo htmlspecialchars(strtolower($title)); ?> records found.</td>
                     </tr>
                   <?php } else {
                     $serialNumber = 1;
@@ -1807,7 +1872,7 @@ if ($subMenuResult) {
                       <?php } ?>
                       <?php $rowLabel = trim(implode(' - ', array_filter($rowLabelParts, 'strlen'))); ?>
                       <td>
-                        <a href="class_crud_new.php?tab=<?php echo urlencode($listTabId); ?>&custom_edit_type=<?php echo urlencode($type); ?>&custom_edit_id=<?php echo $customRowId; ?>" class="btn btn-sm btn-primary">
+                        <a href="class_crud_new.php?tab=<?php echo urlencode($listTabId); ?>&custom_edit_type=<?php echo urlencode($type); ?>&custom_edit_id=<?php echo $customRowId; ?>" class="btn-erp-icon edit-btn" title="Edit Record">
                           <i class="fa fa-pencil"></i>
                         </a>
                       </td>
@@ -1816,7 +1881,7 @@ if ($subMenuResult) {
                           <input type="hidden" name="custom_master_action" value="delete">
                           <input type="hidden" name="custom_master_type" value="<?php echo htmlspecialchars($type, ENT_QUOTES); ?>">
                           <input type="hidden" name="custom_master_id" value="<?php echo $customRowId; ?>">
-                          <button type="submit" class="btn btn-sm btn-danger">
+                          <button type="submit" class="btn-erp-icon del-btn" title="Delete Record">
                             <i class="fa fa-trash"></i>
                           </button>
                         </form>
@@ -1831,17 +1896,29 @@ if ($subMenuResult) {
               </table>
             </div>
           </div>
-        <?php } ?>
+        </div>
+      <?php } ?>
 
-        <div id="sub-menu-list" class="tab-pane fade <?php echo ($activeTab === 'sub-menu-list') ? 'in active' : ''; ?>">
-          <div class="clearfix" style="margin-bottom: 15px;">
-            <button type="button" class="btn btn-success pull-right" data-toggle="modal" data-target="#addSubMenuModal">
-              <i class="fa fa-plus"></i>
-            </button>
+      <div id="sub-menu-list" class="tab-pane fade <?php echo ($activeTab === 'sub-menu-list') ? 'in active' : ''; ?>">
+        <div class="erp-table-card">
+          <div class="erp-card-header">
+            <div class="erp-card-title-wrap" style="display: flex; align-items: baseline; gap: 8px;">
+              <h3 class="erp-card-title">Sub Menu Directory</h3>
+              <span class="text-muted" style="font-size: 13px; font-weight: 400;">(<?php echo count($subMenuRows); ?> records)</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <div class="erp-search-box hidden-xs">
+                <i class="fa fa-search search-icon"></i>
+                <input type="text" class="form-control erp-live-search" placeholder="Filter Sub Menus..." data-target="#table-sub-menu">
+              </div>
+              <button type="button" class="btn btn-erp-primary" data-toggle="modal" data-target="#addSubMenuModal">
+                Add Sub Menu
+              </button>
+            </div>
           </div>
 
-          <div class="table-responsive">
-            <table class="table table-bordered table-striped text-center">
+          <div class="table-responsive" style="padding: 0;">
+            <table id="table-sub-menu" class="table erp-table table-bordered table-striped text-center">
               <thead>
                 <tr>
                   <th style="width: 80px;">No.</th>
@@ -1947,8 +2024,8 @@ if ($subMenuResult) {
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-          <button type="submit" class="btn btn-success">Save</button>
+          <button type="button" class="btn btn-erp-secondary" data-dismiss="modal">Close</button>
+          <button type="submit" class="btn btn-erp-primary">Save</button>
         </div>
       </form>
     </div>
@@ -2004,8 +2081,8 @@ if ($subMenuResult) {
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-          <button type="submit" class="btn btn-success">Save</button>
+          <button type="button" class="btn btn-erp-secondary" data-dismiss="modal">Close</button>
+          <button type="submit" class="btn btn-erp-primary">Save</button>
         </div>
       </form>
     </div>
@@ -2067,8 +2144,8 @@ if ($subMenuResult) {
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-          <button type="submit" class="btn btn-primary">Update</button>
+          <button type="button" class="btn btn-erp-secondary" data-dismiss="modal">Close</button>
+          <button type="submit" class="btn btn-erp-primary">Update</button>
         </div>
       </form>
     </div>
@@ -2390,6 +2467,54 @@ if ($subMenuResult) {
 
     <?php if ($openAddSubMenuModal) { ?>
       $('#addSubMenuModal').modal('show');
+    <?php } ?>
+
+    // Live table search filtering across all master tabs
+    $(document).on('keyup', '.erp-live-search', function() {
+      var query = $(this).val().toLowerCase().trim();
+      var targetTable = $($(this).data('target'));
+      if (!targetTable.length) return;
+      targetTable.find('tbody tr').each(function() {
+        var rowText = $(this).text().toLowerCase();
+        if (rowText.indexOf(query) !== -1 || query === '') {
+          $(this).show();
+        } else {
+          $(this).hide();
+        }
+      });
+    });
+
+    // Update URL hash and auto-scroll tab bar when switching tabs
+    $('a[data-toggle="tab"]').on('shown.bs.tab', function(e) {
+      var hash = $(e.target).attr('href');
+      if (history.pushState) {
+        history.pushState(null, null, hash);
+      } else {
+        location.hash = hash;
+      }
+      var tabLi = $(e.target).closest('li');
+      var wrapper = $('.erp-tabs-wrapper');
+      if (tabLi.length && wrapper.length) {
+        var scrollLeft = tabLi.position().left + wrapper.scrollLeft() - (wrapper.width() / 2) + (tabLi.width() / 2);
+        wrapper.stop().animate({ scrollLeft: Math.max(0, scrollLeft) }, 200);
+      }
+    });
+
+    // Auto-scroll active tab into view on page load
+    setTimeout(function() {
+      var activeLi = $('.nav-tabs.erp-master-tabs > li.active');
+      var wrapper = $('.erp-tabs-wrapper');
+      if (activeLi.length && wrapper.length) {
+        var scrollLeft = activeLi.position().left + wrapper.scrollLeft() - (wrapper.width() / 2) + (activeLi.width() / 2);
+        wrapper.scrollLeft(Math.max(0, scrollLeft));
+      }
+    }, 100);
+
+    // On page load, if hash exists and no explicit GET tab, switch to that tab automatically
+    <?php if (!isset($_GET['tab']) && !isset($_GET['custom_edit_type'])) { ?>
+      if (window.location.hash) {
+        $('a[href="' + window.location.hash + '"]').tab('show');
+      }
     <?php } ?>
 
   });

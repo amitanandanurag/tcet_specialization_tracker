@@ -1,10 +1,10 @@
 <?php
-if (session_status() !== PHP_SESSION_ACTIVE) {
-	session_start();
+if (session_status() !== PHP_SESSION_ACTIVE && !headers_sent()) {
+	@session_start();
 }
-include_once("../database/db_connect.php");
+require_once __DIR__ . "/../../database/db_connect.php";
 if (isset($_SESSION['user_session'])) {
-} else {
+} elseif (php_sapi_name() !== 'cli') {
 	header("location: ../index.php");
 	exit;
 }
@@ -20,7 +20,10 @@ $userid = 0;
 $usertype = 0;
 $name = '';
 
-$sql = "SELECT l.login_id, l.username, l.user_id, u.role_id, u.user_name, r.role_name
+$loginDepartment = 0;
+$loginStudentId = 0;
+
+$sql = "SELECT l.login_id, l.username, l.user_id, u.role_id, u.user_name, u.department_id, u.student_id, r.role_name
 	    FROM st_login l
 	    LEFT JOIN st_user_master u ON u.user_id = l.user_id
 	    LEFT JOIN st_role_master r ON r.role_id = u.role_id
@@ -33,8 +36,12 @@ if ($result && $result->num_rows > 0) {
 	$userid = intval($row['user_id']);
 	$usertype = intval($row['role_id']);
 	$name = $row['username'];
+	$loginDepartment = intval($row['department_id'] ?? 0);
+	$loginStudentId = intval($row['student_id'] ?? 0);
+	$_SESSION['department_id'] = $loginDepartment;
+	$_SESSION['student_id'] = $loginStudentId;
 } else {
-	$fallbackSql = "SELECT l.login_id, l.username, l.user_id, u.role_id, u.user_name, r.role_name
+	$fallbackSql = "SELECT l.login_id, l.username, l.user_id, u.role_id, u.user_name, u.department_id, u.student_id, r.role_name
 				FROM st_login l
 				LEFT JOIN st_user_master u ON u.user_id = l.user_id
 				LEFT JOIN st_role_master r ON r.role_id = u.role_id
@@ -47,14 +54,20 @@ if ($result && $result->num_rows > 0) {
 		$userid = intval($row['user_id']);
 		$usertype = intval($row['role_id']);
 		$name = $row['username'];
+		$loginDepartment = intval($row['department_id'] ?? 0);
+		$loginStudentId = intval($row['student_id'] ?? 0);
 
 		$_SESSION['user_session'] = $row['login_id'];
 		$_SESSION['user_login_id'] = $row['login_id'];
 		$_SESSION['user_id'] = $row['user_id'];
 		$_SESSION['user_type'] = $row['role_id'];
+		$_SESSION['department_id'] = $loginDepartment;
+		$_SESSION['student_id'] = $loginStudentId;
 	} else {
-		header("location: ../index.php");
-		exit();
+		if (php_sapi_name() !== 'cli') {
+			header("location: ../index.php");
+			exit();
+		}
 	}
 }
 
@@ -72,8 +85,10 @@ if ($profileResult && ($profileRow = mysqli_fetch_assoc($profileResult))) {
 }
 
 if ($userid <= 0 || $usertype <= 0) {
-	header("location: ../index.php");
-	exit;
+	if (php_sapi_name() !== 'cli') {
+		header("location: ../index.php");
+		exit;
+	}
 }
 
 $sql = "SELECT role_name FROM st_role_master WHERE role_id = ? LIMIT 1";
@@ -88,7 +103,176 @@ if ($stmt) {
 	mysqli_stmt_close($stmt);
 }
 
-$dashboardRoute = ($usertype === 5) ? 'student_dashboard.php' : 'index.php';
+	$dashboardRoute = ($usertype === 5) ? 'student_dashboard.php' : 'index.php';
+
+	// =========================================================================
+	// CENTRALIZED RBAC ROUTE GUARD
+	// =========================================================================
+	if (!function_exists('checkUserRouteAuthorization')) {
+		function checkUserRouteAuthorization($conn, $userId, $roleId, $scriptName) {
+			if ($roleId === 1) {
+				return true;
+			}
+
+			// Privileged configuration routes strictly reserved for Super Admin
+			$superAdminOnly = array(
+				'class_crud_new.php', 'class_edit_new.php', 'class_edit_new_ajax.php',
+				'class_manage.php', 'class_manage_new.php', 'audit_log.php', 'allocation_master.php'
+			);
+			if (in_array($scriptName, $superAdminOnly, true)) {
+				return false;
+			}
+
+			$routeAliases = array(
+				'student-edit.php' => 'student-info.php',
+				'student-update.php' => 'student-info.php',
+				'student_process.php' => 'student_admission.php',
+				'student_view.php' => 'student-info.php',
+				'student_admission_view.php' => 'student_admission.php',
+				'student_delete.php' => 'student-info.php',
+				'student_bulk_delete.php' => 'student-info.php',
+				'student_info_ajax.php' => 'student-info.php',
+				'student_monitor_ajax.php' => 'student_monitor.php',
+				'student_concise_details_ajax.php' => 'student_concise_details.php',
+				'offline_marks_student_ajax.php' => 'offline_marks_entry.php',
+				'admin_edit.php' => 'admin_info.php',
+				'admin_process.php' => 'admin_register.php',
+				'admin_view.php' => 'admin_info.php',
+				'admin_delete.php' => 'admin_info.php',
+				'admin_info_ajax.php' => 'admin_info.php',
+				'coordinator_edit.php' => 'coordinator_info.php',
+				'coordinator_process.php' => 'coordinator_register.php',
+				'coordinator_view.php' => 'coordinator_info.php',
+				'coordinator_delete.php' => 'coordinator_info.php',
+				'coordinator_info_ajax.php' => 'coordinator_info.php',
+				'mentor_edit.php' => 'mentor_info.php',
+				'mentor_process.php' => 'mentor_register.php',
+				'mentor_view.php' => 'mentor_info.php',
+				'mentor_delete.php' => 'mentor_info.php',
+				'mentor_info_ajax.php' => 'mentor_info.php',
+				'class_edit_new.php' => 'class_crud_new.php',
+				'class_edit_new_ajax.php' => 'class_crud_new.php',
+				'class_manage.php' => 'class_crud_new.php',
+				'class_manage_new.php' => 'class_crud_new.php',
+				'user_register.php' => 'user-info.php',
+				'user_edit.php' => 'user-info.php',
+				'user_delete.php' => 'user-info.php',
+				'user_info_ajax.php' => 'user-info.php',
+				'user_process.php' => 'user-info.php',
+				'batch_promotion.php' => 'student_monitor.php',
+				'export_service.php' => 'student-info.php'
+			);
+
+			$checkScript = $routeAliases[$scriptName] ?? $scriptName;
+			if (in_array($checkScript, $superAdminOnly, true)) {
+				return false;
+			}
+
+			// Universal pages for authenticated users
+			$universal = array(
+				'index.php', 'dashboard.php', 'student_dashboard.php',
+				'profile.php', 'setting_profile.php', 'change_password.php',
+				'logout.php'
+			);
+
+			// Branch Info is accessible to Super Admin (1), Admin (2), and HOD (3)
+			if ($scriptName === 'branch_info.php') {
+				return in_array($roleId, array(1, 2, 3), true);
+			}
+
+			if (in_array($scriptName, $universal, true)) {
+				// Student (5) must use student_dashboard.php, not index.php or dashboard.php
+				if ($roleId === 5 && ($scriptName === 'index.php' || $scriptName === 'dashboard.php')) {
+					return false;
+				}
+				// Non-student roles must not access student_dashboard.php
+				if ($roleId !== 5 && $scriptName === 'student_dashboard.php') {
+					return false;
+				}
+				return true;
+			}
+
+			// Student (Role 5) is strictly restricted to self-service pages
+			if ($roleId === 5) {
+				$studentAllowed = array('student_admission_view.php', 'student.php', 'nptel_certificate.php', 'student_admission.php');
+				return in_array($scriptName, $studentAllowed, true);
+			}
+
+			// Mentor (Role 4) must not access admin/coordinator management or student admission creation
+			if ($roleId === 4) {
+				$mentorBlocked = array(
+					'admin_register.php', 'admin_info.php', 'coordinator_register.php',
+					'coordinator_info.php', 'coordinator_allocation.php', 'student_admission.php',
+					'batch_promotion.php'
+				);
+				if (in_array($scriptName, $mentorBlocked, true) || in_array($checkScript, $mentorBlocked, true)) {
+					return false;
+				}
+				// Allow mentor_assignment.php for self-assignment view
+				if ($scriptName === 'mentor_assignment.php') {
+					return true;
+				}
+			}
+
+			$sql = "SELECT 1 
+					FROM st_menu_allocation_master a
+					JOIN st_sub_menu_master sm ON a.sub_menu_id = sm.sub_menu_id
+					WHERE (a.role_id = ? OR a.user_id = ?)
+					  AND (sm.sub_menu_route LIKE ? OR sm.sub_menu_route LIKE ?)
+					LIMIT 1";
+			$stmt = mysqli_prepare($conn, $sql);
+			if ($stmt) {
+				$pattern1 = $checkScript . '%';
+				$pattern2 = '%' . $checkScript . '%';
+				mysqli_stmt_bind_param($stmt, 'iiss', $roleId, $userId, $pattern1, $pattern2);
+				mysqli_stmt_execute($stmt);
+				$res = mysqli_stmt_get_result($stmt);
+				$hasPerm = ($res && mysqli_num_rows($res) > 0);
+				mysqli_stmt_close($stmt);
+				return $hasPerm;
+			}
+			return false;
+		}
+	}
+
+	$currentScript = basename($_SERVER['SCRIPT_NAME'] ?? $_SERVER['PHP_SELF'] ?? '');
+	if (!checkUserRouteAuthorization($db_handle->conn, $userid, $usertype, $currentScript)) {
+		if (method_exists($db_handle, 'writeAuditLog')) {
+			$db_handle->writeAuditLog($userid, 'UNAUTHORIZED_ACCESS_ATTEMPT', null, null, "User role {$usertype} attempted to access restricted route: {$currentScript}");
+		}
+		if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
+			http_response_code(403);
+			header('Content-Type: application/json');
+			echo json_encode(array('status' => 'error', 'message' => 'Access Denied: You do not have permission to access this resource.'));
+			exit;
+		}
+		echo '<!DOCTYPE html>
+		<html lang="en">
+		<head>
+			<meta charset="utf-8">
+			<title>403 Access Denied - TCET ERP</title>
+			<link rel="stylesheet" href="bootstrap/css/bootstrap.min.css">
+			<link rel="stylesheet" href="css/erp-theme.css">
+			<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.5.0/css/font-awesome.min.css">
+			<style>
+				body { background: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+				.denied-card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 40px; max-width: 480px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+				.denied-icon { font-size: 48px; color: #dc2626; margin-bottom: 16px; }
+				.denied-title { font-size: 20px; font-weight: 700; color: #0f172a; margin-bottom: 8px; }
+				.denied-text { font-size: 13px; color: #64748b; margin-bottom: 24px; line-height: 1.5; }
+			</style>
+		</head>
+		<body>
+			<div class="denied-card">
+				<div class="denied-icon"><i class="fa fa-shield"></i></div>
+				<h1 class="denied-title">Access Restricted</h1>
+				<p class="denied-text">You do not have administrative permission to access <strong>' . htmlspecialchars($currentScript) . '</strong>. If you believe this is an error, please contact your ERP administrator.</p>
+				<a href="' . htmlspecialchars($dashboardRoute) . '" class="btn-erp-primary"><i class="fa fa-arrow-left"></i> Return to Dashboard</a>
+			</div>
+		</body>
+		</html>';
+		exit;
+	}
 ?>
 <!DOCTYPE html>
 <html>
@@ -121,10 +305,22 @@ $dashboardRoute = ($usertype === 5) ? 'student_dashboard.php' : 'index.php';
 	<link rel="stylesheet" href="plugins/daterangepicker/daterangepicker.css">
 	<!-- bootstrap wysihtml5 - text editor -->
 	<link rel="stylesheet" href="plugins/bootstrap-wysihtml5/bootstrap3-wysihtml5.min.css">
+	<!-- Institutional ERP Design System -->
+	<link rel="stylesheet" href="css/erp-theme.css">
 	<script
 		src="https://code.jquery.com/jquery-3.3.1.js"
 		integrity="sha256-2Kok7MbOyxpgUVvAk/HJ2jigOSYS2auK4Pfzbm7uH60="
 		crossorigin="anonymous"></script>
+	<meta name="csrf-token" content="<?php echo DBController::getCsrfToken(); ?>">
+	<script>
+		if (window.jQuery) {
+			$.ajaxSetup({
+				headers: {
+					'X-CSRF-Token': '<?php echo DBController::getCsrfToken(); ?>'
+				}
+			});
+		}
+	</script>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.2/FileSaver.min.js"></script>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -213,14 +409,6 @@ $dashboardRoute = ($usertype === 5) ? 'student_dashboard.php' : 'index.php';
 			.main-content-responsive .content-header h1 {
 				font-size: 20px;
 			}
-
-			.main-content-responsive .main-header .logo {
-				width: 160px;
-			}
-
-			.main-content-responsive .main-header .navbar {
-				margin-left: 160px;
-			}
 		}
 	</style>
 </head>
@@ -230,16 +418,21 @@ $dashboardRoute = ($usertype === 5) ? 'student_dashboard.php' : 'index.php';
 
 		<header class="main-header">
 			<!-- Logo -->
-			<a href="<?php echo $dashboardRoute; ?>" class="logo">
-				<!-- mini logo for sidebar mini 50x50 pixels -->
-				<span class="logo-mini"><img src="images/booklogo.webp" class="py-2" height="40px" /></span>
-				<!-- logo for regular state and mobile devices -->
-				<span class="logo-lg"><img src="images/booklogo.webp" class="py-2" height="40px" /> <small>TCET</small></span>
+			<a href="<?php echo $dashboardRoute; ?>" class="logo" style="text-decoration: none;">
+				<!-- mini logo for sidebar mini 50x50 pixels: ONLY logo image -->
+				<span class="logo-mini">
+					<img src="images/tcet_logo.png" height="32" width="32" style="border-radius: 4px; background: #ffffff; padding: 2px; object-fit: contain;" alt="TCET" />
+				</span>
+				<!-- logo for regular state and expanded sidebar -->
+				<span class="logo-lg">
+					<img src="images/tcet_logo.png" height="32" width="32" style="border-radius: 4px; background: #ffffff; padding: 2px; object-fit: contain;" alt="TCET" />
+					<span style="font-weight: 700; font-size: 15px; letter-spacing: 0.5px;">TCET <span style="font-weight: 400; opacity: 0.85; font-size: 13px;">ERP</span></span>
+				</span>
 			</a>
-			<!-- Header Navbar: style can be found in header.less -->
-			<nav class="navbar navbar-static-top">
+			<!-- Header Navbar -->
+			<nav class="navbar navbar-static-top" role="navigation">
 				<!-- Sidebar toggle button-->
-				<a href="#" class="sidebar-toggle" data-toggle="offcanvas" role="button">
+				<a href="#" class="sidebar-toggle" data-toggle="offcanvas" role="button" title="Toggle Navigation">
 					<span class="sr-only">Toggle navigation</span>
 				</a>
 
@@ -247,42 +440,33 @@ $dashboardRoute = ($usertype === 5) ? 'student_dashboard.php' : 'index.php';
 					<ul class="nav navbar-nav">
 						<!-- Reload Page Button -->
 						<li>
-							<a href="javascript:void(0);" onclick="window.location.reload();" title="Reload Page" style="font-weight: bold; cursor: pointer;">
-								<i class="fa fa-refresh"></i> <span class="hidden-xs">Reload Page</span>
+							<a href="javascript:void(0);" onclick="window.location.reload();" title="Refresh Page" style="height: 50px; display: flex; align-items: center; padding: 0 14px; color: #ffffff; opacity: 0.9;">
+								<i class="fa fa-refresh" style="font-size: 14px;"></i>
 							</a>
 						</li>
 
+						<!-- Compact User Profile Menu -->
 						<li class="dropdown user user-menu">
-							<a href="#" class="dropdown-toggle" data-toggle="dropdown">
-								<img src="dist/img/user2-160x160.jpg" class="user-image" alt="User Image">
-								<span class="hidden-xs">&nbsp;Welcome, <?php echo $name; ?> &nbsp;</span>
+							<a href="#" class="dropdown-toggle erp-header-user-btn" data-toggle="dropdown">
+								<img src="dist/img/user2-160x160.jpg" class="erp-header-avatar" alt="User Image">
+								<div class="erp-header-user-meta hidden-xs">
+									<span class="erp-header-user-name"><?php echo htmlspecialchars($name !== '' ? $name : $username); ?></span>
+									<span class="erp-header-user-role"><?php echo htmlspecialchars($role_name ?? 'User'); ?></span>
+								</div>
+								<i class="fa fa-angle-down hidden-xs" style="font-size: 11px; opacity: 0.8; margin-left: 4px;"></i>
 							</a>
 							<ul class="dropdown-menu">
-								<li class="user-header text-center" style="padding: 14px; background-color: #423cbc;">
-									<img src="dist/img/user2-160x160.jpg" class="img-circle" alt="User Image"
-										style="width: 90px; height: 90px; border: 2px solid rgba(255,255,255,0.2);">
-
-									<p class="text-white" style="margin-top: 10px; color: #fff; font-size: 17px;">
-										<?php echo $username; ?>
-										<br>
-										<small>Role: <span class="badge"><?php echo $role_name; ?></span></small>
-									</p>
+								<li class="erp-user-dropdown-header">
+									<img src="dist/img/user2-160x160.jpg" alt="User Image">
+									<p class="erp-user-dropdown-name"><?php echo htmlspecialchars($name !== '' ? $name : $username); ?></p>
+									<div class="erp-user-dropdown-role"><?php echo htmlspecialchars($role_name ?? 'User'); ?></div>
 								</li>
-
-								<li class="user-footer" style="background-color: #f9f9f9; padding: 10px;">
-									<div class="pull-left">
-										<a href="profile.php" class="btn btn-default btn-flat">Profile</a>
-									</div>
-									<div class="pull-right">
-										<a href="../login/logout.php" class="btn btn-danger btn-flat">Sign out</a>
-									</div>
-									<div class="clearfix"></div>
+								<li class="erp-user-dropdown-body">
+									<a href="profile.php"><i class="fa fa-user"></i> My Profile</a>
+									<a href="change_password.php"><i class="fa fa-lock"></i> Update Password</a>
+									<a href="../login/logout.php" class="logout-link"><i class="fa fa-sign-out"></i> Sign Out</a>
 								</li>
 							</ul>
-						</li>
-						<!-- Control Sidebar Toggle Button -->
-						<li>
-							<a href="#" data-toggle="control-sidebar"><i class="fa fa-gears"></i></a>
 						</li>
 					</ul>
 				</div>
@@ -292,19 +476,7 @@ $dashboardRoute = ($usertype === 5) ? 'student_dashboard.php' : 'index.php';
 		<aside class="main-sidebar">
 			<!-- sidebar: style can be found in sidebar.less -->
 			<section class="sidebar">
-				<!-- Sidebar user panel -->
-				<div class="user-panel">
-					<div class="pull-left image">
-						<img src="dist/img/user2-160x160.jpg" class="img-circle" alt="User Image">
-					</div>
-					<div class="pull-left info">
-						<p><span><?php echo htmlspecialchars($role_name); ?></span></p>
-						<a class="badge" href="#" style="background:white; color: green;">
-							<i class="fa fa-circle text-success"></i> Online
-						</a>
-					</div>
-				</div>
-				<br />
 				<?php include_once "side_menu.php"; ?>
 				<!-- /.sidebar -->
+			</section>
 		</aside>

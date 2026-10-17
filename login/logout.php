@@ -44,13 +44,14 @@
 		// Skip audit logging if the database is unavailable; logout should still complete.
 	}
 
-	unset($_SESSION['user_session']);
-	unset($_SESSION['user_login_id']);
-	unset($_SESSION['user_id']);
-	unset($_SESSION['user_type']);
-	unset($_SESSION['role_id']);
-	unset($_SESSION['login_time']);
-	unset($_SESSION['audit_login_id']);
+	$_SESSION = array();
+	if (ini_get("session.use_cookies")) {
+		$params = session_get_cookie_params();
+		setcookie(session_name(), '', time() - 42000,
+			$params["path"], $params["domain"],
+			$params["secure"], $params["httponly"]
+		);
+	}
 	session_destroy();
 
 	header("Location: ../");

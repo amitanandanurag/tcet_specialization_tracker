@@ -1,7 +1,29 @@
 <?php
-session_start();
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_start();
+}
 require "../database/db_connect.php";
 $db_handle = new DBController();
+
+// Enforce session authentication
+if (empty($_SESSION['user_id']) || empty($_SESSION['role_id'])) {
+    http_response_code(403);
+    echo json_encode(['recordsTotal' => 0, 'recordsFiltered' => 0, 'data' => [], 'error' => 'Unauthorized access. Please login.']);
+    exit();
+}
+
+$userRole = intval($_SESSION['role_id']);
+$targetRoleId = intval($roleId ?? 0);
+
+// Role 1 (Super Admin) & Role 2 (Admin) can access any role table
+// Role 3 (Coordinator) can only view Role 4 (Mentors)
+if ($userRole > 2) {
+    if (!($userRole === 3 && $targetRoleId === 4)) {
+        http_response_code(403);
+        echo json_encode(['recordsTotal' => 0, 'recordsFiltered' => 0, 'data' => [], 'error' => 'Forbidden access for current role.']);
+        exit();
+    }
+}
 
 $requestData = $_REQUEST;
 
@@ -47,9 +69,9 @@ while ($row = $result->fetch_assoc()) {
   $nestedData[] = htmlspecialchars($row['phone_number'] ?? '');
   $nestedData[] = htmlspecialchars($row['department_name'] ?? '');
   $nestedData[] = htmlspecialchars($row['role_name'] ?? '');
-  $nestedData[] = "<button class='btn btn-primary btn-sm role-view-btn' data-id='" . $userId . "'><i class='fa fa-eye'></i></button>";
-  $nestedData[] = "<button class='btn bg-olive btn-sm role-edit-btn' data-id='" . $userId . "'><i class='fa fa-pencil'></i></button>";
-  $nestedData[] = "<button class='btn btn-danger btn-sm' onclick='deleteRoleUser(" . $userId . ")'><i class='fa fa-trash'></i></button>";
+  $nestedData[] = "<button class='btn-erp-icon view-btn role-view-btn' data-id='" . $userId . "' title='View details'><i class='fa fa-eye'></i></button>";
+  $nestedData[] = "<button class='btn-erp-icon edit-btn role-edit-btn' data-id='" . $userId . "' title='Edit record'><i class='fa fa-pencil'></i></button>";
+  $nestedData[] = "<button class='btn-erp-icon del-btn' onclick='deleteRoleUser(" . $userId . ")' title='Remove record'><i class='fa fa-trash'></i></button>";
   $data[] = $nestedData;
 }
 

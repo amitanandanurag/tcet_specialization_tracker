@@ -23,7 +23,9 @@ if (isset($_GET['download_sample'])) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_csv'])) {
-    if (!isset($_FILES['csv_file']) || $_FILES['csv_file']['error'] !== UPLOAD_ERR_OK) {
+    if (!DBController::validateCsrfToken()) {
+        $errorMsg = 'Security validation failed (CSRF token mismatch). Please refresh and try again.';
+    } elseif (!isset($_FILES['csv_file']) || $_FILES['csv_file']['error'] !== UPLOAD_ERR_OK) {
         $errorMsg = 'Please select a valid CSV file to upload.';
     } else {
         $file = $_FILES['csv_file'];
@@ -385,6 +387,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_csv'])) {
                         <h3 class="box-title">Upload Marks CSV</h3>
                     </div>
                     <form method="POST" enctype="multipart/form-data">
+                        <?php echo DBController::getCsrfInputField(); ?>
                         <div class="box-body">
                             <div class="form-group">
                                 <label for="csv_file">Select CSV File</label>

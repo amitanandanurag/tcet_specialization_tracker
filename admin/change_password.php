@@ -17,52 +17,73 @@ if ($currentUserId <= 0 || $currentRoleId <= 0) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_password']) && $currentUserId > 0 && $currentRoleId > 0) {
-  $currentPassword = (string) ($_POST['current_password'] ?? '');
-  $newPassword = (string) ($_POST['new_password'] ?? '');
-  $confirmPassword = (string) ($_POST['confirm_password'] ?? '');
-
-  if ($currentPassword === '' || $newPassword === '' || $confirmPassword === '') {
-    $passwordAlertType = 'warning';
-    $passwordAlertMessage = 'All password fields are required.';
-  } elseif ($newPassword !== $confirmPassword) {
-    $passwordAlertType = 'warning';
-    $passwordAlertMessage = 'New password and confirm password must match.';
+  if (!DBController::validateCsrfToken()) {
+    $passwordAlertType = 'danger';
+    $passwordAlertMessage = 'Invalid security token (CSRF). Please refresh and try again.';
   } else {
-      $loginSql = "SELECT password FROM st_login WHERE user_id = ? LIMIT 1";
-    $loginStmt = mysqli_prepare($db_handle->conn, $loginSql);
+    $currentPassword = (string) ($_POST['current_password'] ?? '');
+    $newPassword = (string) ($_POST['new_password'] ?? '');
+    $confirmPassword = (string) ($_POST['confirm_password'] ?? '');
 
-    if ($loginStmt) {
+    if ($currentPassword === '' || $newPassword === '' || $confirmPassword === '') {
+      $passwordAlertType = 'warning';
+      $passwordAlertMessage = 'All password fields are required.';
+    } elseif ($newPassword !== $confirmPassword) {
+      $passwordAlertType = 'warning';
+      $passwordAlertMessage = 'New password and confirm password must match.';
+    } elseif (strlen($newPassword) < 6) {
+      $passwordAlertType = 'warning';
+      $passwordAlertMessage = 'New password must be at least 6 characters long.';
+    } else {
+        $loginSql = "SELECT password FROM st_login WHERE user_id = ? LIMIT 1";
+      $loginStmt = mysqli_prepare($db_handle->conn, $loginSql);
+
+      if ($loginStmt) {
         mysqli_stmt_bind_param($loginStmt, 'i', $currentUserId);
-      mysqli_stmt_execute($loginStmt);
-      $loginResult = mysqli_stmt_get_result($loginStmt);
-      $loginRow = $loginResult ? mysqli_fetch_assoc($loginResult) : null;
-      mysqli_stmt_close($loginStmt);
+        mysqli_stmt_execute($loginStmt);
+        $loginResult = mysqli_stmt_get_result($loginStmt);
+        $loginRow = $loginResult ? mysqli_fetch_assoc($loginResult) : null;
+        mysqli_stmt_close($loginStmt);
 
-      $storedPassword = (string) ($loginRow['password'] ?? '');
-      if ($storedPassword !== $currentPassword) {
-        $passwordAlertType = 'danger';
-        $passwordAlertMessage = 'Current password is incorrect.';
-      } else {
+        $storedPassword = (string) ($loginRow['password'] ?? '');
+        if (!DBController::verifyPassword($currentPassword, $storedPassword)) {
+          $passwordAlertType = 'danger';
+          $passwordAlertMessage = 'Current password is incorrect.';
+        } else {
+          $hashedNewPassword = DBController::hashPassword($newPassword);
           $updateSql = "UPDATE st_login SET password = ? WHERE user_id = ?";
-        $updateStmt = mysqli_prepare($db_handle->conn, $updateSql);
-        if ($updateStmt) {
-            mysqli_stmt_bind_param($updateStmt, 'si', $newPassword, $currentUserId);
-          if (mysqli_stmt_execute($updateStmt)) {
-            $passwordAlertType = 'success';
-            $passwordAlertMessage = 'Password updated successfully.';
+          $updateStmt = mysqli_prepare($db_handle->conn, $updateSql);
+          if ($updateStmt) {
+            mysqli_stmt_bind_param($updateStmt, 'si', $hashedNewPassword, $currentUserId);
+            if (mysqli_stmt_execute($updateStmt)) {
+              // Mark first login as completed
+              $updFirst = mysqli_prepare($db_handle->conn, "UPDATE st_user_master SET is_first_login = 0 WHERE user_id = ?");
+              if ($updFirst) {
+                mysqli_stmt_bind_param($updFirst, 'i', $currentUserId);
+                mysqli_stmt_execute($updFirst);
+                mysqli_stmt_close($updFirst);
+              }
+
+              if (method_exists($db_handle, 'writeAuditLog')) {
+                $db_handle->writeAuditLog($currentUserId, 'PASSWORD_CHANGE', 'st_login', $currentUserId, "User updated their password");
+              }
+
+              $passwordAlertType = 'success';
+              $passwordAlertMessage = 'Password updated successfully.';
+            } else {
+              $passwordAlertType = 'danger';
+              $passwordAlertMessage = 'Unable to update password right now.';
+            }
+            mysqli_stmt_close($updateStmt);
           } else {
             $passwordAlertType = 'danger';
-            $passwordAlertMessage = 'Unable to update password right now.';
+            $passwordAlertMessage = 'Unable to prepare password update.';
           }
-          mysqli_stmt_close($updateStmt);
-        } else {
-          $passwordAlertType = 'danger';
-          $passwordAlertMessage = 'Unable to prepare password update.';
         }
+      } else {
+        $passwordAlertType = 'danger';
+        $passwordAlertMessage = 'Unable to verify current password.';
       }
-    } else {
-      $passwordAlertType = 'danger';
-      $passwordAlertMessage = 'Unable to verify current password.';
     }
   }
 }
@@ -96,81 +117,79 @@ if ($currentUserId > 0 && $currentRoleId > 0) {
 
 <style>
   .profile-form-card {
-    border: 0;
-    border-radius: 12px;
+    border: 1px solid var(--erp-border, #e2e8f0);
+    border-radius: var(--erp-radius-md, 6px);
     overflow: hidden;
-    box-shadow: 0 12px 28px rgba(18, 36, 66, 0.1);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+    background: #ffffff;
   }
 
   .profile-form-card .box-header {
-    background: linear-gradient(120deg, #273c8e 0%, #1aa7cf 100%);
-    color: #fff;
-    border-bottom: 0;
-    padding: 14px 18px;
+    background: #ffffff;
+    border-bottom: 1px solid var(--erp-border, #e2e8f0);
+    padding: 12px 16px;
     position: relative;
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: space-between;
   }
 
   .profile-form-card .box-title {
-    color: #fff;
+    color: var(--erp-text-main, #0f172a);
+    font-size: 14px;
     font-weight: 700;
-    letter-spacing: 0.2px;
   }
 
   .profile-form-card .profile-close-icon {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    color: #b4232f;
-    background: #fdecef;
-    border: 1px solid #f3b7bf;
+    width: 28px;
+    height: 28px;
+    border-radius: var(--erp-radius-sm, 4px);
+    color: var(--erp-text-muted, #64748b);
+    background: #ffffff;
+    border: 1px solid var(--erp-border, #e2e8f0);
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    position: absolute;
-    right: 6px;
-    top: 6px;
     text-decoration: none;
-    transition: background 0.2s ease, color 0.2s ease;
+    transition: all 0.15s ease;
   }
 
   .profile-form-card .profile-close-icon:hover,
   .profile-form-card .profile-close-icon:focus {
-    color: #8f1a24;
-    background: #f9d8dd;
+    color: var(--erp-text-main, #0f172a);
+    background: #f1f5f9;
     text-decoration: none;
   }
 
   .profile-form-card .box-body {
-    padding: 18px 18px 8px;
+    padding: 16px;
     background: #fff;
   }
 
   .profile-form-card .control-label {
-    color: #1f2937;
-    font-weight: 700;
-    padding-top: 10px;
+    color: var(--erp-text-secondary, #475569);
+    font-size: 12px;
+    font-weight: 600;
+    padding-top: 8px;
   }
 
   .profile-input-group .input-group-addon {
-    border-radius: 8px 0 0 8px;
-    border: 1px solid #dbe3ec;
+    border-radius: var(--erp-radius-sm, 4px) 0 0 var(--erp-radius-sm, 4px);
+    border: 1px solid var(--erp-border-dark, #cbd5e1);
     border-right: 0;
     background: #f8fafc;
-    color: #4b5563;
-    min-width: 40px;
+    color: var(--erp-text-muted, #64748b);
+    min-width: 38px;
     text-align: center;
   }
 
   .profile-input-group .input-group-btn .btn {
-    height: 42px;
-    border: 1px solid #dbe3ec;
+    height: 36px;
+    border: 1px solid var(--erp-border-dark, #cbd5e1);
     border-left: 0;
-    border-radius: 0 8px 8px 0;
+    border-radius: 0 var(--erp-radius-sm, 4px) var(--erp-radius-sm, 4px) 0;
     background: #f8fafc;
-    color: #4b5563;
+    color: var(--erp-text-muted, #64748b);
   }
 
   .profile-input-group .input-group-btn .btn:focus {
@@ -179,65 +198,66 @@ if ($currentUserId > 0 && $currentRoleId > 0) {
   }
 
   .profile-input-group .form-control {
-    height: 42px;
-    border-radius: 0 8px 8px 0;
-    border: 1px solid #dbe3ec;
+    height: 36px;
+    border-radius: 0;
+    border: 1px solid var(--erp-border-dark, #cbd5e1);
     box-shadow: none;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
   }
 
   .profile-input-group .form-control:focus {
-    border-color: #1aa7cf;
-    box-shadow: 0 0 0 3px rgba(26, 167, 207, 0.16);
+    border-color: var(--erp-primary, #423cbc);
+    box-shadow: 0 0 0 3px rgba(66, 60, 188, 0.12);
   }
 
   .profile-form-card .box-footer {
-    border-top: 1px solid #edf1f6;
-    background: #fbfdff;
-    padding: 12px 18px;
+    border-top: 1px solid var(--erp-border, #e2e8f0);
+    background: #f8fafc;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
     position: relative;
-    text-align: center;
   }
 
   .profile-form-card .profile-save-btn {
-    display: inline-block;
-    border: 0;
-    border-radius: 8px;
-    padding: 10px 18px;
-    background: linear-gradient(120deg, #1aa7cf 0%, #44c4e8 100%) !important;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid var(--erp-primary-hover, #352fa1);
+    border-radius: var(--erp-radius-sm, 4px);
+    padding: 6px 14px;
+    background: var(--erp-primary, #423cbc) !important;
     color: #fff !important;
-    font-weight: 700;
-    letter-spacing: 0.2px;
-    box-shadow: 0 8px 18px rgba(30, 167, 207, 0.28);
+    font-size: 12px;
+    font-weight: 600;
     cursor: pointer;
+    box-shadow: 0 1px 2px rgba(66, 60, 188, 0.2);
   }
 
   .profile-form-card .profile-save-btn:hover,
-  .profile-form-card .profile-save-btn:focus,
-  .profile-form-card .profile-save-btn:active {
+  .profile-form-card .profile-save-btn:focus {
+    background: var(--erp-primary-hover, #352fa1) !important;
     color: #fff !important;
-    background: linear-gradient(120deg, #1596ba 0%, #38b6d8 100%) !important;
   }
 
   .profile-form-card .profile-close-btn {
-    display: inline-block;
-    border: 1px solid #f3b7bf;
-    border-radius: 8px;
-    padding: 9px 16px;
-    background: #fdecef;
-    color: #b4232f;
-    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid var(--erp-border-dark, #cbd5e1);
+    border-radius: var(--erp-radius-sm, 4px);
+    padding: 6px 12px;
+    background: #ffffff;
+    color: var(--erp-text-secondary, #475569);
+    font-size: 12px;
+    font-weight: 600;
     text-decoration: none;
-    position: absolute;
-    right: 18px;
-    top: 50%;
-    transform: translateY(-50%);
   }
 
   .profile-form-card .profile-close-btn:hover,
   .profile-form-card .profile-close-btn:focus {
-    background: #f9d8dd;
-    color: #8f1a24;
+    background: #f8fafc;
+    color: var(--erp-text-main, #0f172a);
     text-decoration: none;
   }
 </style>
@@ -277,6 +297,7 @@ if ($currentUserId > 0 && $currentRoleId > 0) {
           <?php } ?>
 
           <form class="form-horizontal" method="POST">
+            <?php echo DBController::getCsrfInputField(); ?>
             <div class="box-body">
               <div class="form-group">
                 <label class="col-sm-4 control-label">Current Password</label>

@@ -128,7 +128,7 @@ if ($is_mentor) {
 }
 
 // ========================
-// 1. FETCH HOD DATA FROM DATABASE
+// 1. FETCH HOD DATA FROM DATABASE (ACCURATE REAL-TIME STATUS)
 // ========================
 $hod_query = "SELECT 
     d.department_id,
@@ -139,9 +139,8 @@ $hod_query = "SELECT
         ELSE 'N/A'
     END as phone,
     CASE 
-        WHEN MOD(d.department_id, 3) = 0 THEN 'In Meeting'
-        WHEN MOD(d.department_id, 4) = 0 THEN 'On Leave'
-        ELSE 'Available'
+        WHEN u.user_name IS NOT NULL AND u.user_name != '' THEN 'Assigned'
+        ELSE 'Vacant'
     END as status
 FROM st_department_master d
 LEFT JOIN (
@@ -177,42 +176,27 @@ if ($hod_result) {
 }
 
 // ========================
-// 2. FETCH TOP SUMMARY CARDS DATA (ROLE & DEPARTMENT AWARE)
+// 2. FETCH TOP SUMMARY CARDS DATA (CENTRALIZED AUTHORITATIVE METRICS)
 // ========================
-$student_count_sql = "SELECT COUNT(*) as total FROM st_student_master WHERE status = '0'";
-if ($is_scoped_user && $logged_dept_id) {
-    $student_count_sql .= " AND department_id = " . intval($logged_dept_id);
-}
-$students_query = $student_count_sql;
-$students_result = mysqli_query($db_handle->conn, $students_query);
-$total_students = $students_result ? mysqli_fetch_assoc($students_result)['total'] : 0;
+$authoritativeMetrics = $db_handle->getAuthoritativeMetrics($logged_user_id, $logged_user_role_id);
+$total_students = $authoritativeMetrics['active_students'];
+$total_registered_students = $authoritativeMetrics['total_registered_students'];
+$rowcount = $total_students;
 
-// USERS CARD - count users only from st_user_master
-if ($is_scoped_user && $logged_dept_id) {
-    $users_card_label = 'Department Users';
-    $users_query = "SELECT COUNT(*) as total FROM st_user_master WHERE department_id = " . intval($logged_dept_id);
-} else {
-    $users_card_label = 'Total Users';
-    $users_query = "SELECT COUNT(*) as total FROM st_user_master";
-}
-$users_result = mysqli_query($db_handle->conn, $users_query);
-$total_users = $users_result ? mysqli_fetch_assoc($users_result)['total'] : 0;
+// USERS CARD
+$users_card_label = ($is_scoped_user && $logged_dept_id) ? 'Department Users' : 'Total Users';
+$total_users = $authoritativeMetrics['total_users'];
 
-// BRANCHES
-$branches_query = "SELECT COUNT(*) as total FROM st_department_master";
-$branches_result = mysqli_query($db_handle->conn, $branches_query);
-$total_branches = $branches_result ? mysqli_fetch_assoc($branches_result)['total'] : 0;
+// BRANCHES CARD
+$total_branches = $authoritativeMetrics['total_branches'];
 
-// MENTORS - department-filtered for role-scoped users
+// MENTORS CARD
+$total_mentor = $authoritativeMetrics['total_mentors'];
+
+$dept_join_cond = "";
 if ($is_scoped_user && $logged_dept_id) {
-    $mentor_query = "SELECT COUNT(*) as total FROM st_user_master 
-        WHERE role_id IN (" . implode(',', $mentor_role_ids) . ")
-        AND department_id = " . intval($logged_dept_id);
-} else {
-    $mentor_query = "SELECT COUNT(*) as total FROM st_user_master WHERE role_id IN (" . implode(',', $mentor_role_ids) . ")";
+    $dept_join_cond = " AND s.department_id = " . intval($logged_dept_id);
 }
-$mentor_result = mysqli_query($db_handle->conn, $mentor_query);
-$total_mentor = $mentor_result ? mysqli_fetch_assoc($mentor_result)['total'] : 0;
 
 $spec_query = "SELECT 
     sm.specialization_id,
@@ -220,17 +204,11 @@ $spec_query = "SELECT
     COUNT(s.student_id) as total,
     SUM(CASE WHEN s.status = 1 THEN 1 ELSE 0 END) as approved,
     SUM(CASE WHEN s.status = 0 THEN 1 ELSE 0 END) as pending,
-    0 as rejected
+    SUM(CASE WHEN s.status NOT IN (0, 1) THEN 1 ELSE 0 END) as rejected
 FROM st_specialization_master sm
-LEFT JOIN st_student_master s ON sm.specialization_id = s.specialization_id";
-
-// Add department filter for scoped users (coordinator/HOD)
-if ($is_scoped_user && $logged_dept_id) {
-    $spec_query .= " WHERE s.department_id = " . intval($logged_dept_id) . " OR s.student_id IS NULL";
-}
-
-$spec_query .= " GROUP BY sm.specialization_id, sm.specialization_name
-ORDER BY sm.specialization_id";
+LEFT JOIN st_student_master s ON sm.specialization_id = s.specialization_id" . $dept_join_cond . "
+GROUP BY sm.specialization_id, sm.specialization_name
+ORDER BY sm.specialization_id ASC";
 
 $spec_result = mysqli_query($db_handle->conn, $spec_query);
 $spec_data = [];
@@ -249,9 +227,33 @@ if ($spec_result) {
 
 $spec_labels = [];
 $spec_totals = [];
+$spec_colors = [];
+$spec_hover_colors = [];
+
+// Curated palette of distinct AdminLTE-compatible colors
+$palette = [
+    '#3c8dbc', '#00a65a', '#f39c12', '#dd4b39', '#00c0ef',
+    '#605ca8', '#d81b60', '#39cccc', '#01ff70', '#ff851b',
+    '#795548', '#607d8b', '#20c997', '#6f42c1', '#fd7e14',
+    '#17a2b8', '#28a745', '#ffc107', '#dc3545', '#6c757d',
+    '#4a148c', '#1b5e20', '#b71c1c', '#0d47a1', '#e65100'
+];
+$hover_palette = [
+    '#367fa9', '#008d4c', '#e08e0b', '#d73925', '#00acd6',
+    '#555299', '#ca195a', '#30bbbb', '#00e765', '#ff7701',
+    '#6d4c41', '#546e7a', '#1baa80', '#59369a', '#e86d00',
+    '#138496', '#218838', '#d39e00', '#bd2130', '#5a6268',
+    '#38006b', '#144617', '#8e0000', '#002171', '#bf360c'
+];
+
+$p_count = count($palette);
+$color_idx = 0;
 foreach ($spec_data as $sd) {
-    $spec_labels[] = '"' . $sd['name'] . '"';
+    $spec_labels[] = json_encode($sd['name']);
     $spec_totals[] = $sd['total'];
+    $spec_colors[] = "'" . $palette[$color_idx % $p_count] . "'";
+    $spec_hover_colors[] = "'" . $hover_palette[$color_idx % $p_count] . "'";
+    $color_idx++;
 }
 
 // 4. Branch-wise Distribution from Database
@@ -260,7 +262,7 @@ $branch_query = "SELECT
     d.department_name as code,
     COUNT(s.student_id) as count
 FROM st_department_master d
-LEFT JOIN st_student_master s ON d.department_id = s.department_id AND s.status = '0'";
+LEFT JOIN st_student_master s ON d.department_id = s.department_id AND s.status = 1";
 
 $branch_query .= " GROUP BY d.department_id, d.department_name
 ORDER BY d.department_id";
@@ -317,7 +319,7 @@ $recent_query = "SELECT
     COALESCE(e.enrolled_at, s.created_at) as created_at
 FROM st_student_master s
 LEFT JOIN st_enrollment e ON s.student_id = e.student_id
-WHERE s.status = 0
+WHERE s.status = 1
 ORDER BY COALESCE(e.enrolled_at, s.created_at) DESC
 LIMIT 5";
 
@@ -391,112 +393,88 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_hod'])) {
     }
 }
 
-if ($usertype == 4) {
-    // Mentor - only allocated students
-    $sql = "SELECT s.*
-            FROM st_student_master s
-            INNER JOIN st_mentor_student_mapping m
-                ON s.student_id = m.student_id
-            WHERE s.status = '0'
-            AND m.mentor_id = '".intval($logged_user_id)."'";
-} else {
-    $sql = "SELECT * FROM st_student_master WHERE status='0'";
-
-    // HOD
-    if ($is_scoped_user && $logged_dept_id) {
-        $sql .= " AND department_id = '".intval($logged_dept_id)."'";
-    }
-}
-
-$result = $db_handle->conn->query($sql);
-$rowcount = mysqli_num_rows($result);
-
-$result1 = $db_handle->conn->query("SELECT * FROM st_user_master where 1=1" . ($is_scoped_user && $logged_dept_id ? " AND department_id = " . intval($logged_dept_id) : ""));
-$rowcount_user = mysqli_num_rows($result1);
+// Student and user counts already computed in Section 2 above using optimized COUNT(*) queries.
 ?>
 
 <!-- Additional CSS for dashboard (only what's not already in header) -->
 <style>
-    /* ========== ADDITIONAL CSS FOR DASHBOARD ========== */
+    /* ========== CLEAN TCET ERP DASHBOARD STYLING ========== */
     :root {
-        --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        --card-shadow: 0 10px 20px rgba(0, 0, 0, 0.08), 0 6px 6px rgba(0, 0, 0, 0.1);
-        --hover-shadow: 0 20px 25px -12px rgba(0, 0, 0, 0.15);
-        --border-radius-lg: 8px;
-        --border-radius-md: 6px;
+        --erp-card-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        --border-radius-lg: 6px;
+        --border-radius-md: 4px;
     }
 
-    /* Modern Card Styling */
+    /* Clean Metric Card Styling */
     .small-box {
         border-radius: var(--border-radius-lg);
-        box-shadow: var(--card-shadow);
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: var(--erp-card-shadow);
+        transition: all 0.2s ease;
         overflow: hidden;
         position: relative;
+        border: 1px solid var(--erp-border, #e2e8f0);
     }
 
     .small-box:hover {
-        transform: translateY(-5px);
-        box-shadow: var(--hover-shadow);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
     }
 
     .small-box .inner {
-        padding: 20px;
+        padding: 16px;
     }
 
     .small-box h3 {
-        font-size: 38px;
+        font-size: 28px;
         font-weight: 700;
-        margin-bottom: 5px;
+        margin-bottom: 2px;
     }
 
     .small-box p {
-        font-size: 15px;
-        opacity: 0.9;
+        font-size: 13px;
+        opacity: 0.95;
         margin-bottom: 0;
+        font-weight: 500;
     }
 
     .small-box .icon {
-        font-size: 70px;
-        top: 15px;
-        right: 10px;
-        opacity: 0.25;
-        transition: all 0.3s ease;
+        font-size: 50px;
+        top: 12px;
+        right: 12px;
+        opacity: 0.2;
+        transition: all 0.2s ease;
     }
 
     .small-box:hover .icon {
-        transform: scale(1.1);
-        opacity: 0.35;
+        opacity: 0.3;
     }
 
     /* Box styling */
     .box {
         border-radius: var(--border-radius-md);
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-        transition: all 0.3s ease;
-        margin-bottom: 25px;
-        border: none;
-    }
-
-    .box:hover {
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+        transition: all 0.2s ease;
+        margin-bottom: 20px;
+        border: 1px solid var(--erp-border, #e2e8f0);
+        background: #ffffff;
     }
 
     .box-header {
-        border-bottom: 2px solid #f0f2f5;
-        padding: 15px 20px;
+        border-bottom: 1px solid var(--erp-border, #e2e8f0);
+        padding: 12px 16px;
     }
 
     .box-header .box-title {
-        font-size: 18px;
-        font-weight: 600;
-        color: #2c3e50;
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--erp-text-main, #0f172a);
+        letter-spacing: 0.2px;
     }
 
-    /* Status Badges */
+    /* Semantic Status Badges */
     .status-badge {
-        padding: 6px 12px;
-        border-radius: 20px;
+        padding: 3px 8px;
+        border-radius: 4px;
         font-weight: 600;
         font-size: 11px;
         display: inline-block;
@@ -505,38 +483,43 @@ $rowcount_user = mysqli_num_rows($result1);
     }
 
     .status-available {
-        background: linear-gradient(135deg, #00b09b, #96c93d);
-        color: white;
-        box-shadow: 0 2px 5px rgba(0, 176, 155, 0.3);
+        background: #f0fdf4;
+        color: #15803d;
+        border: 1px solid #bbf7d0;
     }
 
     .status-meeting {
-        background: linear-gradient(135deg, #f2994a, #f2c94c);
-        color: white;
+        background: #fffbeb;
+        color: #b45309;
+        border: 1px solid #fde68a;
     }
 
     .status-leave {
-        background: linear-gradient(135deg, #eb3349, #f45c43);
-        color: white;
+        background: #fef2f2;
+        color: #b91c1c;
+        border: 1px solid #fecaca;
     }
 
     /* Action Buttons */
     .btn-action {
-        background: linear-gradient(135deg, #667eea, #764ba2);
-        border: none;
-        padding: 6px 14px;
-        border-radius: 25px;
-        color: white;
+        background: var(--erp-primary, #423cbc);
+        border: 1px solid var(--erp-primary-hover, #352fa1);
+        padding: 5px 12px;
+        border-radius: 4px;
+        color: #ffffff;
         font-size: 12px;
-        font-weight: 500;
-        transition: all 0.3s ease;
+        font-weight: 600;
+        transition: all 0.15s ease;
         cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
     }
 
     .btn-action:hover {
-        transform: scale(1.05);
-        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-        color: white;
+        background: var(--erp-primary-hover, #352fa1);
+        color: #ffffff;
+        box-shadow: 0 2px 4px rgba(66, 60, 188, 0.25);
     }
 
     /* Chart containers */
@@ -600,7 +583,7 @@ $rowcount_user = mysqli_num_rows($result1);
                 <div class="small-box bg-aqua">
                     <div class="inner">
                         <h3 class="counter" data-target="<?php echo $rowcount; ?>">0</h3>
-                        <p>Total Students</p>
+                        <p>Enrolled Students <span style="font-size: 11px; font-weight: normal; opacity: 0.9;">(<?php echo $total_registered_students; ?> Registered)</span></p>
                     </div>
                     <div class="icon"><i class="ion ion-android-contacts"></i></div>
                     <a href="student-info.php" class="small-box-footer">More info <i class="fa fa-arrow-circle-right"></i></a>
@@ -670,18 +653,22 @@ $rowcount_user = mysqli_num_rows($result1);
                         <table class="table table-hover table-bordered text-center">
                             <thead class="bg-gray">
                                 <tr>
-                                    <th>Specialization</th>
-                                    <th>Total Applied</th>
-                                    <th>Approved</th>
-                                    <th>Pending</th>
-                                    <th>Rejected</th>
+                                    <th class="text-left" style="width: 36%;">Specialization</th>
+                                    <th style="width: 16%;">Total Applied</th>
+                                    <th style="width: 16%;">Approved</th>
+                                    <th style="width: 16%;">Pending</th>
+                                    <th style="width: 16%;">Rejected</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php foreach ($spec_data as $id => $sd): ?>
+                                <?php 
+                                // Display exactly the first four configured specializations by default
+                                $table_spec_data = array_slice($spec_data, 0, 4, true);
+                                foreach ($table_spec_data as $id => $sd): 
+                                ?>
                                 <tr>
-                                    <td class="text-left"><strong><?php echo $sd['name']; ?></strong></td>
-                                    <td><span class="counter" data-target="<?php echo $sd['total']; ?>">0</span></td>
+                                    <td class="text-left"><strong><?php echo htmlspecialchars($sd['name']); ?></strong></td>
+                                    <td><span class="counter font-weight-bold" data-target="<?php echo $sd['total']; ?>">0</span></td>
                                     <td><span class="status-badge status-available counter" data-target="<?php echo $sd['approved']; ?>">0</span></td>
                                     <td><span class="status-badge status-meeting counter" data-target="<?php echo $sd['pending']; ?>">0</span></td>
                                     <td>
@@ -707,23 +694,25 @@ $rowcount_user = mysqli_num_rows($result1);
             <div class="col-md-12">
                 <div class="box box-info">
                     <div class="box-header with-border">
-                        <div class="btn-group" role="group">
-                            <button type="button" class="btn btn-primary" onclick="quickAction('export_hod')">
+                        <div class="btn-group" role="group" style="display:flex; flex-wrap:wrap; gap:6px;">
+                            <button type="button" class="btn-erp-primary" onclick="quickAction('export_hod')">
                                 <i class="fa fa-download"></i> Export Student List
                             </button>
-                            <button type="button" class="btn btn-default" onclick="quickAction('print_report')">
+                            <button type="button" class="btn-erp-secondary" onclick="quickAction('print_report')">
                                 <i class="fa fa-print"></i> Print Report
                             </button>
-                            <button type="button" class="btn btn-default" onclick="quickAction('send_bulk_email')">
+                            <button type="button" class="btn-erp-secondary" onclick="quickAction('send_bulk_email')">
                                 <i class="fa fa-envelope-o"></i> Bulk Email HODs
                             </button>
-                            <button type="button" class="btn btn-default" onclick="quickAction('add_hod')">
+                            <button type="button" class="btn-erp-secondary" onclick="quickAction('add_hod')">
                                 <i class="fa fa-plus-circle text-green"></i> Add New HOD
                             </button>
-                            <button type="button" class="btn btn-default" onclick="quickAction('add_student')">
+                            <button type="button" class="btn-erp-secondary" onclick="quickAction('add_student')">
                                 <i class="fa fa-plus-circle text-green"></i> List Of Student
                             </button>
-                            <button type="button" class="btn btn-default" onclick="window.location.href='offline_marks_entry.php'"><i class="fa fa-plus-circle text-green"></i> Offline Marks Entry</button>
+                            <button type="button" class="btn-erp-secondary" onclick="window.location.href='offline_marks_entry.php'">
+                                <i class="fa fa-plus-circle text-green"></i> Offline Marks Entry
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -793,7 +782,7 @@ $rowcount_user = mysqli_num_rows($result1);
                                 </div>
                             </div>
                             <div class="box-footer clearfix">
-                                <button type="submit" name="send_email" class="pull-right btn btn-primary">Send <i class="fa fa-arrow-circle-right"></i></button>
+                                <button type="submit" name="send_email" class="pull-right btn-erp-primary">Send <i class="fa fa-arrow-circle-right"></i></button>
                             </div>
                         </form>
                     </div>
@@ -891,28 +880,31 @@ $rowcount_user = mysqli_num_rows($result1);
                                     <td>
                                         <?php
                                         $status_class = '';
-                                        $status_text = '';
+                                        $status_text = $hod['status'];
+                                        $status_icon = 'fa-check-circle';
                                         switch ($hod['status']) {
+                                            case 'Assigned':
                                             case 'Available':
                                                 $status_class = 'status-available';
-                                                $status_text = 'Available';
+                                                $status_icon = 'fa-check-circle';
                                                 break;
                                             case 'In Meeting':
                                                 $status_class = 'status-meeting';
-                                                $status_text = 'In Meeting';
+                                                $status_icon = 'fa-clock-o';
                                                 break;
                                             case 'On Leave':
+                                            case 'Vacant':
                                                 $status_class = 'status-leave';
-                                                $status_text = 'On Leave';
+                                                $status_icon = 'fa-exclamation-circle';
                                                 break;
                                             default:
                                                 $status_class = 'status-available';
-                                                $status_text = $hod['status'];
+                                                $status_icon = 'fa-circle';
                                         }
                                         ?>
                                         <span class="status-badge <?php echo $status_class; ?>">
-                                            <i class="fa <?php echo ($status_text == 'Available') ? 'fa-check-circle' : (($status_text == 'In Meeting') ? 'fa-clock-o' : 'fa-calendar-times-o'); ?>"></i>
-                                            <?php echo $status_text; ?>
+                                            <i class="fa <?php echo $status_icon; ?>"></i>
+                                            <?php echo htmlspecialchars($status_text); ?>
                                         </span>
                                     </td>
                                     <td>
@@ -1004,8 +996,8 @@ $rowcount_user = mysqli_num_rows($result1);
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
-                    <button type="submit" name="edit_hod" class="btn btn-primary">Save Changes</button>
+                    <button type="button" class="btn-erp-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="submit" name="edit_hod" class="btn-erp-primary">Save Changes</button>
                 </div>
             </form>
         </div>
@@ -1128,8 +1120,8 @@ $rowcount_user = mysqli_num_rows($result1);
                 labels: [<?php echo implode(',', $spec_labels); ?>],
                 datasets: [{
                     data: [<?php echo implode(',', $spec_totals); ?>],
-                    backgroundColor: ['#00c0ef', '#f39c12', '#00a65a'],
-                    hoverBackgroundColor: ['#00acd6', '#e08e0b', '#008d4c']
+                    backgroundColor: [<?php echo implode(',', $spec_colors); ?>],
+                    hoverBackgroundColor: [<?php echo implode(',', $spec_hover_colors); ?>]
                 }]
             },
             options: {

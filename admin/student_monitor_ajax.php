@@ -18,9 +18,10 @@ if (!$db_handle || !($db_handle->conn instanceof mysqli)) {
     exit;
 }
 
-// Check authorization: SUPER ADMIN (1) or ADMIN (2)
+// Check authorization: SUPER ADMIN (1), ADMIN (2), or HOD (3)
 $sessionRoleId = intval($_SESSION['user_type'] ?? 0);
-if ($sessionRoleId !== 1 && $sessionRoleId !== 2) {
+$sessionUserId = intval($_SESSION['user_id'] ?? 0);
+if (!in_array($sessionRoleId, array(1, 2, 3), true)) {
     echo json_encode(array('success' => false, 'message' => 'Unauthorized access.'));
     exit;
 }
@@ -72,6 +73,11 @@ if (!$student) {
 
 $studentId = intval($student['student_id']);
 $currentSemId = intval($student['current_semester_id']);
+
+if (!$db_handle->canAccessStudent($studentId, $sessionUserId, $sessionRoleId)) {
+    echo json_encode(array('success' => false, 'message' => 'Access Denied: You do not have permission to view students from other departments.'));
+    exit;
+}
 
 // Determine the type of specialization for the student
 $specName = strtolower($student['specialization_name'] ?? '');

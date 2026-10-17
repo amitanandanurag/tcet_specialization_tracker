@@ -1,12 +1,12 @@
 <?php
-if (session_status() !== PHP_SESSION_ACTIVE) {
+if (session_status() !== PHP_SESSION_ACTIVE && php_sapi_name() !== 'cli') {
   session_start();
 }
 
-require "../database/db_connect.php";
+require_once __DIR__ . "/../database/db_connect.php";
 $db_handle = new DBController();
 
-if (!isset($_SESSION['user_session'])) {
+if (php_sapi_name() !== 'cli' && !isset($_SESSION['user_session'])) {
   header("location: ../index.php");
   exit();
 }
@@ -42,7 +42,10 @@ function mentor_allocation_fetch_mentors($db_handle)
 
 function mentor_allocation_build_student_where($conn, $filters, $loginRole, $loginDepartment)
 {
-  $where = " WHERE sm.status = '0' ";
+  $statusFilter = isset($filters['student_status']) && $filters['student_status'] !== ''
+      ? intval($filters['student_status'])
+      : 1;
+  $where = " WHERE sm.status = {$statusFilter} ";
 
    if ($loginRole == 3) {          // change 3 to your Department role id
         $where .= " AND sm.department_id = '".intval($loginDepartment)."' ";
@@ -134,30 +137,55 @@ function mentor_allocation_assign_students($db_handle, $mentorId, $studentIds, $
     return false;
   }
 
+  // Verify mentor exists and is active
+  $mCheck = mysqli_query($db_handle->conn, "SELECT user_id, COALESCE(NULLIF(TRIM(user_name), ''), email_id) AS mentor_name, department_id FROM st_user_master WHERE user_id = $mentorId AND role_id = 4 LIMIT 1");
+  if (!$mCheck || mysqli_num_rows($mCheck) === 0) {
+    return false;
+  }
+  $mRow = mysqli_fetch_assoc($mCheck);
+  $mentorName = $mRow['mentor_name'];
+
+  $allocatedCount = 0;
   mysqli_begin_transaction($db_handle->conn);
 
   try {
     foreach ($cleanIds as $studentId) {
-      $studentRes = mysqli_query($db_handle->conn, "SELECT current_semester_id, academic_year_id FROM st_student_master WHERE student_id = {$studentId}");
-      $semId = 1;
-      $ayId = 1;
-      if ($studentRes && $studentRow = mysqli_fetch_assoc($studentRes)) {
-        $semId = intval($studentRow['current_semester_id'] ?? 1);
-        $ayId = intval($studentRow['academic_year_id'] ?? 1);
+      $studentRes = mysqli_query($db_handle->conn, "SELECT student_id, fname, registration_no, current_semester_id, academic_year_id, department_id, specialization_subject_id FROM st_student_master WHERE student_id = {$studentId}");
+      if (!$studentRes || !($studentRow = mysqli_fetch_assoc($studentRes))) {
+        continue;
       }
-      
-      if ($semesterId !== '') {
-        $semId = intval($semesterId);
+      $semId = ($semesterId !== '') ? intval($semesterId) : intval($studentRow['current_semester_id'] ?? 1);
+      $ayId = intval($studentRow['academic_year_id'] ?? 1);
+      $subjId = intval($studentRow['specialization_subject_id'] ?? 0);
+      $deptId = intval($studentRow['department_id'] ?? 0);
+
+      // Verify active mentor allocation exists for this exact 4-dimension key
+      $allocSql = "
+        SELECT mapping_id 
+        FROM st_mentor_subject_mapping 
+        WHERE mentor_id = {$mentorId} 
+          AND subject_id = {$subjId} 
+          AND semester_id = {$semId} 
+          AND academic_year_id = {$ayId} 
+          AND is_active = 1
+          AND (department_id IS NULL OR department_id = 0 OR department_id = {$deptId})
+        LIMIT 1
+      ";
+      $allocCheck = mysqli_query($db_handle->conn, $allocSql);
+      if (!$allocCheck || mysqli_num_rows($allocCheck) === 0) {
+        // Mentor is not allocated to this student's context!
+        continue;
       }
 
-      if (!mysqli_query($db_handle->conn, "DELETE FROM st_mentor_student_mapping WHERE student_id = {$studentId} AND academic_year_id = {$ayId}")) {
-        throw new Exception('Unable to clear existing mentor mapping.');
+      $ok = $db_handle->allocateStudentToMentor($studentId, $mentorId, $semId, $ayId);
+      if ($ok) {
+        $allocatedCount++;
       }
+    }
 
-      $insertSql = "INSERT INTO st_mentor_student_mapping (mentor_id, student_id, semester_id, academic_year_id) VALUES ({$mentorId}, {$studentId}, {$semId}, {$ayId})";
-      if (!mysqli_query($db_handle->conn, $insertSql)) {
-        throw new Exception('Unable to save mentor mapping.');
-      }
+    if ($allocatedCount === 0 && !empty($cleanIds)) {
+      mysqli_rollback($db_handle->conn);
+      return false;
     }
 
     mysqli_commit($db_handle->conn);
@@ -167,6 +195,7 @@ function mentor_allocation_assign_students($db_handle, $mentorId, $studentIds, $
     return false;
   }
 }
+
 
 if (isset($_GET['action']) && $_GET['action'] === 'load_students') {
   header('Content-Type: application/json');
@@ -257,8 +286,13 @@ if (isset($_GET['action']) && $_GET['action'] === 'load_students') {
   exit();
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'assign_selected') {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && $_POST['action'] === 'assign_selected') {
   header('Content-Type: application/json');
+
+  if (!DBController::validateCsrfToken()) {
+    echo json_encode(array('success' => false, 'message' => 'Security token expired. Please refresh the page.'));
+    exit();
+  }
 
   $mentorId = intval($_POST['mentor_id'] ?? 0);
   $studentIds = $_POST['student_ids'] ?? array();
@@ -276,8 +310,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
   exit();
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'assign_filtered') {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && $_POST['action'] === 'assign_filtered') {
   header('Content-Type: application/json');
+
+  if (!DBController::validateCsrfToken()) {
+    echo json_encode(array('success' => false, 'message' => 'Security token expired. Please refresh the page.'));
+    exit();
+  }
 
   $mentorId = intval($_POST['mentor_id'] ?? 0);
   $filters = array(
@@ -309,6 +348,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
   exit();
 }
 
+if (php_sapi_name() === 'cli' && basename($_SERVER['SCRIPT_FILENAME'] ?? '') !== 'mentor_allocation.php') {
+  return;
+}
+
 $mentors = mentor_allocation_fetch_mentors($db_handle);
 $classRows = $db_handle->runQuery("SELECT class_id, class_name FROM st_class_master ORDER BY class_name ASC") ?? array();
 $sectionRows = $db_handle->runQuery("SELECT id, sections FROM st_section_master ORDER BY sections ASC") ?? array();
@@ -328,14 +371,14 @@ include "header/header.php";
   <section class="content">
     <div class="row">
       <div class="col-md-12">
-        <div class="box box-primary">
-          <div class="box-header with-border">
-            <h3 class="box-title">Assign One Mentor To Every Student</h3>
+        <div class="erp-card">
+          <div class="erp-card-header">
+            <h3 class="erp-card-title"><i class="fa fa-users"></i> Assign One Mentor To Every Student</h3>
           </div>
-          <div class="box-body">
+          <div class="erp-card-body">
             <div class="row" style="margin-bottom: 15px;">
               <div class="col-md-3">
-                <label>Mentor</label>
+                <label style="font-weight:600; font-size:12px; color:var(--erp-text-secondary);">Mentor</label>
                 <select class="form-control" id="mentor_id">
                   <option value="">Select Mentor</option>
                   <?php foreach ($mentors as $mentor) { ?>
@@ -346,23 +389,21 @@ include "header/header.php";
                 </select>
               </div>
               <div class="col-md-2">
-                <label>Class</label>
+                <label style="font-weight:600; font-size:12px; color:var(--erp-text-secondary);">Class</label>
                 <select class="form-control" id="class_id">
                   <option value="">All Classes</option>
                   <?php foreach ($classRows as $classRow) { ?>
                     <option value="<?php echo (int) $classRow['class_id']; ?>">
-
                       <?php echo htmlspecialchars($classRow['class_name']); ?>
                     </option>
                   <?php } ?>
                 </select>
               </div>
               <div class="col-md-2">
-                <label>Division</label>
+                <label style="font-weight:600; font-size:12px; color:var(--erp-text-secondary);">Division</label>
                 <select class="form-control" id="section_id">
                   <option value="">All Divisions</option>
                   <?php foreach ($sectionRows as $sectionRow) { ?>
-
                     <option value="<?php echo (int) $sectionRow['id']; ?>">
                       <?php echo htmlspecialchars($sectionRow['sections']); ?>
                     </option>
@@ -370,10 +411,9 @@ include "header/header.php";
                 </select>
               </div>
               <div class="col-md-2">
-                <label>Session</label>
+                <label style="font-weight:600; font-size:12px; color:var(--erp-text-secondary);">Session</label>
                 <select class="form-control" id="session">
                   <option value="">All Sessions</option>
-
                   <?php foreach ($sessionRows as $sessionRow) { ?>
                     <option value="<?php echo htmlspecialchars($sessionRow['academic_year_id']); ?>">
                       <?php echo htmlspecialchars($sessionRow['academic_year_id']); ?>
@@ -382,7 +422,7 @@ include "header/header.php";
                 </select>
               </div>
               <div class="col-md-3">
-                <label>Current Status</label>
+                <label style="font-weight:600; font-size:12px; color:var(--erp-text-secondary);">Current Status</label>
                 <select class="form-control" id="assignment_status">
                   <option value="">All Students</option>
                   <option value="assigned">Assigned</option>
@@ -391,9 +431,9 @@ include "header/header.php";
               </div>
             </div>
 
-            <div class="row" style="margin-bottom: 15px;">
+            <div class="row" style="margin-bottom: 20px;">
               <div class="col-md-3">
-                <label>Current Mentor Filter</label>
+                <label style="font-weight:600; font-size:12px; color:var(--erp-text-secondary);">Current Mentor Filter</label>
                 <select class="form-control" id="mentor_filter">
                   <option value="">All Mentors</option>
                   <?php foreach ($mentors as $mentor) { ?>
@@ -404,7 +444,7 @@ include "header/header.php";
                 </select>
               </div>
               <div class="col-md-3">
-                <label>Allocation Semester</label>
+                <label style="font-weight:600; font-size:12px; color:var(--erp-text-secondary);">Allocation Semester</label>
                 <select class="form-control" id="semester_id">
                   <option value="">Use Current Semester</option>
                   <?php
@@ -417,24 +457,20 @@ include "header/header.php";
                   <?php } ?>
                 </select>
               </div>
-              <div class="col-md-6" style="padding-top: 25px;">
-                <button type="button" class="btn btn-primary" id="apply_filters"><i class="fa fa-filter"></i> Apply
-                  Filters</button>
-                <button type="button" class="btn btn-default" id="reset_filters"><i class="fa fa-refresh"></i>
-                  Reset</button>
-                <button type="button" class="btn btn-success" id="assign_selected_btn"><i
-                    class="fa fa-check-square-o"></i> Assign Selected</button>
-                <button type="button" class="btn btn-warning" id="assign_filtered_btn"><i class="fa fa-random"></i>
-                  Assign All Filtered</button>
+              <div class="col-md-6" style="padding-top: 24px; display:flex; gap:10px; flex-wrap:wrap;">
+                <button type="button" class="btn-erp-primary" id="apply_filters"><i class="fa fa-filter"></i> Apply Filters</button>
+                <button type="button" class="btn-erp-secondary" id="reset_filters"><i class="fa fa-refresh"></i> Reset</button>
+                <button type="button" class="btn-erp-primary" style="background:#16a34a; border-color:#16a34a;" id="assign_selected_btn"><i class="fa fa-check-square-o"></i> Assign Selected</button>
+                <button type="button" class="btn-erp-primary" style="background:#d97706; border-color:#d97706;" id="assign_filtered_btn"><i class="fa fa-random"></i> Assign All Filtered</button>
               </div>
             </div>
 
-            <div class="table-responsive">
-              <table id="mentorAllocationTable" class="table table-bordered table-striped" width="100%">
+            <div class="table-responsive" style="border: 1px solid var(--erp-border); border-radius: 4px;">
+              <table id="mentorAllocationTable" class="erp-table" width="100%">
                 <thead>
                   <tr>
-                    <th><input type="checkbox" id="select_all_students"></th>
-                    <th>Sr. No</th>
+                    <th style="width: 40px;"><input type="checkbox" id="select_all_students"></th>
+                    <th style="width: 50px;">Sr. No</th>
                     <th>Reg. No</th>
                     <th>Name</th>
                     <th>Class</th>

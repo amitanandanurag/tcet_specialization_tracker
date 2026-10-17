@@ -5,10 +5,27 @@ ini_set('display_errors', 1);
 require_once "../database/db_connect.php";
 $database = new DBController();
 
-// Get current user ID from session
+// Get current user ID and role from session
 $userid = intval($_SESSION['user_id'] ?? $_SESSION['user_session'] ?? 0);
+$userRole = intval($_SESSION['user_type'] ?? $_SESSION['role_id'] ?? 0);
+
+if ($userid <= 0) {
+    http_response_code(401);
+    die("Unauthorized: Please log in to perform this operation.");
+}
+
+// Only Super Admin (1), Admin (2), Coordinator (3), and Student (5) can submit admission forms
+if (!in_array($userRole, [1, 2, 3, 5], true)) {
+    http_response_code(403);
+    die("Forbidden: Your role is not authorized to submit admissions.");
+}
 
 if (isset($_POST['save'])) {
+    if (!DBController::validateCsrfToken()) {
+        $_SESSION['student_admission_error'] = 'Invalid or expired security token. Please try again.';
+        header('Location: student_admission.php');
+        exit();
+    }
     $conn = $database->conn;
 
     $_SESSION['student_admission_form'] = [
@@ -61,84 +78,174 @@ if (isset($_POST['save'])) {
         $roll_no = "'" . mysqli_real_escape_string($conn, $_POST['roll_no']) . "'";
     }
     
+    $_SESSION['student_admission_form']['specialization_track_id'] = $_POST['specialization_track_id'] ?? '';
+
     // Handle department_id
     $department_id = 'NULL';
     if (!empty($_POST['department_id']) && $_POST['department_id'] != 'Select Department' && is_numeric($_POST['department_id'])) {
         $department_id = "'" . mysqli_real_escape_string($conn, $_POST['department_id']) . "'";
     }
-    
-    // Handle specialization_id
-    $specialization_id = 'NULL';
-    if (!empty($_POST['specialization_id']) && $_POST['specialization_id'] != 'Select Specialization' && is_numeric($_POST['specialization_id'])) {
-        $specialization_id = "'" . mysqli_real_escape_string($conn, $_POST['specialization_id']) . "'";
+
+    $track_id = intval($_POST['specialization_track_id'] ?? 0);
+    $spec_id = intval($_POST['specialization_id'] ?? 0);
+    $dept_id = intval($_POST['department_id'] ?? 0);
+    $sem_id = intval($_POST['current_semester_id'] ?? 0);
+
+    // Check FY restriction
+    $c_check = mysqli_query($conn, "SELECT class_name FROM st_class_master WHERE class_id = " . intval($_POST['class'] ?? 0) . " LIMIT 1");
+    if ($c_check && ($c_row = mysqli_fetch_assoc($c_check))) {
+        $c_name = strtoupper($c_row['class_name'] ?? '');
+        if ($c_name === 'FY' || $c_name === 'FE') {
+            echo '<script type="text/javascript">alert("Error: Specialization is not offered for First Year (FY) students.");</script>';
+            echo "<script>window.open('student_admission.php','_self')</script>";
+            exit;
+        }
     }
-    
-    // Initialize variables
+
+    // Fallback if legacy form submission
+    if ($track_id <= 0 && $spec_id > 0 && $spec_id <= 4) {
+        $track_id = $spec_id;
+    }
+
+    if ($track_id <= 0) {
+        echo '<script type="text/javascript">alert("Error: Specialization Track is required.");</script>';
+        echo "<script>window.open('student_admission.php','_self')</script>";
+        exit;
+    }
+
+    if ($track_id === 2) {
+        $subClass = intval($_POST['class'] ?? 0);
+        $subSem = intval($_POST['current_semester_id'] ?? 0);
+        $subDept = intval($_POST['department_id'] ?? 0);
+        if (!$database->isTrackEligible(2, $subClass, $subSem, $subDept)) {
+            echo '<script type="text/javascript">alert("Error: Honours with Research is available only to BE students in Semester 7 and Semester 8.");</script>';
+            echo "<script>window.open('student_admission.php','_self')</script>";
+            exit;
+        }
+    }
+
+    $specialization_track_id_sql = $track_id;
+    $specialization_id = 'NULL';
     $specialization_subject_id = 'NULL';
     $cgpa = 'NULL';
     $minor_course_id = 'NULL';
     $minor_subject_id = 'NULL';
-    
-    // Get specialization name to determine the type
-    $spec_id = trim($_POST['specialization_id'] ?? '');
-    $spec_id = str_replace("'", "", $spec_id);
-    
-    if (!empty($spec_id) && is_numeric($spec_id)) {
-        $spec_check = mysqli_query($conn, "SELECT specialization_name FROM st_specialization_master WHERE specialization_id = $spec_id");
-        if ($spec_check && mysqli_num_rows($spec_check) > 0) {
-            $spec_row = mysqli_fetch_assoc($spec_check);
-            $specialization_name = strtolower($spec_row['specialization_name'] ?? '');
-            
-            // Check for Minor Multidisciplinary
-            if (strpos($specialization_name, 'minor multidisciplinary') !== false) {
-                if (!empty($_POST['minor_course_id']) && is_numeric($_POST['minor_course_id'])) {
-                    $minor_course_id = "'" . mysqli_real_escape_string($conn, $_POST['minor_course_id']) . "'";
-                }
-                if (!empty($_POST['minor_subject_id']) && is_numeric($_POST['minor_subject_id'])) {
-                    $minor_subject_id = "'" . mysqli_real_escape_string($conn, $_POST['minor_subject_id']) . "'";
-                }
-                if (!empty($_POST['minor_cgpa']) && is_numeric($_POST['minor_cgpa'])) {
-                    $cgpa_val = floatval($_POST['minor_cgpa']);
-                    $cgpa = "'" . number_format($cgpa_val, 2) . "'";
-                }
-            } 
-            // Check for Honours
-            else if (strpos($specialization_name, 'honour') !== false || strpos($specialization_name, 'honor') !== false) {
-                if (!empty($_POST['unaided_subject']) && is_numeric($_POST['unaided_subject'])) {
-                    $specialization_subject_id = "'" . mysqli_real_escape_string($conn, $_POST['unaided_subject']) . "'";
-                }
-                if (!empty($_POST['cgpa']) && is_numeric($_POST['cgpa'])) {
-                    $cgpa_val = floatval($_POST['cgpa']);
-                    if ($cgpa_val < 7.5) {
-                        echo '<script type="text/javascript">alert("Error: Student is not eligible for Honors. Minimum CGPA must be 7.5.");</script>';
-                        echo "<script>window.open('student_admission.php','_self')</script>";
-                        exit;
-                    }
-                    $cgpa = "'" . number_format($cgpa_val, 2) . "'";
-                }
+
+    if ($track_id === 4) {
+        // Minor Multidisciplinary
+        $specialization_id = 4;
+        if (empty($_POST['minor_course_id']) || !is_numeric($_POST['minor_course_id'])) {
+            echo '<script type="text/javascript">alert("Error: Minor Course is required for Minor Multidisciplinary.");</script>';
+            echo "<script>window.open('student_admission.php','_self')</script>";
+            exit;
+        }
+        if (empty($_POST['minor_subject_id']) || !is_numeric($_POST['minor_subject_id'])) {
+            echo '<script type="text/javascript">alert("Error: Minor Subject is required for Minor Multidisciplinary.");</script>';
+            echo "<script>window.open('student_admission.php','_self')</script>";
+            exit;
+        }
+        $mc_id = intval($_POST['minor_course_id']);
+        $ms_id = intval($_POST['minor_subject_id']);
+
+        $ms_check = mysqli_query($conn, "SELECT subject_id FROM st_minorsubject WHERE subject_id = $ms_id AND course_id = $mc_id LIMIT 1");
+        if (!$ms_check || mysqli_num_rows($ms_check) === 0) {
+            echo '<script type="text/javascript">alert("Error: Selected Minor Subject does not belong to the selected Minor Course.");</script>';
+            echo "<script>window.open('student_admission.php','_self')</script>";
+            exit;
+        }
+        $minor_course_id = $mc_id;
+        $minor_subject_id = $ms_id;
+
+        if (empty($_POST['minor_cgpa']) || !is_numeric($_POST['minor_cgpa'])) {
+            echo '<script type="text/javascript">alert("Error: Minor CGPA is required.");</script>';
+            echo "<script>window.open('student_admission.php','_self')</script>";
+            exit;
+        }
+        $cgpa_val = floatval($_POST['minor_cgpa']);
+        if ($cgpa_val < 0 || $cgpa_val > 10) {
+            echo '<script type="text/javascript">alert("Error: CGPA must be between 0 and 10.");</script>';
+            echo "<script>window.open('student_admission.php','_self')</script>";
+            exit;
+        }
+        $cgpa = "'" . number_format($cgpa_val, 2) . "'";
+
+    } elseif ($track_id === 1 || $track_id === 2) {
+        // Honours Degree (1) / Honours with Research (2)
+        if ($spec_id <= 0) {
+            echo '<script type="text/javascript">alert("Error: Specialization is required for Honours.");</script>';
+            echo "<script>window.open('student_admission.php','_self')</script>";
+            exit;
+        }
+
+        if (!$database->isDepartmentEligibleForSpecialization($dept_id, $spec_id, $track_id)) {
+            echo '<script type="text/javascript">alert("Error: Selected Specialization is not eligible for your department under Honours Degree.");</script>';
+            echo "<script>window.open('student_admission.php','_self')</script>";
+            exit;
+        }
+        $specialization_id = $spec_id;
+
+        if (empty($_POST['cgpa']) || !is_numeric($_POST['cgpa'])) {
+            echo '<script type="text/javascript">alert("Error: CGPA is required for Honours.");</script>';
+            echo "<script>window.open('student_admission.php','_self')</script>";
+            exit;
+        }
+        $cgpa_val = floatval($_POST['cgpa']);
+        if ($cgpa_val < 7.5) {
+            echo '<script type="text/javascript">alert("Error: Student is not eligible for Honours. Minimum CGPA must be 7.5.");</script>';
+            echo "<script>window.open('student_admission.php','_self')</script>";
+            exit;
+        }
+        $cgpa = "'" . number_format($cgpa_val, 2) . "'";
+
+        if (!empty($_POST['unaided_subject']) && is_numeric($_POST['unaided_subject'])) {
+            $sub_id = intval($_POST['unaided_subject']);
+            if (!$database->isSubjectAvailable($sub_id, $dept_id, $sem_id, $spec_id, $track_id)) {
+                echo '<script type="text/javascript">alert("Error: Selected subject is not active for this specialization, department, and semester.");</script>';
+                echo "<script>window.open('student_admission.php','_self')</script>";
+                exit;
             }
-            // For Minor Degree
-            else if (strpos($specialization_name, 'minor') !== false) {
-                if (!empty($_POST['cgpa']) && is_numeric($_POST['cgpa'])) {
-                    $cgpa_val = floatval($_POST['cgpa']);
-                    $cgpa = "'" . number_format($cgpa_val, 2) . "'";
-                }
-                if (!empty($_POST['unaided_subject']) && is_numeric($_POST['unaided_subject'])) {
-                    $specialization_subject_id = "'" . mysqli_real_escape_string($conn, $_POST['unaided_subject']) . "'";
-                }
+            $specialization_subject_id = $sub_id;
+        }
+
+    } elseif ($track_id === 3) {
+        // Minor Degree (3)
+        if ($spec_id <= 0) {
+            echo '<script type="text/javascript">alert("Error: Specialization is required for Minor Degree.");</script>';
+            echo "<script>window.open('student_admission.php','_self')</script>";
+            exit;
+        }
+
+        if (!$database->isDepartmentEligibleForSpecialization($dept_id, $spec_id, $track_id)) {
+            echo '<script type="text/javascript">alert("Error: Selected Specialization is not eligible for your department under Minor Degree.");</script>';
+            echo "<script>window.open('student_admission.php','_self')</script>";
+            exit;
+        }
+        $specialization_id = $spec_id;
+
+        if (empty($_POST['cgpa']) || !is_numeric($_POST['cgpa'])) {
+            echo '<script type="text/javascript">alert("Error: CGPA is required for Minor Degree.");</script>';
+            echo "<script>window.open('student_admission.php','_self')</script>";
+            exit;
+        }
+        $cgpa_val = floatval($_POST['cgpa']);
+        if ($cgpa_val < 0 || $cgpa_val > 10) {
+            echo '<script type="text/javascript">alert("Error: CGPA must be between 0 and 10.");</script>';
+            echo "<script>window.open('student_admission.php','_self')</script>";
+            exit;
+        }
+        $cgpa = "'" . number_format($cgpa_val, 2) . "'";
+
+        if (!empty($_POST['unaided_subject']) && is_numeric($_POST['unaided_subject'])) {
+            $sub_id = intval($_POST['unaided_subject']);
+            if (!$database->isSubjectAvailable($sub_id, $dept_id, $sem_id, $spec_id, $track_id)) {
+                echo '<script type="text/javascript">alert("Error: Selected subject is not active for this specialization, department, and semester.");</script>';
+                echo "<script>window.open('student_admission.php','_self')</script>";
+                exit;
             }
-            // Regular specialization
-            else {
-                if (!empty($_POST['unaided_subject']) && is_numeric($_POST['unaided_subject'])) {
-                    $specialization_subject_id = "'" . mysqli_real_escape_string($conn, $_POST['unaided_subject']) . "'";
-                }
-                if (!empty($_POST['cgpa']) && is_numeric($_POST['cgpa'])) {
-                    $cgpa_val = floatval($_POST['cgpa']);
-                    $cgpa = "'" . number_format($cgpa_val, 2) . "'";
-                }
-            }
+            $specialization_subject_id = $sub_id;
         }
     }
+
 
     // Handle research components
     $research_component_i_id = 'NULL';
@@ -180,6 +287,9 @@ if (isset($_POST['save'])) {
     }
     
     $mark_list_files = [];
+    $allowed_extensions = ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx'];
+    $max_file_size = 5 * 1024 * 1024; // 5MB limit
+    
     // Accept any uploaded file whose input name starts with 'mark-list'
     $semester_fields = [];
     foreach (array_keys($_FILES) as $f) {
@@ -189,28 +299,52 @@ if (isset($_POST['save'])) {
     }
 
     foreach ($semester_fields as $field) {
-        if (isset($_FILES[$field]) && $_FILES[$field]['error'] == 0 && !empty($_FILES[$field]['name'])) {
-            $file_ext = pathinfo($_FILES[$field]['name'], PATHINFO_EXTENSION);
-            $safe_reg_no = preg_replace('/[^a-zA-Z0-9]/', '_', $registration_no);
-            $file_name = time() . '_' . $safe_reg_no . '_' . $field . '.' . $file_ext;
-            $target_path = $upload_dir . $file_name;
+        if (isset($_FILES[$field]) && $_FILES[$field]['error'] == UPLOAD_ERR_OK && !empty($_FILES[$field]['name'])) {
+            $file_ext = strtolower(pathinfo($_FILES[$field]['name'], PATHINFO_EXTENSION));
+            $file_size = intval($_FILES[$field]['size'] ?? 0);
+            
+            if (in_array($file_ext, $allowed_extensions, true) && $file_size > 0 && $file_size <= $max_file_size) {
+                $safe_reg_no = preg_replace('/[^a-zA-Z0-9]/', '_', $registration_no);
+                $file_name = time() . '_' . $safe_reg_no . '_' . preg_replace('/[^a-zA-Z0-9_-]/', '', $field) . '.' . $file_ext;
+                $target_path = $upload_dir . $file_name;
 
-            if (move_uploaded_file($_FILES[$field]['tmp_name'], $target_path)) {
-                $mark_list_files[] = $file_name;
+                if (move_uploaded_file($_FILES[$field]['tmp_name'], $target_path)) {
+                    $mark_list_files[] = $file_name;
+                }
             }
         }
     }
     
     $mark_list = !empty($mark_list_files) ? "'" . implode(',', $mark_list_files) . "'" : 'NULL';
     
-    // Check if current user already has a linked student record
+    // Determine if this is an update to an existing student record
     $existingStudentId = 0;
-    if (!empty($userid)) {
-        $checkUserSql = "SELECT student_id FROM st_user_master WHERE user_id = " . intval($userid) . " AND student_id > 0 LIMIT 1";
-        $checkUserResult = mysqli_query($conn, $checkUserSql);
-        if ($checkUserResult && mysqli_num_rows($checkUserResult) > 0) {
-            $userRow = mysqli_fetch_assoc($checkUserResult);
-            $existingStudentId = intval($userRow['student_id']);
+    $editStudentId = intval($_POST['edit_student_id'] ?? 0);
+
+    if ($userRole === 5) {
+        // For student self-admission (role 5), look up their own linked student record
+        $checkUserSql = "SELECT student_id FROM st_user_master WHERE user_id = ? AND role_id = 5 LIMIT 1";
+        $checkUserStmt = mysqli_prepare($conn, $checkUserSql);
+        if ($checkUserStmt) {
+            mysqli_stmt_bind_param($checkUserStmt, "i", $userid);
+            mysqli_stmt_execute($checkUserStmt);
+            $checkUserResult = mysqli_stmt_get_result($checkUserStmt);
+            if ($checkUserResult && ($userRow = mysqli_fetch_assoc($checkUserResult))) {
+                $existingStudentId = intval($userRow['student_id']);
+            }
+            mysqli_stmt_close($checkUserStmt);
+        }
+    } elseif ($editStudentId > 0 && in_array($userRole, [1, 2, 3], true)) {
+        // For admin/coordinator, only treat as an update if an explicit edit ID is provided
+        $checkExistStmt = mysqli_prepare($conn, "SELECT student_id FROM st_student_master WHERE student_id = ? LIMIT 1");
+        if ($checkExistStmt) {
+            mysqli_stmt_bind_param($checkExistStmt, "i", $editStudentId);
+            mysqli_stmt_execute($checkExistStmt);
+            $checkExistRes = mysqli_stmt_get_result($checkExistStmt);
+            if ($checkExistRes && mysqli_num_rows($checkExistRes) > 0) {
+                $existingStudentId = $editStudentId;
+            }
+            mysqli_stmt_close($checkExistStmt);
         }
     }
 
@@ -235,7 +369,7 @@ if (isset($_POST['save'])) {
 
     if ($specialization_subject_id !== 'NULL' && !$database->isSubjectAvailable(
         intval(trim($specialization_subject_id, "'")), intval($_POST['department_id'] ?? 0),
-        intval($current_semester_id), intval($_POST['specialization_id'] ?? 0))) {
+        intval($current_semester_id), intval($specialization_id), $track_id)) {
         echo 'Selected specialization subject is not active for this department and semester.';
         exit;
     }
@@ -273,6 +407,7 @@ if (isset($_POST['save'])) {
             `grad_year` = $grad_year_sql,
             `roll_no` = $roll_no,
             `department_id` = $department_id,
+            `specialization_track_id` = $specialization_track_id_sql,
             `specialization_id` = $specialization_id,
             `specialization_subject_id` = $specialization_subject_id,
             `minor_course_id` = $minor_course_id,
@@ -302,6 +437,7 @@ if (isset($_POST['save'])) {
             `grad_year`,
             `roll_no`,
             `department_id`,
+            `specialization_track_id`,
             `specialization_id`,
             `specialization_subject_id`,
             `minor_course_id`,
@@ -329,6 +465,7 @@ if (isset($_POST['save'])) {
             $grad_year_sql,
             $roll_no,
             $department_id,
+            $specialization_track_id_sql,
             $specialization_id,
             $specialization_subject_id,
             $minor_course_id,
@@ -376,11 +513,26 @@ if (isset($_POST['save'])) {
             mysqli_commit($conn);
         }
         
-        // Link the student to the current user
-        if (!empty($userid)) {
-            $updateUserSql = "UPDATE st_user_master SET student_id = $student_id WHERE user_id = " . intval($userid);
-            mysqli_query($conn, $updateUserSql);
+        // Link the student to the student's user account ONLY if role is student (role 5)
+        if ($userRole === 5 && !empty($userid)) {
+            $updateUserSql = "UPDATE st_user_master SET student_id = ? WHERE user_id = ? AND role_id = 5";
+            $updateUserStmt = mysqli_prepare($conn, $updateUserSql);
+            if ($updateUserStmt) {
+                mysqli_stmt_bind_param($updateUserStmt, "ii", $student_id, $userid);
+                mysqli_stmt_execute($updateUserStmt);
+                mysqli_stmt_close($updateUserStmt);
+            }
+        } elseif (!empty($_POST['email'])) {
+            // If admitted by admin/coordinator and a student user account already exists with this email, link it
+            $studentEmail = trim($_POST['email']);
+            $linkStudentUserStmt = mysqli_prepare($conn, "UPDATE st_user_master SET student_id = ? WHERE email_id = ? AND role_id = 5 AND (student_id = 0 OR student_id IS NULL)");
+            if ($linkStudentUserStmt) {
+                mysqli_stmt_bind_param($linkStudentUserStmt, "is", $student_id, $studentEmail);
+                mysqli_stmt_execute($linkStudentUserStmt);
+                mysqli_stmt_close($linkStudentUserStmt);
+            }
         }
+        // Note: NEVER update the logged-in administrator's or coordinator's user record!
         
         // Store in session and redirect to view page
         $_SESSION['student_admission_success'] = 'Student admitted successfully! Student ID: ' . $student_id;
@@ -392,8 +544,9 @@ if (isset($_POST['save'])) {
         if ($promotionTransaction) {
             mysqli_rollback($conn);
         }
-        echo "Error: " . mysqli_error($conn);
-        echo "<br><br>SQL Query: <pre>" . htmlspecialchars($sql) . "</pre>";
+        error_log("Student admission failed: " . mysqli_error($conn));
+        echo '<script type="text/javascript">alert("Error: Unable to save student admission record. Please check your inputs and try again.");</script>';
+        echo "<script>window.open('student_admission.php','_self')</script>";
     }
     exit;
 }

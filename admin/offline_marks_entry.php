@@ -52,7 +52,11 @@ if ($semesterResult) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_offline_marks'])) {
-    $studentId = intval($_POST['student_id'] ?? 0);
+    if (!DBController::validateCsrfToken()) {
+        $alertType = 'danger';
+        $alertMessage = 'Security validation failed (CSRF token expired). Please refresh and try again.';
+    } else {
+        $studentId = intval($_POST['student_id'] ?? 0);
     $semesterId = intval($_POST['semester_id'] ?? 0);
     $courseName = trim((string)($_POST['course_name'] ?? ''));
     $nptelStatus = trim((string)($_POST['nptel_status'] ?? 'Pass'));
@@ -272,6 +276,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_offline_marks'])
         $alertType = 'warning';
         $alertMessage = implode(' ', $validationErrors);
     }
+    }
 }
 
 $recentEntries = array();
@@ -362,6 +367,7 @@ if ($recentResult) {
                         <h3 class="box-title"><i class="fa fa-edit"></i> Enter Student Marks</h3>
                     </div>
                     <form method="POST" action="">
+                        <?php echo DBController::getCsrfInputField(); ?>
                         <div class="box-body">
                             <div class="row">
                                 <div class="col-md-6">
@@ -399,7 +405,7 @@ if ($recentResult) {
                                 </div>
                                 <div class="col-md-6">
                                     <div class="form-group">
-                                        <label>NPTEL Course Name <span id="cert_link_wrapper" style="display:none; margin-left:15px;"><a id="cert_link" href="#" target="_blank" class="btn btn-xs btn-info" style="color: #fff;"><i class="fa fa-eye"></i> View Student Certificate</a></span></label>
+                                        <label>NPTEL Course Name <span id="cert_link_wrapper" style="display:none; margin-left:15px;"><a id="cert_link" href="#" target="_blank" class="btn-erp-secondary" style="padding: 2px 8px; font-size: 11px;"><i class="fa fa-eye"></i> View Student Certificate</a></span></label>
                                         <input type="text" class="form-control" name="course_name" id="course_name" placeholder="e.g. Introduction to AI" required>
                                     </div>
                                 </div>
@@ -483,7 +489,7 @@ if ($recentResult) {
                         </div>
 
                         <div class="box-footer">
-                            <button type="submit" class="btn btn-primary" name="save_offline_marks">
+                            <button type="submit" class="btn-erp-primary" name="save_offline_marks">
                                 <i class="fa fa-save"></i> Save Marks Entry
                             </button>
                         </div>

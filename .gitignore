@@ -1,0 +1,14 @@
+# Temporary & Editor artifacts
+*.tmp
+*.bak
+*.swp
+*.log
+*.orig
+*~
+
+# Operating System files
+.DS_Store
+Thumbs.db
+
+# Project Scratch directories
+scratch/
