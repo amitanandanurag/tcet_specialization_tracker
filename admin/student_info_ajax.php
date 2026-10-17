@@ -27,23 +27,11 @@ if ($user_role > 4) {
     exit();
 }
 
-$department_id = '';
-
-if ($user_role == 3) {
-
-    $qry = "
-        SELECT department_id
-        FROM st_user_master
-        WHERE user_id='$user_id'
-    ";
-
-    $res = $db_handle->conn->query($qry);
-
-    if($res && $res->num_rows){
-        $department_id = $res->fetch_assoc()['department_id'];
-    }
+$user_scope = $db_handle->getUserScope($user_id, $user_role);
+$department_id = intval($user_scope['department_id'] ?? 0);
+if ($user_role == 3 && $department_id <= 0) {
+    $department_id = -1; // Unassigned HOD sees 0 students
 }
-
 
 $requestData = $_REQUEST;
 
@@ -53,7 +41,7 @@ $select_section = $_POST['select_section'] ?? '';
 $select_session = $_POST['select_session'] ?? '';
 $select_batch = $_POST['select_batch'] ?? '';
 $select_semester = $_POST['select_semester'] ?? '';
-$select_department = $_POST['select_department'] ?? '';
+$select_department = ($user_role == 3) ? $department_id : ($_POST['select_department'] ?? '');
 
 // Calculate total data count (before filters)
 $totalData = 0;
@@ -63,23 +51,25 @@ LEFT JOIN st_student_semester_history h_current
 LEFT JOIN st_mentor_student_mapping msm
     ON msm.student_id=sm.student_id AND msm.semester_id=sm.current_semester_id WHERE 1=1";
 if($user_role==3){
-
-    $totalSql .= " AND sm.department_id='$department_id'";
-
+    $totalSql .= " AND sm.department_id = '$department_id'";
 }
 elseif($user_role==4){
-
-    $totalSql .= " AND sm.status = 1 AND EXISTS (
-                SELECT 1 FROM st_mentor_subject_mapping msub
-                        JOIN st_specialization_subject_master current_subject ON current_subject.subject_id = msub.subject_id
-                        JOIN st_user_master current_mentor ON current_mentor.user_id = msub.mentor_id
-        WHERE msub.mentor_id = '$user_id'
-                      AND msub.subject_id = COALESCE(NULLIF(sm.specialization_subject_id, 0), h_current.specialization_subject_id)
-                            AND current_subject.semester_id = sm.current_semester_id
-                            AND current_subject.department_id = sm.department_id
-                            AND current_mentor.department_id = sm.department_id
-        )";
-
+    $totalSql .= " AND sm.status = 1 AND (
+        EXISTS (
+            SELECT 1 FROM st_mentor_student_mapping msm2
+            WHERE msm2.student_id = sm.student_id AND msm2.mentor_id = '$user_id'
+        )
+        OR EXISTS (
+            SELECT 1 FROM st_mentor_subject_mapping msub
+            JOIN st_specialization_subject_master current_subject ON current_subject.subject_id = msub.subject_id
+            JOIN st_user_master current_mentor ON current_mentor.user_id = msub.mentor_id
+            WHERE msub.mentor_id = '$user_id'
+              AND msub.subject_id = COALESCE(NULLIF(sm.specialization_subject_id, 0), h_current.specialization_subject_id)
+              AND current_subject.semester_id = sm.current_semester_id
+              AND current_subject.department_id = sm.department_id
+              AND current_mentor.department_id = sm.department_id
+        )
+    )";
 }
 
 $totalResult = $db_handle->query($totalSql);
@@ -189,19 +179,23 @@ elseif($user_role==3){
 
 // Role 4 Mentor
 elseif($user_role==4){
-
-        $sql .= " AND sm.status = 1
-                            AND EXISTS (
-                                SELECT 1 FROM st_mentor_subject_mapping msub
-                                JOIN st_specialization_subject_master current_subject ON current_subject.subject_id = msub.subject_id
-                                JOIN st_user_master current_mentor ON current_mentor.user_id = msub.mentor_id
-                                WHERE msub.mentor_id = '" . mysqli_real_escape_string($db_handle->conn, $user_id) . "'
-                                    AND msub.subject_id = COALESCE(NULLIF(sm.specialization_subject_id, 0), h_current.specialization_subject_id)
-                                    AND current_subject.semester_id = sm.current_semester_id
-                                    AND current_subject.department_id = sm.department_id
-                                    AND current_mentor.department_id = sm.department_id
-                            )";
-
+    $escapedUserId = mysqli_real_escape_string($db_handle->conn, $user_id);
+    $sql .= " AND sm.status = 1 AND (
+        EXISTS (
+            SELECT 1 FROM st_mentor_student_mapping msm2
+            WHERE msm2.student_id = sm.student_id AND msm2.mentor_id = '$escapedUserId'
+        )
+        OR EXISTS (
+            SELECT 1 FROM st_mentor_subject_mapping msub
+            JOIN st_specialization_subject_master current_subject ON current_subject.subject_id = msub.subject_id
+            JOIN st_user_master current_mentor ON current_mentor.user_id = msub.mentor_id
+            WHERE msub.mentor_id = '$escapedUserId'
+              AND msub.subject_id = COALESCE(NULLIF(sm.specialization_subject_id, 0), h_current.specialization_subject_id)
+              AND current_subject.semester_id = sm.current_semester_id
+              AND current_subject.department_id = sm.department_id
+              AND current_mentor.department_id = sm.department_id
+        )
+    )";
 }
 
 // Apply filters

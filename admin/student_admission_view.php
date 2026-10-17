@@ -5,6 +5,13 @@ $student_id = intval($_REQUEST['id'] ?? 0);
 $student = null;
 $uploadedFiles = [];
 
+// Enforce record-level authorization
+if ($student_id <= 0 || !$db_handle->canAccessStudent($student_id, $userid, $usertype)) {
+    echo '<div class="content-wrapper"><section class="content"><div class="alert alert-danger" style="margin-top: 20px;"><i class="fa fa-ban"></i> Access Denied: You do not have permission to view this student admission record.</div></section></div>';
+    include "header/footer.php";
+    exit;
+}
+
 if ($student_id > 0) {
     $sql = "SELECT s.student_id, s.academic_year_id, s.registration_no, s.roll_no, s.grad_year,
                    s.cgpa, s.fname, s.mobile, s.email, s.status, s.created_at, s.mark_list,

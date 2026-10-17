@@ -1,6 +1,6 @@
 <?php
-if (session_status() !== PHP_SESSION_ACTIVE) {
-    session_start();
+if (session_status() !== PHP_SESSION_ACTIVE && !headers_sent()) {
+    @session_start();
 }
 require_once __DIR__ . "/../database/db_connect.php";
 $db_handle = new DBController();
@@ -11,6 +11,20 @@ if (!isset($_REQUEST['id'])) {
 }
 
 $student_id = intval($_REQUEST['id']);
+$sessionUserId = intval($_SESSION['user_id'] ?? $_SESSION['user_session'] ?? 0);
+$sessionRoleId = intval($_SESSION['user_type'] ?? $_SESSION['role_id'] ?? 0);
+
+if ($sessionUserId <= 0 || $sessionRoleId <= 0) {
+    http_response_code(403);
+    echo "<div class='alert alert-danger' style='border-radius: 4px; padding: 15px; margin: 15px;'><i class='fa fa-ban'></i> Please log in to view student records.</div>";
+    exit;
+}
+
+if (!$db_handle->canAccessStudent($student_id, $sessionUserId, $sessionRoleId)) {
+    http_response_code(403);
+    echo "<div class='alert alert-danger' style='border-radius: 4px; padding: 15px; margin: 15px;'><i class='fa fa-ban'></i> Access Denied: You do not have permission to view this student record.</div>";
+    exit;
+}
 
 $sql = "SELECT s.*,
                c.class_name,

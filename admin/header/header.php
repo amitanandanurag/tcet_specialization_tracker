@@ -1,10 +1,10 @@
 <?php
-if (session_status() !== PHP_SESSION_ACTIVE) {
-	session_start();
+if (session_status() !== PHP_SESSION_ACTIVE && !headers_sent()) {
+	@session_start();
 }
 require_once __DIR__ . "/../../database/db_connect.php";
 if (isset($_SESSION['user_session'])) {
-} else {
+} elseif (php_sapi_name() !== 'cli') {
 	header("location: ../index.php");
 	exit;
 }
@@ -20,7 +20,10 @@ $userid = 0;
 $usertype = 0;
 $name = '';
 
-$sql = "SELECT l.login_id, l.username, l.user_id, u.role_id, u.user_name, r.role_name
+$loginDepartment = 0;
+$loginStudentId = 0;
+
+$sql = "SELECT l.login_id, l.username, l.user_id, u.role_id, u.user_name, u.department_id, u.student_id, r.role_name
 	    FROM st_login l
 	    LEFT JOIN st_user_master u ON u.user_id = l.user_id
 	    LEFT JOIN st_role_master r ON r.role_id = u.role_id
@@ -33,8 +36,12 @@ if ($result && $result->num_rows > 0) {
 	$userid = intval($row['user_id']);
 	$usertype = intval($row['role_id']);
 	$name = $row['username'];
+	$loginDepartment = intval($row['department_id'] ?? 0);
+	$loginStudentId = intval($row['student_id'] ?? 0);
+	$_SESSION['department_id'] = $loginDepartment;
+	$_SESSION['student_id'] = $loginStudentId;
 } else {
-	$fallbackSql = "SELECT l.login_id, l.username, l.user_id, u.role_id, u.user_name, r.role_name
+	$fallbackSql = "SELECT l.login_id, l.username, l.user_id, u.role_id, u.user_name, u.department_id, u.student_id, r.role_name
 				FROM st_login l
 				LEFT JOIN st_user_master u ON u.user_id = l.user_id
 				LEFT JOIN st_role_master r ON r.role_id = u.role_id
@@ -47,14 +54,20 @@ if ($result && $result->num_rows > 0) {
 		$userid = intval($row['user_id']);
 		$usertype = intval($row['role_id']);
 		$name = $row['username'];
+		$loginDepartment = intval($row['department_id'] ?? 0);
+		$loginStudentId = intval($row['student_id'] ?? 0);
 
 		$_SESSION['user_session'] = $row['login_id'];
 		$_SESSION['user_login_id'] = $row['login_id'];
 		$_SESSION['user_id'] = $row['user_id'];
 		$_SESSION['user_type'] = $row['role_id'];
+		$_SESSION['department_id'] = $loginDepartment;
+		$_SESSION['student_id'] = $loginStudentId;
 	} else {
-		header("location: ../index.php");
-		exit();
+		if (php_sapi_name() !== 'cli') {
+			header("location: ../index.php");
+			exit();
+		}
 	}
 }
 
@@ -72,8 +85,10 @@ if ($profileResult && ($profileRow = mysqli_fetch_assoc($profileResult))) {
 }
 
 if ($userid <= 0 || $usertype <= 0) {
-	header("location: ../index.php");
-	exit;
+	if (php_sapi_name() !== 'cli') {
+		header("location: ../index.php");
+		exit;
+	}
 }
 
 $sql = "SELECT role_name FROM st_role_master WHERE role_id = ? LIMIT 1";
@@ -98,20 +113,22 @@ if ($stmt) {
 			if ($roleId === 1) {
 				return true;
 			}
-			$universal = array(
-				'index.php', 'dashboard.php', 'student_dashboard.php',
-				'profile.php', 'setting_profile.php', 'change_password.php',
-				'logout.php', 'branch_info.php'
+
+			// Privileged configuration routes strictly reserved for Super Admin
+			$superAdminOnly = array(
+				'class_crud_new.php', 'class_edit_new.php', 'class_edit_new_ajax.php',
+				'class_manage.php', 'class_manage_new.php', 'audit_log.php', 'allocation_master.php'
 			);
-			if (in_array($scriptName, $universal)) {
-				return true;
+			if (in_array($scriptName, $superAdminOnly, true)) {
+				return false;
 			}
+
 			$routeAliases = array(
 				'student-edit.php' => 'student-info.php',
 				'student-update.php' => 'student-info.php',
 				'student_process.php' => 'student_admission.php',
 				'student_view.php' => 'student-info.php',
-				'student_admission_view.php' => 'student-info.php',
+				'student_admission_view.php' => 'student_admission.php',
 				'student_delete.php' => 'student-info.php',
 				'student_bulk_delete.php' => 'student-info.php',
 				'student_info_ajax.php' => 'student-info.php',
@@ -145,10 +162,58 @@ if ($stmt) {
 				'batch_promotion.php' => 'student_monitor.php',
 				'export_service.php' => 'student-info.php'
 			);
-			if ($roleId === 5 && ($scriptName === 'student_admission_view.php' || $scriptName === 'student.php')) {
+
+			$checkScript = $routeAliases[$scriptName] ?? $scriptName;
+			if (in_array($checkScript, $superAdminOnly, true)) {
+				return false;
+			}
+
+			// Universal pages for authenticated users
+			$universal = array(
+				'index.php', 'dashboard.php', 'student_dashboard.php',
+				'profile.php', 'setting_profile.php', 'change_password.php',
+				'logout.php'
+			);
+
+			// Branch Info is accessible to Super Admin (1), Admin (2), and HOD (3)
+			if ($scriptName === 'branch_info.php') {
+				return in_array($roleId, array(1, 2, 3), true);
+			}
+
+			if (in_array($scriptName, $universal, true)) {
+				// Student (5) must use student_dashboard.php, not index.php or dashboard.php
+				if ($roleId === 5 && ($scriptName === 'index.php' || $scriptName === 'dashboard.php')) {
+					return false;
+				}
+				// Non-student roles must not access student_dashboard.php
+				if ($roleId !== 5 && $scriptName === 'student_dashboard.php') {
+					return false;
+				}
 				return true;
 			}
-			$checkScript = $routeAliases[$scriptName] ?? $scriptName;
+
+			// Student (Role 5) is strictly restricted to self-service pages
+			if ($roleId === 5) {
+				$studentAllowed = array('student_admission_view.php', 'student.php', 'nptel_certificate.php', 'student_admission.php');
+				return in_array($scriptName, $studentAllowed, true);
+			}
+
+			// Mentor (Role 4) must not access admin/coordinator management or student admission creation
+			if ($roleId === 4) {
+				$mentorBlocked = array(
+					'admin_register.php', 'admin_info.php', 'coordinator_register.php',
+					'coordinator_info.php', 'coordinator_allocation.php', 'student_admission.php',
+					'batch_promotion.php'
+				);
+				if (in_array($scriptName, $mentorBlocked, true) || in_array($checkScript, $mentorBlocked, true)) {
+					return false;
+				}
+				// Allow mentor_assignment.php for self-assignment view
+				if ($scriptName === 'mentor_assignment.php') {
+					return true;
+				}
+			}
+
 			$sql = "SELECT 1 
 					FROM st_menu_allocation_master a
 					JOIN st_sub_menu_master sm ON a.sub_menu_id = sm.sub_menu_id

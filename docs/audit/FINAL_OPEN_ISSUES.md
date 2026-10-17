@@ -1,66 +1,90 @@
-# TCET ERP Final Open Issues & Recommendations Report
-**Document ID:** FINAL-OPEN-ISSUES-2026-10-16  
-**Execution Timestamp:** 2026-10-16 22:38:00 IST  
-**Environment:** PHP 8.2.12 / MariaDB 10.4.32  
-**Target Codebase:** `C:\xampp\htdocs\st`  
+# TCET ERP — Final Open Issues & Architectural Recommendations
+
+**Project:** TCET Specialization Tracker (TCET ERP)  
+**Location:** `C:\xampp\htdocs\st`  
+**Execution Timestamp:** October 17, 2026 (Local Time)  
+**Environment:** PHP 8.2.12 / MariaDB 10.4.32 (XAMPP Port 3306)  
+**Release Gate Verdict:** **PASS WITH OPEN ISSUES** (Zero Blocking Issues)  
 
 ---
 
-## 1. Overview of Open Findings
+## 1. Overview & Current Status
 
-All Critical (P1, P2, P3) and High-Priority (P4, P5, P10) security vulnerabilities, dashboard data defects, and Specialization Subject UI layout defects have been verified and remediated.
+All Critical and High-Priority requirements for Role-Based Access Control, Data Reconciliation, Sidebar Restructuring, and Student Self-Service have been verified, remediated, and tested with a 100% test pass rate across all 14 suites (428 / 428 assertions passing).
 
-The remaining open items below represent non-blocking architectural enhancements, technical debt, and environment configurations recommended for subsequent planned releases.
+The items documented below represent verified functional workflows, non-blocking technical debt, legacy data observations, and architectural recommendations for future development cycles. None of these items block local release or staging verification.
 
 ---
 
-## 2. Open Issues Inventory
+## 2. Assessment of Key Workflows
 
-### Issue 1: Overloaded `status` Column Semantics
-- **Severity:** Medium
-- **Component:** Database Schema (`st_student_master`)
-- **Description:** In the legacy schema, `st_student_master.status` is used both as a student account lifecycle flag (`status = 1` for Active, `status = 0` for Deactivated) and as an application review status (`status = 1` for Approved, `status = 0` for Pending Review).
-- **Impact:** 587 legacy rows imported during system inception carry `status = 0`, causing them to appear as "Pending" in the Specialization Application Tracking table while being "Inactive" in general rosters.
-- **Safe Recommendation:** In a future planned migration, introduce an explicit column `application_status ENUM('PENDING', 'APPROVED', 'REJECTED') DEFAULT 'PENDING'` on specialization registration tables, separating application workflow from student account activation. Do not execute a bulk conversion on legacy data without academic committee sign-off.
+### 2.1 Credit Ledger Engine
+- **Status:** **VERIFIED**
+- **Component:** `admin/student_monitor_ajax.php`, `admin/offline_marks_student_ajax.php`
+- **Evidence:** The credit ledger correctly queries `st_credit_ledger` (and falls back to `st_minorsubject.credits` when ledger entries are not yet recorded) to display credits earned per semester.
+- **Long-Term Recommendation:** Implement an automated batch job to populate `st_credit_ledger` upon formal end-of-semester exam finalization.
 
-### Issue 2: End-to-End SMTP Mail Delivery on Localhost
+### 2.2 Certificate Verification Workflow
+- **Status:** **VERIFIED**
+- **Component:** `admin/nptel_certificate.php`
+- **Evidence:** Supports student certificate upload (PDF/JPG/PNG max 2MB) with course name, exam score, and completion date. Verification status ('Pending', 'Approved', 'Rejected') is tracked and displayed to students with direct link to view the uploaded file.
+- **Long-Term Recommendation:** Add email alerts to department coordinators when new certificates are pending review.
+
+### 2.3 In-App Notifications
+- **Status:** **OPEN (Non-Blocking Enhancement)**
+- **Component:** `admin/header/header.php`
+- **Evidence:** The top navigation bar contains a notification bell icon and counter badge. In the current AdminLTE template, this uses client-side markup and is not yet wired to a live backend WebSocket or SSE daemon.
+- **Long-Term Recommendation:** Implement a lightweight Server-Sent Events (SSE) or polling endpoint querying `st_audit_log` or a dedicated `st_notification` table for real-time alerts.
+
+---
+
+## 3. Inventory of Remaining Non-Blocking Issues
+
+### Issue 1: Missing Schema Defaults for `m_sem1`, `m_sem2`, `m_sem3`
+- **Severity:** Low (Architectural Resilience)
+- **Component:** `st_student_master`
+- **Description:** Columns `m_sem1`, `m_sem2`, and `m_sem3` are declared as `text NOT NULL` without a `DEFAULT` clause. In the application code (`admin/student_process.php` and `admin/student.php`), these fields are populated with `'[]'`. However, external manual SQL queries or older test scripts that omit these columns trigger MySQL strict-mode errors.
+- **Safe Recommendation:** Execute a schema migration:
+  ```sql
+  ALTER TABLE st_student_master 
+      MODIFY m_sem1 TEXT NOT NULL DEFAULT '[]', 
+      MODIFY m_sem2 TEXT NOT NULL DEFAULT '[]', 
+      MODIFY m_sem3 TEXT NOT NULL DEFAULT '[]';
+  ```
+
+### Issue 2: Overloaded `status` Column Semantics (587 Legacy Registrations)
+- **Severity:** Medium (Data Governance)
+- **Component:** `st_student_master.status`
+- **Description:** In the legacy database `tcet_st`, `status` is used both for student enrollment status (Active `1` vs Inactive `0`) and application approval (Approved `1` vs Pending `0`). There are 587 historical student records with `status = 0`.
+- **Mitigation Implemented:** Dashboard KPI cards now transparently present `64 Enrolled (651 Registered)` rather than an unexplained single count.
+- **Administrative Action:** Institution admission coordinators should conduct a formal administrative review to approve, graduate, or archive historical inactive cohorts. Do NOT bulk-modify records without institutional sign-off.
+
+### Issue 3: Localhost SMTP Mail Transport
 - **Severity:** Low (Environment)
-- **Component:** [login/forgot_password.php](file:///c:/xampp/htdocs/st/login/forgot_password.php)
-- **Description:** The password reset token lifecycle, SHA-256 hashing, rate limiting, and generic response are fully functional. However, standard XAMPP localhost does not have an active SMTP transport configured, meaning `@mail()` does not deliver real external emails in local testing.
-- **Impact:** Real emails cannot be received in localhost development without configuring `sendmail.ini` / PHPMailer SMTP credentials.
-- **Safe Recommendation:** Configure PHPMailer or institutional SMTP relay credentials (`smtp.tcetmumbai.in` / TLS Port 587) in a secure environment configuration file before production deployment.
+- **Component:** `login/forgot_password.php`
+- **Description:** Password reset tokens, SHA-256 hashing, expiration rules, and CSRF protection are fully functional. However, standard local XAMPP environments do not have an active external SMTP relay configured, meaning local `@mail()` calls do not deliver external emails.
+- **Safe Recommendation:** Configure PHPMailer or institutional SMTP relay (`smtp.tcetmumbai.in` / TLS Port 587) in a protected environment config before deploying to production.
 
-### Issue 3: Offline Credit Ledger Caching for Transcripts
-- **Severity:** Low (Enhancement)
-- **Component:** Academic Progression Engine
-- **Description:** Student credits are currently calculated dynamically on every request from `st_student_semester_history` and `st_minorsubject.credits`.
-- **Impact:** As historical semesters and student volumes scale into thousands of records, repeated dynamic credit summation may increase query latency on bulk report exports.
-- **Safe Recommendation:** Implement a cached `st_student_credit_ledger` summary table updated atomically upon semester finalization.
-
-### Issue 4: Real-Time Push Notification Engine
-- **Severity:** Medium (Feature)
-- **Component:** Header Notifications
-- **Description:** The header navigation displays a notification bell icon and counter badge. Notifications are currently loaded via polling rather than a persistent WebSocket / Server-Sent Events daemon.
-- **Impact:** Minor delay in real-time alert updates for students.
-- **Safe Recommendation:** Implement a lightweight SSE (Server-Sent Events) endpoint for real-time mentor/coordinator action alerts.
-
-### Issue 5: Legacy Roll Number Duplicates in Reference Data
-- **Severity:** Low (Data Hygiene)
-- **Component:** Database Data Quality (`tcet_st`)
-- **Description:** Diagnostic audit identified 74 distinct roll numbers with duplicates and 2 rows with null/blank roll numbers originating from historical CSV imports.
-- **Impact:** Non-unique roll numbers do not affect primary key (`student_id`) operations or login security, but may cause ambiguity in legacy departmental printouts.
-- **Safe Recommendation:** Run a registrar-reviewed deduplication pass during semester transition.
+### Issue 4: Legacy Roll Number Duplicates
+- **Severity:** Low (Data Quality)
+- **Component:** `st_student_master.roll_no`
+- **Description:** Historical data imports created duplicate or empty roll numbers in a few older cohorts.
+- **Impact:** Does not affect primary key (`student_id`) or user authentication.
+- **Safe Recommendation:** Department coordinators should review and deduplicate roll numbers during annual cohort promotions.
 
 ---
 
-## 3. Summary of Overall Application Status
+## 4. Summary & Release Gate Recommendation
 
 | Category | Status | Notes |
 |---|---|---|
-| **Master Data UI & Specialization Subject** | **PASS** | 2-column grid, bounded 1050px card, no overflow across 5 viewports |
-| **Dashboard Metrics Accuracy** | **PASS** | Reconciled with mathematical invariants holding 100% |
-| **Batch 1 Security (P1, P2, P3)** | **PASS** | Password resets, NPTEL cancellation, admission overwrite verified |
-| **Batch 2 Security (P4, P5, P10)** | **PASS** | Status handling, password hashing, mentor RBAC verified |
-| **Regression Test Suite** | **PASS** | 300 / 300 tests passed against isolated `tcet_st_test` |
-| **Production Safety Gate** | **PASS** | `tcet_st` untouched, zero commits/pushes, full backups verified |
-| **Overall Release Verdict** | **PASS WITH DOCUMENTED OPEN ENHANCEMENTS** | Ready for stakeholder review and deployment authorization |
+| **Codebase Syntax & Linting** | **PASS** | 140 / 140 PHP files clean (`php -l`) |
+| **Regression Test Runner** | **PASS** | 428 / 428 Assertions passed across 14 suites (Exit code 0) |
+| **Role-Based Access Control** | **PASS** | 110 / 110 Unit & Live HTTP security assertions passed |
+| **Database Isolation & Safety** | **PASS** | `tcet_st` strictly read-only (651 students); `tcet_st_test` isolated |
+| **Sidebar & Master Consolidation** | **PASS** | Submenus 51-53 consolidated; Super Admin privileged routes protected |
+| **Student Self-Service Portal** | **PASS** | 11 completeness fields; CSRF contact update; sequential progression |
+| **Remaining Open Items** | **PASS WITH OPEN ISSUES** | All 4 documented items are non-blocking enhancements/recommendations |
+
+**Final Decision:** **PASS WITH OPEN ISSUES**  
+**Action:** All local tests and documentation are complete. Leave working tree uncommitted for user review.

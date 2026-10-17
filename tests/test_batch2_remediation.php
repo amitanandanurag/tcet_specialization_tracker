@@ -18,16 +18,15 @@ echo "=======================================================\n";
 echo "BATCH 2 REMEDIATION VERIFICATION SUITE\n";
 echo "=======================================================\n\n";
 
-$testDbName = getenv('TCET_TEST_DB') ?: 'tcet_st_test';
-putenv('TCET_DB_NAME=' . $testDbName);
-$_ENV['TCET_DB_NAME'] = $testDbName;
+putenv('TCET_DB_NAME=tcet_st_test');
+putenv('TCET_TEST_DB=tcet_st_test');
+$testDbName = 'tcet_st_test';
 $db = new DBController($testDbName);
 
-if (!$db->conn) {
-    $testDbName = 'tcet_st';
-    putenv('TCET_DB_NAME=' . $testDbName);
-    $_ENV['TCET_DB_NAME'] = $testDbName;
-    $db = new DBController($testDbName);
+$dbCheckRes = $db->runQuery("SELECT DATABASE() as db");
+$activeDb = $dbCheckRes[0]['db'] ?? '';
+if ($activeDb !== 'tcet_st_test') {
+    die("[FATAL SAFETY ABORT] Connected database is '$activeDb', expected 'tcet_st_test'. Aborting test.\n");
 }
 
 echo "Target Database: {$testDbName}\n\n";
@@ -65,9 +64,9 @@ $uniqueSuffix = time() . '_' . mt_rand(100, 999);
 $testStudentReg = "TEST-P4-" . $uniqueSuffix;
 $insertTestSql = "INSERT INTO st_student_master (
     registration_no, class_id, division_id, grad_year, roll_no, department_id,
-    specialization_id, specialization_subject_id, fname, mobile, email, status, created_at
+    specialization_id, specialization_subject_id, fname, mobile, email, status, m_sem1, m_sem2, m_sem3, created_at
 ) VALUES (
-    '{$testStudentReg}', 1, 1, 2027, '999', 1, 1, 1, 'Test Student P4', '9876543210', 'p4_{$uniqueSuffix}@tcetmumbai.in', 1, NOW()
+    '{$testStudentReg}', 1, 1, 2027, '999', 1, 1, 1, 'Test Student P4', '9876543210', 'p4_{$uniqueSuffix}@tcetmumbai.in', 1, '[]', '[]', '[]', NOW()
 )";
 mysqli_query($db->conn, $insertTestSql);
 $testStudentId = mysqli_insert_id($db->conn);

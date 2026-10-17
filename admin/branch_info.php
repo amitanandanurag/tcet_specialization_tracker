@@ -6,7 +6,22 @@ $db_handle = new DBController();
 
 $selectedDepartmentId = intval($_GET['department_id'] ?? 0);
 
-// Fetch all branches from database
+// Role 3 (HOD / Coordinator) is strictly scoped to their authoritative department
+if ((int)($usertype ?? 0) === 3) {
+    $selectedDepartmentId = intval($loginDepartment ?? 0);
+    if ($selectedDepartmentId <= 0) {
+        $selectedDepartmentId = -1; // Unassigned HOD sees 0 branches
+    }
+}
+
+// Fetch branches from database with accurate metrics
+$whereClause = "";
+if ($selectedDepartmentId > 0) {
+    $whereClause = "WHERE d.department_id = " . intval($selectedDepartmentId) . " ";
+} elseif ($selectedDepartmentId === -1) {
+    $whereClause = "WHERE 1 = 0 ";
+}
+
 $branches_query = "SELECT 
     d.department_id as id,
     d.department_name as name,
@@ -15,12 +30,12 @@ $branches_query = "SELECT
         THEN UPPER(SUBSTRING(d.department_name, 1, LOCATE(' ', d.department_name) - 1))
         ELSE UPPER(d.department_name)
     END as code,
-    (SELECT COUNT(*) FROM st_student_master WHERE department_id = d.department_id AND status = 1
-    ) as total_students,
-    (SELECT COUNT(*) FROM st_user_master WHERE department_id = d.department_id AND role_id = 2) as total_hods,
+    (SELECT COUNT(*) FROM st_student_master WHERE department_id = d.department_id AND status = 1) as total_students,
+    (SELECT COUNT(*) FROM st_student_master WHERE department_id = d.department_id) as total_registered_students,
+    (SELECT COUNT(*) FROM st_user_master WHERE department_id = d.department_id AND role_id = 3) as total_hods,
     (SELECT COUNT(*) FROM st_user_master WHERE department_id = d.department_id AND role_id IN (3,4)) as total_staff
 FROM st_department_master d
-" . ($selectedDepartmentId > 0 ? "WHERE d.department_id = $selectedDepartmentId " : "") . "
+$whereClause
 ORDER BY d.department_id";
 
 $branches_result = mysqli_query($db_handle->conn, $branches_query);
@@ -289,7 +304,7 @@ $total_branches = count($branches);
             </div>
             <div class="stat-item">
                 <div class="stat-number"><?php echo array_sum(array_column($branches, 'total_students')); ?></div>
-                <div class="stat-label">Total Students</div>
+                <div class="stat-label">Active Students <span style="font-size: 10px; font-weight: normal; color: #94a3b8;">(<?php echo array_sum(array_column($branches, 'total_registered_students')); ?> Reg)</span></div>
             </div>
             <div class="stat-item">
                 <div class="stat-number"><?php echo array_sum(array_column($branches, 'total_hods')); ?></div>
@@ -306,7 +321,7 @@ $total_branches = count($branches);
             <div class="empty-state">
                 <i class="fa fa-building"></i>
                 <h3>No Branches Found</h3>
-                <p>No branch data available in the database.</p>
+                <p>No branch data available for your account scope.</p>
             </div>
         <?php else: ?>
             <div class="branches-grid">
@@ -321,16 +336,17 @@ $total_branches = count($branches);
                             <div class="metric-row">
                                 <div class="metric-label">
                                     <i class="fa fa-graduation-cap" style="background: #e8f5e9; color: #2e7d32;"></i>
-                                    Total Students
+                                    Active Students
                                 </div>
                                 <div class="metric-value students">
                                     <?php echo (int)$branch['total_students']; ?>
+                                    <span style="font-size: 11px; font-weight: normal; color: #64748b;">(<?php echo (int)$branch['total_registered_students']; ?> Reg)</span>
                                 </div>
                             </div>
                             <div class="metric-row">
                                 <div class="metric-label">
                                     <i class="fa fa-user" style="background: #fff3e0; color: #ef6c00;"></i>
-                                    HODs
+                                    Department HODs
                                 </div>
                                 <div class="metric-value hods">
                                     <?php echo (int)$branch['total_hods']; ?>
@@ -339,7 +355,7 @@ $total_branches = count($branches);
                             <div class="metric-row">
                                 <div class="metric-label">
                                     <i class="fa fa-users" style="background: #e3f2fd; color: #1565c0;"></i>
-                                    Staff (Mentors/Coordinators)
+                                    Faculty & Staff
                                 </div>
                                 <div class="metric-value staff">
                                     <?php echo (int)$branch['total_staff']; ?>

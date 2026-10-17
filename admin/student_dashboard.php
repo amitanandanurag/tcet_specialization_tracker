@@ -90,6 +90,128 @@ if ($linkedStudentId > 0) {
     }
 }
 
+$alertMsg = '';
+$alertType = '';
+
+// Handle Student Self-Service POST Actions
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+    if (!DBController::validateCsrfToken()) {
+        $alertMsg = 'Security validation failed (invalid CSRF token). Please refresh and try again.';
+        $alertType = 'danger';
+    } elseif ($linkedStudentId <= 0) {
+        $alertMsg = 'No linked student record found for your user account.';
+        $alertType = 'danger';
+    } else {
+        $action = trim($_POST['action']);
+
+        // 1. Self-Service Contact Information Update
+        if ($action === 'update_contact') {
+            $mobile = trim($_POST['mobile'] ?? '');
+            $email = trim($_POST['email'] ?? '');
+
+            if ($mobile === '' || !preg_match('/^[0-9]{10,15}$/', $mobile)) {
+                $alertMsg = 'Please enter a valid mobile number (10 to 15 digits).';
+                $alertType = 'warning';
+            } elseif ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $alertMsg = 'Please enter a valid email address.';
+                $alertType = 'warning';
+            } else {
+                $stmtUpd = mysqli_prepare($db_handle->conn, "UPDATE st_student_master SET mobile = ?, email = ? WHERE student_id = ?");
+                if ($stmtUpd) {
+                    mysqli_stmt_bind_param($stmtUpd, 'ssi', $mobile, $email, $linkedStudentId);
+                    if (mysqli_stmt_execute($stmtUpd)) {
+                        $userSync = mysqli_prepare($db_handle->conn, "UPDATE st_user_master SET phone_number = ?, email_id = ? WHERE student_id = ?");
+                        if ($userSync) {
+                            mysqli_stmt_bind_param($userSync, 'ssi', $mobile, $email, $linkedStudentId);
+                            mysqli_stmt_execute($userSync);
+                            mysqli_stmt_close($userSync);
+                        }
+
+                        if (method_exists($db_handle, 'writeAuditLog')) {
+                            $db_handle->writeAuditLog($userid, 'STUDENT_CONTACT_UPDATE', 'st_student_master', $linkedStudentId, "Student updated contact details: mobile {$mobile}, email {$email}");
+                        }
+                        $alertMsg = 'Your contact information was updated successfully.';
+                        $alertType = 'success';
+                    } else {
+                        $alertMsg = 'Failed to update contact details. Please try again.';
+                        $alertType = 'danger';
+                    }
+                    mysqli_stmt_close($stmtUpd);
+                }
+            }
+        }
+
+        // 2. Validated Semester Progression Workflow (Sequential: N -> N + 1)
+        elseif ($action === 'progress_semester') {
+            $curSem = intval($_POST['current_semester_id'] ?? 0);
+            $reqSem = intval($_POST['target_semester_id'] ?? 0);
+
+            if ($reqSem !== ($curSem + 1)) {
+                $alertMsg = "Invalid progression: You can only transition sequentially from Semester {$curSem} to Semester " . ($curSem + 1) . ". Skipping or reversing semesters is not permitted.";
+                $alertType = 'danger';
+            } elseif ($reqSem > 8) {
+                $alertMsg = "You have already completed the final academic semester (Semester 8). No further progression is available.";
+                $alertType = 'info';
+            } else {
+                $promoted = $db_handle->promoteStudentSemester(
+                    $linkedStudentId,
+                    $reqSem,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    $userid
+                );
+
+                if ($promoted) {
+                    $alertMsg = "Congratulations! You have successfully progressed to Semester {$reqSem}. Your academic history has been recorded and mentor allocations have been revalidated.";
+                    $alertType = 'success';
+                } else {
+                    $alertMsg = "Failed to process semester progression. Please contact your department coordinator.";
+                    $alertType = 'danger';
+                }
+            }
+        }
+    }
+}
+
+// Re-fetch student record if an update occurred
+if ($linkedStudentId > 0) {
+    $studentStmt = mysqli_prepare($db_handle->conn, $studentSql);
+    if ($studentStmt) {
+        mysqli_stmt_bind_param($studentStmt, 'i', $linkedStudentId);
+        mysqli_stmt_execute($studentStmt);
+        $studentResult = mysqli_stmt_get_result($studentStmt);
+        if ($studentResult) {
+            $student = mysqli_fetch_assoc($studentResult);
+        }
+        mysqli_stmt_close($studentStmt);
+    }
+}
+
+// Profile Completeness Calculation
+$completenessFields = [
+    'Full Name' => !empty($student['fname']),
+    'Roll Number' => !empty($student['roll_no']),
+    'Contact Mobile' => !empty($student['mobile']),
+    'Email Address' => !empty($student['email']),
+    'Class' => !empty($student['class_id']),
+    'Division' => !empty($student['division_id']),
+    'Department' => !empty($student['department_id']),
+    'Academic Year' => !empty($student['academic_year_id']),
+    'Current Semester' => !empty($student['current_semester_id']),
+    'Specialization' => !empty($student['specialization_id']),
+    'CGPA' => floatval($student['cgpa'] ?? 0) > 0
+];
+$completedCount = count(array_filter($completenessFields));
+$totalFieldsCount = count($completenessFields);
+$completenessPercent = round(($completedCount / $totalFieldsCount) * 100);
+$missingFields = array_keys(array_filter($completenessFields, function($v) { return !$v; }));
+
 $statusText = 'Pending Approval';
 $statusClass = 'label-warning';
 if ($student && (int) $student['status'] === 1) {
@@ -120,6 +242,14 @@ if (!function_exists('student_val')) {
     </section>
 
     <section class="content">
+        <?php if (!empty($alertMsg)): ?>
+            <div class="alert alert-<?= htmlspecialchars($alertType) ?> alert-dismissible" style="border-radius: 4px; margin-bottom: 16px;">
+                <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+                <i class="fa <?= $alertType === 'success' ? 'fa-check-circle' : ($alertType === 'danger' ? 'fa-ban' : 'fa-info-circle') ?>"></i>
+                <?= htmlspecialchars($alertMsg) ?>
+            </div>
+        <?php endif; ?>
+
         <?php if (!$student): ?>
             <div class="alert alert-warning" style="background-color: #fffbeb !important; color: #9a3412 !important; border: 1px solid #fed7aa !important; padding: 15px;">
                 <i class="fa fa-info-circle"></i> 
@@ -141,9 +271,9 @@ if (!function_exists('student_val')) {
                     </div>
                     <div>
                         <span class="label <?= $statusClass ?>" style="margin-right: 8px;"><?= $statusText ?></span>
-                        <a href="student_admission.php?edit=1" class="btn btn-default btn-xs">
-                            <i class="fa fa-edit"></i> Edit Details
-                        </a>
+                        <button type="button" class="btn btn-default btn-xs" data-toggle="modal" data-target="#updateContactModal">
+                            <i class="fa fa-phone"></i> Update Contact
+                        </button>
                     </div>
                 </div>
                 <div class="erp-summary-bar" style="border: none; margin-bottom: 0; box-shadow: none; border-radius: 0;">
@@ -171,6 +301,65 @@ if (!function_exists('student_val')) {
                         <span class="erp-metric-label">Aggregate CGPA</span>
                         <span class="erp-metric-value"><?= student_val($student['cgpa']) ?></span>
                         <span class="erp-metric-sub">Academic Scale</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Profile Completeness & Semester Progression Actions -->
+            <div class="row" style="margin-bottom: 16px;">
+                <div class="col-md-7">
+                    <div class="erp-detail-card" style="height: 100%;">
+                        <div class="erp-detail-card-header" style="justify-content: space-between;">
+                            <div>
+                                <i class="fa fa-tasks text-primary"></i> Profile Completeness
+                            </div>
+                            <span class="badge <?= $completenessPercent === 100 ? 'bg-green' : 'bg-blue' ?>"><?= $completenessPercent ?>% Completed</span>
+                        </div>
+                        <div style="padding: 16px;">
+                            <div class="progress progress-sm active" style="border-radius: 4px; height: 10px; margin-bottom: 12px; background: #e2e8f0;">
+                                <div class="progress-bar progress-bar-<?= $completenessPercent === 100 ? 'success' : 'primary' ?>" role="progressbar" aria-valuenow="<?= $completenessPercent ?>" aria-valuemin="0" aria-valuemax="100" style="width: <?= $completenessPercent ?>%;"></div>
+                            </div>
+                            <?php if (empty($missingFields)): ?>
+                                <p class="text-success" style="font-size: 12px; margin-bottom: 0;">
+                                    <i class="fa fa-check-circle"></i> All mandatory ERP profile fields are complete and verified.
+                                </p>
+                            <?php else: ?>
+                                <p class="text-warning" style="font-size: 12px; margin-bottom: 4px;">
+                                    <i class="fa fa-exclamation-triangle"></i> Pending profile fields: <strong><?= implode(', ', array_map('htmlspecialchars', $missingFields)) ?></strong>
+                                </p>
+                                <span class="text-muted" style="font-size: 11px;">Update your details to ensure accurate grade sheet generation and mentor reporting.</span>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-5">
+                    <div class="erp-detail-card" style="height: 100%;">
+                        <div class="erp-detail-card-header" style="justify-content: space-between;">
+                            <div>
+                                <i class="fa fa-step-forward text-primary"></i> Semester Progression
+                            </div>
+                            <span class="label label-info">Semester <?= intval($student['current_semester_id'] ?? 1) ?> Active</span>
+                        </div>
+                        <div style="padding: 16px; display: flex; flex-direction: column; justify-content: space-between;">
+                            <div>
+                                <p style="font-size: 12px; color: #475569; margin-bottom: 8px;">
+                                    Current Term: <strong>Semester <?= intval($student['current_semester_id'] ?? 1) ?></strong>
+                                </p>
+                                <p class="text-muted" style="font-size: 11px; margin-bottom: 12px;">
+                                    Academic progression advances you sequentially to the next semester and updates mentor assignments.
+                                </p>
+                            </div>
+                            <div>
+                                <?php if (intval($student['current_semester_id'] ?? 1) < 8): ?>
+                                    <button type="button" class="btn btn-erp-primary btn-sm" data-toggle="modal" data-target="#progressionModal">
+                                        <i class="fa fa-arrow-circle-right"></i> Advance to Semester <?= intval($student['current_semester_id'] ?? 1) + 1 ?>
+                                    </button>
+                                <?php else: ?>
+                                    <span class="badge bg-green" style="padding: 6px 12px;"><i class="fa fa-check"></i> Final Semester Completed</span>
+                                <?php endif; ?>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -311,6 +500,81 @@ if (!function_exists('student_val')) {
         <?php endif; ?>
     </section>
 </div>
+
+<!-- Contact Information Update Modal -->
+<div class="modal fade" id="updateContactModal" tabindex="-1" role="dialog" aria-labelledby="updateContactModalLabel">
+    <div class="modal-dialog" role="document" style="max-width: 480px;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title" id="updateContactModalLabel"><i class="fa fa-phone"></i> Update Contact Details</h4>
+            </div>
+            <form action="student_dashboard.php" method="POST">
+                <div class="modal-body">
+                    <?= DBController::getCsrfInputField() ?>
+                    <input type="hidden" name="action" value="update_contact">
+
+                    <div class="form-group">
+                        <label for="contact_mobile">Mobile Number <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="contact_mobile" name="mobile" value="<?= htmlspecialchars($student['mobile'] ?? '') ?>" required pattern="[0-9]{10,15}" placeholder="10-digit mobile number">
+                        <span class="help-block" style="font-size: 11px;">Enter your primary 10-digit active phone number for ERP communications.</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="contact_email">Institute Email Address <span class="text-danger">*</span></label>
+                        <input type="email" class="form-control" id="contact_email" name="email" value="<?= htmlspecialchars($student['email'] ?? '') ?>" required placeholder="name@tcetmumbai.in">
+                        <span class="help-block" style="font-size: 11px;">Your registered email address for notifications and submissions.</span>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default btn-sm" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-erp-primary btn-sm"><i class="fa fa-save"></i> Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Semester Progression Confirmation Modal -->
+<?php if ($student && intval($student['current_semester_id'] ?? 1) < 8): 
+    $targetSemester = intval($student['current_semester_id'] ?? 1) + 1;
+?>
+<div class="modal fade" id="progressionModal" tabindex="-1" role="dialog" aria-labelledby="progressionModalLabel">
+    <div class="modal-dialog" role="document" style="max-width: 500px;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title" id="progressionModalLabel"><i class="fa fa-step-forward"></i> Confirm Semester Progression</h4>
+            </div>
+            <form action="student_dashboard.php" method="POST">
+                <div class="modal-body">
+                    <?= DBController::getCsrfInputField() ?>
+                    <input type="hidden" name="action" value="progress_semester">
+                    <input type="hidden" name="current_semester_id" value="<?= intval($student['current_semester_id'] ?? 1) ?>">
+                    <input type="hidden" name="target_semester_id" value="<?= $targetSemester ?>">
+
+                    <div class="alert alert-info" style="font-size: 12px; margin-bottom: 16px;">
+                        <i class="fa fa-info-circle"></i> You are requesting advancement from <strong>Semester <?= intval($student['current_semester_id'] ?? 1) ?></strong> to <strong>Semester <?= $targetSemester ?></strong>.
+                    </div>
+
+                    <p style="font-size: 13px; color: #334155; line-height: 1.5;">
+                        Academic Progression Rules:
+                    </p>
+                    <ul style="font-size: 12px; color: #64748b; padding-left: 20px;">
+                        <li>Your previous term records will be finalized and marked as completed in your permanent academic transcript.</li>
+                        <li>Your specialization subject and faculty mentor assignment will be automatically linked to Semester <?= $targetSemester ?>.</li>
+                        <li>Progression is non-destructive and preserves all historical academic logs.</li>
+                    </ul>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default btn-sm" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-erp-primary btn-sm"><i class="fa fa-check"></i> Confirm Progression to Semester <?= $targetSemester ?></button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
 
 <?php include "header/footer.php"; ?>
 

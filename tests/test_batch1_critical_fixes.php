@@ -15,13 +15,15 @@ echo "BATCH 1 CRITICAL FIXES VERIFICATION SUITE\n";
 echo "=======================================================\n\n";
 
 // Target isolated test database if available, else working test DB
-$testDbName = getenv('TCET_TEST_DB') ?: 'tcet_st_test';
+putenv('TCET_DB_NAME=tcet_st_test');
+putenv('TCET_TEST_DB=tcet_st_test');
+$testDbName = 'tcet_st_test';
 $db = new DBController($testDbName);
 
-if (!$db->conn) {
-    // Fallback to default
-    $testDbName = 'tcet_st';
-    $db = new DBController($testDbName);
+$dbCheckRes = $db->runQuery("SELECT DATABASE() as db");
+$activeDb = $dbCheckRes[0]['db'] ?? '';
+if ($activeDb !== 'tcet_st_test') {
+    die("[FATAL SAFETY ABORT] Connected database is '$activeDb', expected 'tcet_st_test'. Aborting test.\n");
 }
 
 echo "Using Database: {$testDbName}\n\n";
@@ -166,10 +168,10 @@ $testRegA = "TCET-TEST-P3-A-" . time();
 $testRollA = 801;
 $insertSqlA = "INSERT INTO st_student_master (
     academic_year_id, registration_no, class_id, division_id, grad_year, roll_no, department_id,
-    specialization_track_id, specialization_id, fname, mobile, email, status, created_at, current_semester_id
+    specialization_track_id, specialization_id, fname, mobile, email, status, m_sem1, m_sem2, m_sem3, created_at, current_semester_id
 ) VALUES (
     1, '{$testRegA}', 2, 1, 2027, '{$testRollA}', 1,
-    1, 5, 'Synthetic Student Alpha', '9876543210', 'alpha@tcetmumbai.in', 1, NOW(), 4
+    1, 5, 'Synthetic Student Alpha', '9876543210', 'alpha@tcetmumbai.in', 1, '[]', '[]', '[]', NOW(), 4
 )";
 
 $db->query($insertSqlA);
@@ -187,10 +189,10 @@ $testRegB = "TCET-TEST-P3-B-" . time();
 $testRollB = 802;
 $insertSqlB = "INSERT INTO st_student_master (
     academic_year_id, registration_no, class_id, division_id, grad_year, roll_no, department_id,
-    specialization_track_id, specialization_id, fname, mobile, email, status, created_at, current_semester_id
+    specialization_track_id, specialization_id, fname, mobile, email, status, m_sem1, m_sem2, m_sem3, created_at, current_semester_id
 ) VALUES (
     1, '{$testRegB}', 2, 1, 2027, '{$testRollB}', 1,
-    1, 6, 'Synthetic Student Beta', '9876543211', 'beta@tcetmumbai.in', 1, NOW(), 4
+    1, 6, 'Synthetic Student Beta', '9876543211', 'beta@tcetmumbai.in', 1, '[]', '[]', '[]', NOW(), 4
 )";
 
 $db->query($insertSqlB);

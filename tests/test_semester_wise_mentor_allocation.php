@@ -8,8 +8,14 @@ putenv('TCET_DB_NAME=tcet_st_test');
 putenv('TCET_TEST_DB=tcet_st_test');
 require_once __DIR__ . '/../database/db_connect.php';
 
-$db = new DBController();
+$db = new DBController('tcet_st_test');
 $conn = $db->conn;
+
+$dbCheckRes = $db->runQuery("SELECT DATABASE() as db");
+$activeDb = $dbCheckRes[0]['db'] ?? '';
+if ($activeDb !== 'tcet_st_test') {
+    die("[FATAL SAFETY ABORT] Connected database is '$activeDb', expected 'tcet_st_test'. Aborting test.\n");
+}
 
 echo "=======================================================\n";
 echo "TCET ERP - SEMESTER-WISE, SUBJECT-WISE MENTOR ALLOCATION SUITE\n";
@@ -87,7 +93,7 @@ try {
     // SCENARIO 3: A Semester 5 student is assigned to Mentor X
     // -------------------------------------------------------------
     echo "\nScenario 3: Semester 5 Student Assigned to Mentor X\n";
-    mysqli_query($conn, "INSERT INTO st_student_master (fname, registration_no, roll_no, class_id, division_id, department_id, current_semester_id, academic_year_id, specialization_subject_id, status) VALUES ('Student Sem5', 'TEST-REG-S5', 'R-S5-01', 1, 1, $testDept, 5, $testAY, $cyberSubId, 1)");
+    mysqli_query($conn, "INSERT INTO st_student_master (fname, registration_no, roll_no, class_id, division_id, department_id, current_semester_id, academic_year_id, specialization_subject_id, status, m_sem1, m_sem2, m_sem3) VALUES ('Student Sem5', 'TEST-REG-S5', 'R-S5-01', 1, 1, $testDept, 5, $testAY, $cyberSubId, 1, '[]', '[]', '[]')");
     $stud5Id = mysqli_insert_id($conn);
     $createdStudentIds[] = $stud5Id;
 
@@ -102,7 +108,7 @@ try {
     // SCENARIO 4: A Semester 7 student is assigned to Mentor Y
     // -------------------------------------------------------------
     echo "\nScenario 4: Semester 7 Student Assigned to Mentor Y\n";
-    mysqli_query($conn, "INSERT INTO st_student_master (fname, registration_no, roll_no, class_id, division_id, department_id, current_semester_id, academic_year_id, specialization_subject_id, status) VALUES ('Student Sem7', 'TEST-REG-S7', 'R-S7-01', 1, 1, $testDept, 7, $testAY, $cyberSubId, 1)");
+    mysqli_query($conn, "INSERT INTO st_student_master (fname, registration_no, roll_no, class_id, division_id, department_id, current_semester_id, academic_year_id, specialization_subject_id, status, m_sem1, m_sem2, m_sem3) VALUES ('Student Sem7', 'TEST-REG-S7', 'R-S7-01', 1, 1, $testDept, 7, $testAY, $cyberSubId, 1, '[]', '[]', '[]')");
     $stud7Id = mysqli_insert_id($conn);
     $createdStudentIds[] = $stud7Id;
 
@@ -127,7 +133,7 @@ try {
     // SCENARIO 6: Student from another academic year rejected
     // -------------------------------------------------------------
     echo "\nScenario 6: Cross-Academic-Year Allocation Rejected\n";
-    mysqli_query($conn, "INSERT INTO st_student_master (fname, registration_no, roll_no, class_id, division_id, department_id, current_semester_id, academic_year_id, specialization_subject_id, status) VALUES ('Student AY1', 'TEST-REG-AY1', 'R-AY1-01', 1, 1, $testDept, 5, 1, $cyberSubId, 1)");
+    mysqli_query($conn, "INSERT INTO st_student_master (fname, registration_no, roll_no, class_id, division_id, department_id, current_semester_id, academic_year_id, specialization_subject_id, status, m_sem1, m_sem2, m_sem3) VALUES ('Student AY1', 'TEST-REG-AY1', 'R-AY1-01', 1, 1, $testDept, 5, 1, $cyberSubId, 1, '[]', '[]', '[]')");
     $studAY1Id = mysqli_insert_id($conn);
     $createdStudentIds[] = $studAY1Id;
 

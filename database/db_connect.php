@@ -57,6 +57,10 @@ class DBController
             return false;
         }
 
+        if ($result === true) {
+            return true;
+        }
+
         $resultset = [];
         while ($row = mysqli_fetch_assoc($result)) {
             $resultset[] = $row;
@@ -1871,6 +1875,202 @@ class DBController
       mysqli_rollback($this->conn);
       return false;
     }
+  }
+
+  /**
+   * Resolves the authoritative RBAC scope for a user.
+   */
+  public function getUserScope($userId = null, $roleId = null)
+  {
+    $uid = ($userId !== null) ? intval($userId) : intval($_SESSION['user_id'] ?? 0);
+    $rid = ($roleId !== null) ? intval($roleId) : intval($_SESSION['role_id'] ?? $_SESSION['user_type'] ?? 0);
+
+    $deptId = 0;
+    $studentId = 0;
+    $username = '';
+
+    if ($uid > 0 && ($this->conn instanceof mysqli)) {
+      $uRes = mysqli_query($this->conn, "SELECT user_id, user_name, role_id, department_id, student_id FROM st_user_master WHERE user_id = $uid LIMIT 1");
+      if ($uRes && ($uRow = mysqli_fetch_assoc($uRes))) {
+        if ($roleId === null) {
+          $rid = intval($uRow['role_id'] ?? $rid);
+        }
+        $deptId = intval($uRow['department_id'] ?? 0);
+        $studentId = intval($uRow['student_id'] ?? 0);
+        $username = $uRow['user_name'] ?? '';
+      }
+    }
+
+    return array(
+      'user_id' => $uid,
+      'role_id' => $rid,
+      'username' => $username,
+      'department_id' => $deptId,
+      'student_id' => $studentId,
+      'is_super_admin' => ($rid === 1),
+      'is_admin' => ($rid === 1 || $rid === 2),
+      'is_operational_admin' => ($rid === 2),
+      'is_hod' => ($rid === 3),
+      'is_mentor' => ($rid === 4),
+      'is_student' => ($rid === 5),
+      'can_manage_system_config' => ($rid === 1),
+      'can_access_audit_log' => ($rid === 1),
+      'can_access_menu_allocation' => ($rid === 1),
+      'can_access_master_data' => ($rid === 1)
+    );
+  }
+
+  /**
+   * Enforces server-side record-level access control for student profiles.
+   */
+  public function canAccessStudent($studentId, $userId = null, $roleId = null)
+  {
+    if (!($this->conn instanceof mysqli) || intval($studentId) <= 0) {
+      return false;
+    }
+    $studentId = intval($studentId);
+    $scope = $this->getUserScope($userId, $roleId);
+
+    // Super Admin and Admin have institution-wide operational access
+    if ($scope['is_super_admin'] || $scope['is_operational_admin']) {
+      return true;
+    }
+
+    // Student can ONLY access their own profile
+    if ($scope['is_student']) {
+      return ($scope['student_id'] > 0 && $scope['student_id'] === $studentId);
+    }
+
+    // Look up student department and active current semester
+    $sRes = mysqli_query($this->conn, "SELECT student_id, department_id, current_semester_id, academic_year_id, specialization_subject_id FROM st_student_master WHERE student_id = $studentId LIMIT 1");
+    if (!$sRes || !($sRow = mysqli_fetch_assoc($sRes))) {
+      return false;
+    }
+
+    // HOD can ONLY access students in their authorized department
+    if ($scope['is_hod']) {
+      return ($scope['department_id'] > 0 && intval($sRow['department_id']) === $scope['department_id']);
+    }
+
+    // Mentor can ONLY access students with an active assignment to this mentor
+    if ($scope['is_mentor']) {
+      $uid = $scope['user_id'];
+      $semId = intval($sRow['current_semester_id'] ?? 0);
+
+      $mCheck = mysqli_query($this->conn, "
+        SELECT 1 
+        FROM st_mentor_student_mapping msm
+        JOIN st_mentor_subject_mapping alloc ON alloc.mentor_id = msm.mentor_id 
+          AND alloc.semester_id = msm.semester_id 
+          AND alloc.academic_year_id = msm.academic_year_id
+          AND alloc.is_active = 1
+        WHERE msm.student_id = $studentId 
+          AND msm.mentor_id = $uid
+          AND msm.semester_id = $semId
+        LIMIT 1
+      ");
+      return ($mCheck && mysqli_num_rows($mCheck) > 0);
+    }
+
+    return false;
+  }
+
+  /**
+   * Enforces server-side department scoping.
+   */
+  public function canAccessDepartment($departmentId, $userId = null, $roleId = null)
+  {
+    $deptId = intval($departmentId);
+    $scope = $this->getUserScope($userId, $roleId);
+
+    if ($scope['is_super_admin'] || $scope['is_operational_admin']) {
+      return true;
+    }
+    if ($scope['is_hod']) {
+      return ($scope['department_id'] > 0 && $scope['department_id'] === $deptId);
+    }
+    return false;
+  }
+
+  /**
+   * Generates authoritative, role-scoped institutional metrics.
+   */
+  public function getAuthoritativeMetrics($userId = null, $roleId = null)
+  {
+    if (!($this->conn instanceof mysqli)) {
+      return array();
+    }
+    $scope = $this->getUserScope($userId, $roleId);
+
+    $whereDept = "";
+    $whereUserDept = "";
+    if ($scope['is_hod'] && $scope['department_id'] > 0) {
+      $d = $scope['department_id'];
+      $whereDept = " WHERE s.department_id = $d ";
+      $whereUserDept = " WHERE u.department_id = $d ";
+    } elseif ($scope['is_mentor']) {
+      $uid = $scope['user_id'];
+      $whereDept = " INNER JOIN st_mentor_student_mapping msm ON msm.student_id = s.student_id AND msm.mentor_id = $uid WHERE 1=1 ";
+      $whereUserDept = " WHERE u.user_id = $uid ";
+    }
+
+    // 1. Total Registered Students (and breakdown of active vs pending)
+    $sQuery = "SELECT 
+                 COUNT(DISTINCT s.student_id) AS total_students,
+                 COUNT(DISTINCT CASE WHEN s.status = 1 THEN s.student_id END) AS active_students,
+                 COUNT(DISTINCT CASE WHEN s.status = 0 THEN s.student_id END) AS pending_students
+               FROM st_student_master s $whereDept";
+    $sRes = mysqli_query($this->conn, $sQuery);
+    $sRow = $sRes ? mysqli_fetch_assoc($sRes) : array();
+    $totalStudents = intval($sRow['total_students'] ?? 0);
+    $activeStudents = intval($sRow['active_students'] ?? 0);
+    $pendingStudents = intval($sRow['pending_students'] ?? 0);
+
+    // 2. Total Users in st_user_master
+    $uQuery = "SELECT COUNT(DISTINCT u.user_id) AS total_users FROM st_user_master u $whereUserDept";
+    $uRes = mysqli_query($this->conn, $uQuery);
+    $uRow = $uRes ? mysqli_fetch_assoc($uRes) : array();
+    $totalUsers = intval($uRow['total_users'] ?? 0);
+
+    // 3. Total Mentors (role_id = 4)
+    $mWhere = ($scope['is_hod'] && $scope['department_id'] > 0)
+      ? " WHERE u.role_id = 4 AND u.department_id = {$scope['department_id']} "
+      : " WHERE u.role_id = 4 ";
+    $mQuery = "SELECT COUNT(DISTINCT u.user_id) AS total_mentors FROM st_user_master u $mWhere";
+    $mRes = mysqli_query($this->conn, $mQuery);
+    $mRow = $mRes ? mysqli_fetch_assoc($mRes) : array();
+    $totalMentors = intval($mRow['total_mentors'] ?? 0);
+
+    // 4. Total Branches / Departments
+    $bWhere = ($scope['is_hod'] && $scope['department_id'] > 0)
+      ? " WHERE department_id = {$scope['department_id']} "
+      : " WHERE department_id != 15 "; // Exclude non-academic 'All Branch' if present
+    $bQuery = "SELECT COUNT(DISTINCT department_id) AS total_branches FROM st_department_master $bWhere";
+    $bRes = mysqli_query($this->conn, $bQuery);
+    $bRow = $bRes ? mysqli_fetch_assoc($bRes) : array();
+    $totalBranches = intval($bRow['total_branches'] ?? 0);
+
+    // 5. Total HODs (role_id = 3)
+    $hWhere = ($scope['is_hod'] && $scope['department_id'] > 0)
+      ? " WHERE u.role_id = 3 AND u.department_id = {$scope['department_id']} "
+      : " WHERE u.role_id = 3 ";
+    $hQuery = "SELECT COUNT(DISTINCT u.user_id) AS total_hods FROM st_user_master u $hWhere";
+    $hRes = mysqli_query($this->conn, $hQuery);
+    $hRow = $hRes ? mysqli_fetch_assoc($hRes) : array();
+    $totalHods = intval($hRow['total_hods'] ?? 0);
+
+    return array(
+      'total_students' => $totalStudents,
+      'total_registered_students' => $totalStudents,
+      'active_students' => $activeStudents,
+      'total_active_students' => $activeStudents,
+      'pending_students' => $pendingStudents,
+      'total_users' => $totalUsers,
+      'total_mentors' => $totalMentors,
+      'total_branches' => $totalBranches,
+      'total_hods' => $totalHods,
+      'scope' => $scope
+    );
   }
 
 }

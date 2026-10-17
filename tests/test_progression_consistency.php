@@ -2,10 +2,18 @@
 /**
  * TCET ERP - Academic Progression Data-Consistency & UI Verification Suite
  */
+putenv('TCET_DB_NAME=tcet_st_test');
+putenv('TCET_TEST_DB=tcet_st_test');
 require_once __DIR__ . '/../database/db_connect.php';
 
-$db_handle = new DBController();
+$db_handle = new DBController('tcet_st_test');
 $conn = $db_handle->conn;
+
+$dbCheckRes = $db_handle->runQuery("SELECT DATABASE() as db");
+$activeDb = $dbCheckRes[0]['db'] ?? '';
+if ($activeDb !== 'tcet_st_test') {
+    die("[FATAL SAFETY ABORT] Connected database is '$activeDb', expected 'tcet_st_test'. Aborting test.\n");
+}
 
 echo "=== TCET ERP ACADEMIC PROGRESSION DATA-CONSISTENCY SUITE ===" . PHP_EOL . PHP_EOL;
 

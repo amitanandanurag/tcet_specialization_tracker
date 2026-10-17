@@ -21,16 +21,15 @@ echo "=======================================================\n";
 echo "TCET DASHBOARD FIX & DATA ACCURACY VERIFICATION SUITE\n";
 echo "=======================================================\n\n";
 
-$testDbName = getenv('TCET_TEST_DB') ?: 'tcet_st_test';
-putenv('TCET_DB_NAME=' . $testDbName);
-$_ENV['TCET_DB_NAME'] = $testDbName;
+putenv('TCET_DB_NAME=tcet_st_test');
+putenv('TCET_TEST_DB=tcet_st_test');
+$testDbName = 'tcet_st_test';
 $db = new DBController($testDbName);
 
-if (!$db->conn) {
-    $testDbName = 'tcet_st';
-    putenv('TCET_DB_NAME=' . $testDbName);
-    $_ENV['TCET_DB_NAME'] = $testDbName;
-    $db = new DBController($testDbName);
+$dbCheckRes = $db->runQuery("SELECT DATABASE() as db");
+$activeDb = $dbCheckRes[0]['db'] ?? '';
+if ($activeDb !== 'tcet_st_test') {
+    die("[FATAL SAFETY ABORT] Connected database is '$activeDb', expected 'tcet_st_test'. Aborting test.\n");
 }
 
 echo "Target Database: {$testDbName}\n\n";

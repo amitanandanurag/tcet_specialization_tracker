@@ -6,8 +6,16 @@
 
 require_once __DIR__ . "/../database/db_connect.php";
 
-$db = new DBController();
+putenv('TCET_DB_NAME=tcet_st_test');
+putenv('TCET_TEST_DB=tcet_st_test');
+$db = new DBController('tcet_st_test');
 $conn = $db->conn;
+
+$dbCheckRes = $db->runQuery("SELECT DATABASE() as db");
+$activeDb = $dbCheckRes[0]['db'] ?? '';
+if ($activeDb !== 'tcet_st_test') {
+    die("[FATAL SAFETY ABORT] Connected database is '$activeDb', expected 'tcet_st_test'. Aborting test.\n");
+}
 
 $totalTests = 0;
 $passedTests = 0;
@@ -214,11 +222,11 @@ $testRegNo = "TEST-HWRES-" . time();
 $mockInsertSql = "INSERT INTO st_student_master (
     academic_year_id, registration_no, roll_no, class_id, division_id, department_id,
     specialization_track_id, specialization_id, current_semester_id, cgpa, fname,
-    mobile, email, status, created_at
+    mobile, email, status, m_sem1, m_sem2, m_sem3, created_at
 ) VALUES (
     1, '$testRegNo', 'RES-01', $beClassId, 1, $ceDeptId,
     2, 5, 7, 8.80, 'Honours Research Test Student',
-    '9876543219', 'hwres@tcetmumbai.in', 1, NOW()
+    '9876543219', 'hwres@tcetmumbai.in', 1, '[]', '[]', '[]', NOW()
 )";
 
 if (mysqli_query($conn, $mockInsertSql)) {

@@ -1,8 +1,16 @@
 <?php
 require_once __DIR__ . "/../database/db_connect.php";
 
-$db = new DBController();
+putenv('TCET_DB_NAME=tcet_st_test');
+putenv('TCET_TEST_DB=tcet_st_test');
+$db = new DBController('tcet_st_test');
 $conn = $db->conn;
+
+$dbCheckRes = $db->runQuery("SELECT DATABASE() as db");
+$activeDb = $dbCheckRes[0]['db'] ?? '';
+if ($activeDb !== 'tcet_st_test') {
+    die("[FATAL SAFETY ABORT] Connected database is '$activeDb', expected 'tcet_st_test'. Aborting test.\n");
+}
 
 echo "=== TCET ERP ACADEMIC PROGRESSION & MENTOR HISTORY VERIFICATION SUITE ===\n\n";
 
@@ -109,11 +117,11 @@ $sub1 = intval($testSub['subject_id'] ?? 1);
 $mockInsertSql = "INSERT INTO st_student_master (
     academic_year_id, registration_no, roll_no, class_id, division_id, department_id,
     specialization_id, specialization_subject_id, current_semester_id, cgpa, fname,
-    mobile, email, status, created_at
+    mobile, email, status, m_sem1, m_sem2, m_sem3, created_at
 ) VALUES (
     1, '$testRegNo', 'TEST-01', 1, 1, 1,
     1, $sub1, 5, 8.50, 'Progression Test Student',
-    '9999999999', 'progtest@tcetmumbai.in', 1, NOW()
+    '9999999999', 'progtest@tcetmumbai.in', 1, '[]', '[]', '[]', NOW()
 )";
 
 if (mysqli_query($conn, $mockInsertSql)) {

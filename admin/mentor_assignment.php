@@ -17,20 +17,25 @@ $loginRole = intval($userData[0]['role_id'] ?? 0);
 $loginDepartment = intval($userData[0]['department_id'] ?? 0);
 $loginUserName = $userData[0]['user_name'] ?? 'Administrator';
 
-// Backend Authorization: Super Admin (1), Admin (2), Coordinator/HOD (3)
-if (!in_array($loginRole, [1, 2, 3], true)) {
+// Backend Authorization: Super Admin (1), Admin (2), Coordinator/HOD (3), Mentor (4)
+if (!in_array($loginRole, [1, 2, 3, 4], true)) {
     if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
         header('Content-Type: application/json', true, 403);
-        echo json_encode(['success' => false, 'message' => 'Access Denied: You do not have permission to manage mentor assignments.']);
+        echo json_encode(['success' => false, 'message' => 'Access Denied: You do not have permission to view mentor assignments.']);
         exit();
     }
     echo "<script>alert('Access Denied'); window.location.href='index.php';</script>";
     exit();
 }
 
-// Handle AJAX Mentor Assignment Update
+// Handle AJAX Mentor Assignment Update (Privileged: Super Admin 1, Admin 2, HOD 3)
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && $_POST['action'] === 'change_mentor') {
     header('Content-Type: application/json');
+
+    if ($loginRole === 4) {
+        echo json_encode(['success' => false, 'message' => 'Mentors are not authorized to reassign mentor allocations.']);
+        exit();
+    }
 
     if (!DBController::validateCsrfToken()) {
         echo json_encode(['success' => false, 'message' => 'Security token expired. Please refresh the page.']);
@@ -101,6 +106,17 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && 
 if (isset($_GET['action']) && $_GET['action'] === 'get_enrolled_students') {
     header('Content-Type: application/json');
     $subjectId = intval($_GET['subject_id'] ?? 0);
+
+    $extraStudentCond = "";
+    if ($loginRole === 3) {
+        $extraStudentCond = " AND s.department_id = " . intval($loginDepartment);
+    } elseif ($loginRole === 4) {
+        $extraStudentCond = " AND (
+            EXISTS (SELECT 1 FROM st_mentor_student_mapping msm2 WHERE msm2.student_id = s.student_id AND msm2.mentor_id = $loginUserId)
+            OR EXISTS (SELECT 1 FROM st_mentor_subject_mapping msub WHERE msub.mentor_id = $loginUserId AND msub.subject_id = $subjectId)
+        )";
+    }
+
     $studentsSql = "
         SELECT s.student_id, s.registration_no, s.roll_no, s.fname, s.email, s.mobile, s.cgpa,
                COALESCE(d.department_name, 'N/A') AS department_name,
@@ -112,6 +128,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_enrolled_students') {
         LEFT JOIN st_semester_master sem ON sem.semester_id = s.current_semester_id
         LEFT JOIN st_student_semester_history h ON h.student_id = s.student_id AND h.semester_id = s.current_semester_id
         WHERE COALESCE(NULLIF(h.specialization_subject_id, 0), s.specialization_subject_id) = $subjectId
+        $extraStudentCond
         ORDER BY s.fname ASC
     ";
     $students = $db_handle->runQuery($studentsSql) ?? [];
@@ -138,6 +155,14 @@ $allMentors = $db_handle->runQuery($mentorsSql) ?? [];
 $departments = $db_handle->runQuery("SELECT department_id, department_name FROM st_department_master ORDER BY department_name ASC") ?? [];
 $semesters = $db_handle->runQuery("SELECT semester_id, semester_name FROM st_semester_master ORDER BY semester_id ASC") ?? [];
 
+// Role-specific scope condition on subjects list
+$subjectScopeCond = "";
+if ($loginRole === 4) {
+    $subjectScopeCond = " AND msm.mentor_id = " . intval($loginUserId);
+} elseif ($loginRole === 3) {
+    $subjectScopeCond = " AND (ssm.department_id = " . intval($loginDepartment) . " OR sm_links.department_id = " . intval($loginDepartment) . ") ";
+}
+
 // Fetch all subjects with resolved mentor and student count
 $subjectsSql = "
     SELECT ssm.subject_id,
@@ -163,7 +188,7 @@ $subjectsSql = "
     LEFT JOIN st_student_master sm_links ON sm_links.specialization_subject_id = ssm.subject_id
     LEFT JOIN st_department_master d ON (d.department_id = ssm.department_id OR d.department_id = sm_links.department_id)
     LEFT JOIN st_semester_master sem ON (sem.semester_id = ssm.semester_id OR sem.semester_id = sm_links.current_semester_id)
-    WHERE ssm.subject_id > 0
+    WHERE ssm.subject_id > 0 $subjectScopeCond
     GROUP BY ssm.subject_id, ssm.subject_name
     ORDER BY ssm.subject_name ASC
 ";
@@ -366,6 +391,7 @@ require "header/header.php";
                                     <?php endif; ?>
                                 </td>
                                 <td class="col-center">
+                                    <?php if ($loginRole !== 4): ?>
                                     <button type="button" class="btn btn-erp-primary btn-xs btn-change-mentor" 
                                             data-subject-id="<?= $sub['subject_id'] ?>" 
                                             data-subject-name="<?= htmlspecialchars($sub['subject_name']) ?>"
@@ -373,6 +399,9 @@ require "header/header.php";
                                             data-current-mentor-name="<?= htmlspecialchars($sub['current_mentor_name']) ?>">
                                         <i class="fa fa-pencil"></i> Assign
                                     </button>
+                                    <?php else: ?>
+                                    <span class="text-muted" style="font-size: 11px;"><i class="fa fa-check text-success"></i> My Assignment</span>
+                                    <?php endif; ?>
                                 </td>
                             </tr>
                         <?php endforeach; ?>

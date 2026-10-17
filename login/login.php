@@ -26,7 +26,7 @@ $user_password = trim($_POST['password']);
 $ipAddress = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
 $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'unknown';
 
-	$sql = "SELECT l.login_id, l.username, l.password, l.user_id, u.role_id
+	$sql = "SELECT l.login_id, l.username, l.password, l.user_id, u.role_id, u.department_id, u.student_id
 	        FROM st_login l
 	        INNER JOIN st_user_master u ON u.user_id = l.user_id
 	        WHERE l.username=?";
@@ -81,6 +81,8 @@ $_SESSION['user_login_id'] = $row['login_id'];
 $_SESSION['user_id'] = $row['user_id'];
 $_SESSION['user_type'] = $row['role_id'];
 $_SESSION['role_id'] = $row['role_id'];
+$_SESSION['department_id'] = intval($row['department_id'] ?? 0);
+$_SESSION['student_id'] = intval($row['student_id'] ?? 0);
 $_SESSION['login_time'] = time();
 
 if (method_exists($db_handle, 'writeAuditLog')) {

@@ -52,69 +52,43 @@ function sidebar_seed_super_admin_settings($db_handle)
 		return;
 	}
 
-	$defaultSettings = array(
-		array('Profile', 'fa fa-user', 'profile.php'),
-		array('Update Password', 'fa fa-lock', 'change_password.php'),
-		array('Side Menu Allocation', 'fa fa-check-square-o', 'allocation_master.php')
-	);
+	// 1. Remove redundant standalone submenus (Manage Section 51, Menu Master 52, Sub Menu Master 53)
+	// from allocation table because they are already consolidated tabs in Master Data (class_crud_new.php)
+	mysqli_query($db_handle->conn, "DELETE FROM st_menu_allocation_master WHERE sub_menu_id IN (51, 52, 53)");
 
-	foreach ($defaultSettings as $item) {
-		$name = mysqli_real_escape_string($db_handle->conn, $item[0]);
-		$icon = mysqli_real_escape_string($db_handle->conn, $item[1]);
-		$route = mysqli_real_escape_string($db_handle->conn, $item[2]);
+	// 2. Remove privileged Super Admin submenus (Masters 13, Side Menu Allocation 25, Audit Log 49)
+	// from all non-Super Admin roles (e.g. strip Audit Log from Admin Role 2)
+	mysqli_query($db_handle->conn, "DELETE FROM st_menu_allocation_master WHERE sub_menu_id IN (13, 25, 49) AND role_id <> 1");
 
-		$subSql = "SELECT sub_menu_id FROM st_sub_menu_master WHERE menu_id = {$menuId} AND (sub_menu_route = '$route' OR sub_menu_name = '$name') LIMIT 1";
-		$subResult = mysqli_query($db_handle->conn, $subSql);
-		if (!$subResult || mysqli_num_rows($subResult) === 0) {
-			$nextOrder = 1;
-			$orderSql = "SELECT COALESCE(MAX(sort_order), 0) + 1 AS next_order FROM st_sub_menu_master WHERE menu_id = {$menuId}";
-			$orderResult = mysqli_query($db_handle->conn, $orderSql);
-			if ($orderResult && mysqli_num_rows($orderResult) > 0) {
-				$orderRow = mysqli_fetch_assoc($orderResult);
-				$nextOrder = (int) ($orderRow['next_order'] ?? 1);
-			}
-			$insertSql = "INSERT INTO st_sub_menu_master (menu_id, sort_order, sub_menu_name, sub_menu_icon, sub_menu_route) VALUES ({$menuId}, {$nextOrder}, '$name', '$icon', '$route')";
-			mysqli_query($db_handle->conn, $insertSql);
-		}
-	}
-
+	// 3. Ensure Super Admin (Role 1) has parent menu allocated
 	$parentSql = "SELECT 1 FROM st_menu_allocation_master WHERE user_id = 0 AND role_id = 1 AND menu_id = {$menuId} AND sub_menu_id IS NULL LIMIT 1";
 	$parentResult = mysqli_query($db_handle->conn, $parentSql);
 	if (!$parentResult || mysqli_num_rows($parentResult) === 0) {
 		mysqli_query($db_handle->conn, "INSERT INTO st_menu_allocation_master (user_id, role_id, menu_id, sub_menu_id) VALUES (0, 1, {$menuId}, NULL)");
 	}
 
-	$settingsRows = mysqli_query($db_handle->conn, "SELECT sub_menu_id FROM st_sub_menu_master WHERE menu_id = {$menuId}");
-	if ($settingsRows) {
-		while ($settingRow = mysqli_fetch_assoc($settingsRows)) {
-			$subMenuId = (int) ($settingRow['sub_menu_id'] ?? 0);
-			if ($subMenuId > 0) {
-				$allocSql = "SELECT 1 FROM st_menu_allocation_master WHERE user_id = 0 AND role_id = 1 AND menu_id = {$menuId} AND sub_menu_id = {$subMenuId} LIMIT 1";
-				$allocResult = mysqli_query($db_handle->conn, $allocSql);
-				if (!$allocResult || mysqli_num_rows($allocResult) === 0) {
-					mysqli_query($db_handle->conn, "INSERT INTO st_menu_allocation_master (user_id, role_id, menu_id, sub_menu_id) VALUES (0, 1, {$menuId}, {$subMenuId})");
-				}
-			}
+	// 4. Ensure Super Admin (Role 1) has Masters (13), Profile (20), Update Password (21), Allocation (25), Audit Log (49)
+	$superAdminSubIds = array(13, 20, 21, 25, 49);
+	foreach ($superAdminSubIds as $subId) {
+		$chkSql = "SELECT 1 FROM st_menu_allocation_master WHERE user_id = 0 AND role_id = 1 AND menu_id = {$menuId} AND sub_menu_id = {$subId} LIMIT 1";
+		$chkRes = mysqli_query($db_handle->conn, $chkSql);
+		if (!$chkRes || mysqli_num_rows($chkRes) === 0) {
+			mysqli_query($db_handle->conn, "INSERT INTO st_menu_allocation_master (user_id, role_id, menu_id, sub_menu_id) VALUES (0, 1, {$menuId}, {$subId})");
 		}
 	}
 
-	// Allocate Profile, Update Password to role 5 (Student)
-	$studentRoutes = array('profile.php', 'change_password.php');
-	foreach ($studentRoutes as $route) {
-		$studentSubSql = "SELECT sub_menu_id FROM st_sub_menu_master WHERE menu_id = {$menuId} AND sub_menu_route = '$route' LIMIT 1";
-		$studentSubRes = mysqli_query($db_handle->conn, $studentSubSql);
-		if ($studentSubRes && mysqli_num_rows($studentSubRes) > 0) {
-			$studentSubRow = mysqli_fetch_assoc($studentSubRes);
-			$studentSubMenuId = intval($studentSubRow['sub_menu_id']);
-			
-			$parentSql = "SELECT 1 FROM st_menu_allocation_master WHERE user_id = 0 AND role_id = 5 AND menu_id = {$menuId} AND sub_menu_id IS NULL LIMIT 1";
-			if (mysqli_num_rows(mysqli_query($db_handle->conn, $parentSql)) === 0) {
-				mysqli_query($db_handle->conn, "INSERT INTO st_menu_allocation_master (user_id, role_id, menu_id, sub_menu_id) VALUES (0, 5, {$menuId}, NULL)");
-			}
-			
-			$allocSql = "SELECT 1 FROM st_menu_allocation_master WHERE user_id = 0 AND role_id = 5 AND menu_id = {$menuId} AND sub_menu_id = {$studentSubMenuId} LIMIT 1";
-			if (mysqli_num_rows(mysqli_query($db_handle->conn, $allocSql)) === 0) {
-				mysqli_query($db_handle->conn, "INSERT INTO st_menu_allocation_master (user_id, role_id, menu_id, sub_menu_id) VALUES (0, 5, {$menuId}, {$studentSubMenuId})");
+	// 5. Ensure Roles 2, 3, 4, 5 have Settings parent and Profile (20), Update Password (21)
+	$standardRoles = array(2, 3, 4, 5);
+	$standardSubIds = array(20, 21);
+	foreach ($standardRoles as $rId) {
+		$parentChk = "SELECT 1 FROM st_menu_allocation_master WHERE user_id = 0 AND role_id = {$rId} AND menu_id = {$menuId} AND sub_menu_id IS NULL LIMIT 1";
+		if (mysqli_num_rows(mysqli_query($db_handle->conn, $parentChk)) === 0) {
+			mysqli_query($db_handle->conn, "INSERT INTO st_menu_allocation_master (user_id, role_id, menu_id, sub_menu_id) VALUES (0, {$rId}, {$menuId}, NULL)");
+		}
+		foreach ($standardSubIds as $sSubId) {
+			$subChk = "SELECT 1 FROM st_menu_allocation_master WHERE user_id = 0 AND role_id = {$rId} AND menu_id = {$menuId} AND sub_menu_id = {$sSubId} LIMIT 1";
+			if (mysqli_num_rows(mysqli_query($db_handle->conn, $subChk)) === 0) {
+				mysqli_query($db_handle->conn, "INSERT INTO st_menu_allocation_master (user_id, role_id, menu_id, sub_menu_id) VALUES (0, {$rId}, {$menuId}, {$sSubId})");
 			}
 		}
 	}
@@ -146,11 +120,12 @@ function sidebar_seed_mentor_menu($db_handle)
 	}
 
 	// Submenus to seed under MENTOR category
+	// Note: Role 4 (Mentor) is granted access to Mentor Assignments (read-only self-view)
 	$submenus = array(
 		array('Register Mentor', 'fa fa-plus', 'mentor_register.php', array(1, 2)),
 		array('Mentor Info', 'fa fa-info-circle', 'mentor_info.php', array(1, 2)),
 		array('Mentor Allocation', 'fa fa-exchange', 'mentor_allocation.php', array(1, 2, 3)),
-		array('Mentor Assignments', 'fa fa-users', 'mentor_assignment.php', array(1, 2, 3)),
+		array('Mentor Assignments', 'fa fa-users', 'mentor_assignment.php', array(1, 2, 3, 4)),
 		array('Offline Marks Entry', 'fa fa-pencil-square-o', 'offline_marks_entry.php', array(1, 2, 3, 4))
 	);
 
@@ -618,10 +593,70 @@ if ($menuStmt) {
 			$subResult = mysqli_stmt_get_result($subStmt);
 
 			while ($subRow = mysqli_fetch_assoc($subResult)) {
+				$subId = intval($subRow['sub_menu_id']);
+				$subRoute = trim((string)($subRow['sub_menu_route'] ?? ''));
+
+				// 1. Redundant submenus consolidated into Masters (51: Manage Section, 52: Menu Master, 53: Sub Menu Master)
+				if (in_array($subId, array(51, 52, 53), true)) {
+					continue;
+				}
+
+				// 2. Strict Super Admin only settings routes (Master, Audit Log, Allocation)
+				$superAdminSubRoutes = array('class_crud_new.php', 'audit_log.php', 'allocation_master.php');
+				if ((int)$usertype !== 1) {
+					if (in_array($subId, array(13, 25, 49), true)) {
+						continue;
+					}
+					$isSuperAdminRoute = false;
+					foreach ($superAdminSubRoutes as $sar) {
+						if (strpos($subRoute, $sar) !== false) {
+							$isSuperAdminRoute = true;
+							break;
+						}
+					}
+					if ($isSuperAdminRoute) {
+						continue;
+					}
+				}
+
+				// 3. Mentor (Role 4): Ensure restricted admin modules are never rendered
+				if ((int)$usertype === 4) {
+					$mentorBlockedRoutes = array('admin_register.php', 'admin_info.php', 'coordinator_register.php', 'coordinator_info.php', 'coordinator_allocation.php', 'student_admission.php');
+					$isBlocked = false;
+					foreach ($mentorBlockedRoutes as $mbr) {
+						if (strpos($subRoute, $mbr) !== false) {
+							$isBlocked = true;
+							break;
+						}
+					}
+					if ($isBlocked) {
+						continue;
+					}
+				}
+
+				// 4. Student (Role 5): Only self-service items
+				if ((int)$usertype === 5) {
+					$studentAllowedSubRoutes = array('student_admission.php', 'student_admission_view.php', 'nptel_certificate.php', 'profile.php', 'change_password.php');
+					$isAllowed = false;
+					foreach ($studentAllowedSubRoutes as $sar) {
+						if (strpos($subRoute, $sar) !== false) {
+							$isAllowed = true;
+							break;
+						}
+					}
+					if (!$isAllowed) {
+						continue;
+					}
+				}
+
 				$menuTree[$menuId]['submenus'][] = $subRow;
 			}
 
 			mysqli_stmt_close($subStmt);
+		}
+
+		if (empty($menuTree[$menuId]['submenus'])) {
+			unset($menuTree[$menuId]);
 		}
 	}
 

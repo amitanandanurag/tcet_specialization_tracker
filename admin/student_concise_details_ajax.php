@@ -13,19 +13,24 @@ if (empty($_SESSION['user_id']) || empty($_SESSION['role_id'])) {
     exit();
 }
 
+$user_id = intval($_SESSION['user_id'] ?? 0);
 $user_role = intval($_SESSION['role_id'] ?? 0);
 if ($user_role > 4) {
     http_response_code(403);
     echo json_encode(['recordsTotal' => 0, 'recordsFiltered' => 0, 'data' => [], 'error' => 'Forbidden access for current role.']);
     exit();
 }
+
+$user_scope = $db_handle->getUserScope($user_id, $user_role);
+$department_id = intval($user_scope['department_id'] ?? 0);
+
 $requestData = $_REQUEST;
 $isExport = isset($_POST['export']) && $_POST['export'] == 'true';
 
 // FILTERS
 $select_class = $_POST['select_class'] ?? '';
 $select_section = $_POST['select_section'] ?? '';
-$select_department = $_POST['select_department'] ?? '';
+$select_department = ($user_role == 3) ? ($department_id > 0 ? $department_id : -1) : ($_POST['select_department'] ?? '');
 $select_specialization = $_POST['select_specialization'] ?? '';
 $select_specialization_subject = $_POST['select_specialization_subject'] ?? '';
 
@@ -50,6 +55,16 @@ INNER JOIN st_specialization_subject_master subj
 WHERE sm.status = 1
 ";
 
+// Role-based scoping
+if ($user_role == 3) {
+    $baseSql .= " AND sm.department_id = '" . mysqli_real_escape_string($db_handle->conn, $select_department) . "'";
+} elseif ($user_role == 4) {
+    $baseSql .= " AND (
+        EXISTS (SELECT 1 FROM st_mentor_student_mapping msm WHERE msm.student_id = sm.student_id AND msm.mentor_id = " . intval($user_id) . ")
+        OR EXISTS (SELECT 1 FROM st_mentor_subject_mapping msub JOIN st_user_master um ON um.user_id = msub.mentor_id WHERE msub.mentor_id = " . intval($user_id) . " AND msub.subject_id = sm.specialization_subject_id AND um.department_id = sm.department_id)
+    )";
+}
+
 //   APPLY FILTERS
 if (!empty($select_class)) {
     $baseSql .= " AND sm.class_id = '" . mysqli_real_escape_string($db_handle->conn, $select_class) . "'";
@@ -59,7 +74,7 @@ if (!empty($select_section)) {
     $baseSql .= " AND sm.division_id = '" . mysqli_real_escape_string($db_handle->conn, $select_section) . "'";
 }
 
-if (!empty($select_department)) {
+if (!empty($select_department) && $user_role != 3) {
     $baseSql .= " AND sm.department_id = '" . mysqli_real_escape_string($db_handle->conn, $select_department) . "'";
 }
 

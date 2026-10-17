@@ -128,7 +128,7 @@ if ($is_mentor) {
 }
 
 // ========================
-// 1. FETCH HOD DATA FROM DATABASE
+// 1. FETCH HOD DATA FROM DATABASE (ACCURATE REAL-TIME STATUS)
 // ========================
 $hod_query = "SELECT 
     d.department_id,
@@ -139,9 +139,8 @@ $hod_query = "SELECT
         ELSE 'N/A'
     END as phone,
     CASE 
-        WHEN MOD(d.department_id, 3) = 0 THEN 'In Meeting'
-        WHEN MOD(d.department_id, 4) = 0 THEN 'On Leave'
-        ELSE 'Available'
+        WHEN u.user_name IS NOT NULL AND u.user_name != '' THEN 'Assigned'
+        ELSE 'Vacant'
     END as status
 FROM st_department_master d
 LEFT JOIN (
@@ -177,50 +176,22 @@ if ($hod_result) {
 }
 
 // ========================
-// 2. FETCH TOP SUMMARY CARDS DATA (ROLE & DEPARTMENT AWARE)
+// 2. FETCH TOP SUMMARY CARDS DATA (CENTRALIZED AUTHORITATIVE METRICS)
 // ========================
-if ($usertype == 4) {
-    // Mentor - only allocated active students
-    $student_count_sql = "SELECT COUNT(s.student_id) as total
-            FROM st_student_master s
-            INNER JOIN st_mentor_student_mapping m ON s.student_id = m.student_id
-            WHERE s.status = 1 AND m.mentor_id = " . intval($logged_user_id);
-} else {
-    $student_count_sql = "SELECT COUNT(*) as total FROM st_student_master WHERE status = 1";
-    if ($is_scoped_user && $logged_dept_id) {
-        $student_count_sql .= " AND department_id = " . intval($logged_dept_id);
-    }
-}
-$students_result = mysqli_query($db_handle->conn, $student_count_sql);
-$total_students = ($students_result && $row = mysqli_fetch_assoc($students_result)) ? (int)$row['total'] : 0;
+$authoritativeMetrics = $db_handle->getAuthoritativeMetrics($logged_user_id, $logged_user_role_id);
+$total_students = $authoritativeMetrics['active_students'];
+$total_registered_students = $authoritativeMetrics['total_registered_students'];
 $rowcount = $total_students;
 
-// USERS CARD - count users only from st_user_master
-if ($is_scoped_user && $logged_dept_id) {
-    $users_card_label = 'Department Users';
-    $users_query = "SELECT COUNT(*) as total FROM st_user_master WHERE department_id = " . intval($logged_dept_id);
-} else {
-    $users_card_label = 'Total Users';
-    $users_query = "SELECT COUNT(*) as total FROM st_user_master";
-}
-$users_result = mysqli_query($db_handle->conn, $users_query);
-$total_users = $users_result ? mysqli_fetch_assoc($users_result)['total'] : 0;
+// USERS CARD
+$users_card_label = ($is_scoped_user && $logged_dept_id) ? 'Department Users' : 'Total Users';
+$total_users = $authoritativeMetrics['total_users'];
 
-// BRANCHES
-$branches_query = "SELECT COUNT(*) as total FROM st_department_master";
-$branches_result = mysqli_query($db_handle->conn, $branches_query);
-$total_branches = $branches_result ? mysqli_fetch_assoc($branches_result)['total'] : 0;
+// BRANCHES CARD
+$total_branches = $authoritativeMetrics['total_branches'];
 
-// MENTORS - department-filtered for role-scoped users
-if ($is_scoped_user && $logged_dept_id) {
-    $mentor_query = "SELECT COUNT(*) as total FROM st_user_master 
-        WHERE role_id IN (" . implode(',', $mentor_role_ids) . ")
-        AND department_id = " . intval($logged_dept_id);
-} else {
-    $mentor_query = "SELECT COUNT(*) as total FROM st_user_master WHERE role_id IN (" . implode(',', $mentor_role_ids) . ")";
-}
-$mentor_result = mysqli_query($db_handle->conn, $mentor_query);
-$total_mentor = $mentor_result ? mysqli_fetch_assoc($mentor_result)['total'] : 0;
+// MENTORS CARD
+$total_mentor = $authoritativeMetrics['total_mentors'];
 
 $dept_join_cond = "";
 if ($is_scoped_user && $logged_dept_id) {
@@ -233,7 +204,7 @@ $spec_query = "SELECT
     COUNT(s.student_id) as total,
     SUM(CASE WHEN s.status = 1 THEN 1 ELSE 0 END) as approved,
     SUM(CASE WHEN s.status = 0 THEN 1 ELSE 0 END) as pending,
-    0 as rejected
+    SUM(CASE WHEN s.status NOT IN (0, 1) THEN 1 ELSE 0 END) as rejected
 FROM st_specialization_master sm
 LEFT JOIN st_student_master s ON sm.specialization_id = s.specialization_id" . $dept_join_cond . "
 GROUP BY sm.specialization_id, sm.specialization_name
@@ -612,7 +583,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_hod'])) {
                 <div class="small-box bg-aqua">
                     <div class="inner">
                         <h3 class="counter" data-target="<?php echo $rowcount; ?>">0</h3>
-                        <p>Total Students</p>
+                        <p>Enrolled Students <span style="font-size: 11px; font-weight: normal; opacity: 0.9;">(<?php echo $total_registered_students; ?> Registered)</span></p>
                     </div>
                     <div class="icon"><i class="ion ion-android-contacts"></i></div>
                     <a href="student-info.php" class="small-box-footer">More info <i class="fa fa-arrow-circle-right"></i></a>
@@ -909,28 +880,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_hod'])) {
                                     <td>
                                         <?php
                                         $status_class = '';
-                                        $status_text = '';
+                                        $status_text = $hod['status'];
+                                        $status_icon = 'fa-check-circle';
                                         switch ($hod['status']) {
+                                            case 'Assigned':
                                             case 'Available':
                                                 $status_class = 'status-available';
-                                                $status_text = 'Available';
+                                                $status_icon = 'fa-check-circle';
                                                 break;
                                             case 'In Meeting':
                                                 $status_class = 'status-meeting';
-                                                $status_text = 'In Meeting';
+                                                $status_icon = 'fa-clock-o';
                                                 break;
                                             case 'On Leave':
+                                            case 'Vacant':
                                                 $status_class = 'status-leave';
-                                                $status_text = 'On Leave';
+                                                $status_icon = 'fa-exclamation-circle';
                                                 break;
                                             default:
                                                 $status_class = 'status-available';
-                                                $status_text = $hod['status'];
+                                                $status_icon = 'fa-circle';
                                         }
                                         ?>
                                         <span class="status-badge <?php echo $status_class; ?>">
-                                            <i class="fa <?php echo ($status_text == 'Available') ? 'fa-check-circle' : (($status_text == 'In Meeting') ? 'fa-clock-o' : 'fa-calendar-times-o'); ?>"></i>
-                                            <?php echo $status_text; ?>
+                                            <i class="fa <?php echo $status_icon; ?>"></i>
+                                            <?php echo htmlspecialchars($status_text); ?>
                                         </span>
                                     </td>
                                     <td>

@@ -21,6 +21,8 @@ $suites = [
     'Batch 2 Remediation Suite' => __DIR__ . '/test_batch2_remediation.php',
     'Dashboard Fix & Data Accuracy Suite' => __DIR__ . '/test_dashboard_accuracy.php',
     'Semester-Wise Mentor Allocation Suite' => __DIR__ . '/test_semester_wise_mentor_allocation.php',
+    'RBAC & Data Accuracy Suite' => __DIR__ . '/test_role_based_access_control.php',
+    'Browser & HTTP Role Verification Suite' => __DIR__ . '/test_browser_role_sessions.php',
 ];
 
 $totalTests = 0;
@@ -39,14 +41,18 @@ foreach ($suites as $name => $file) {
     $outText = implode("\n", $output);
     
     // Parse test counts
-    if (preg_match('/(?:Passed =|Passed:)\s*(\d+)/i', $outText, $pMatches)) {
+    if (preg_match('/(?:Passed\s*[:=]\s*|,\s*Passed\s*=\s*)(\d+)/i', $outText, $pMatches)) {
         $passed = (int)$pMatches[1];
+    } elseif (preg_match('/(\d+)\s+Passed/i', $outText, $pMatches2)) {
+        $passed = (int)$pMatches2[1];
     } else {
         $passed = substr_count($outText, '[PASS]');
     }
     
-    if (preg_match('/(?:Failed =|Failed:)\s*(\d+)/i', $outText, $fMatches)) {
+    if (preg_match('/(?:Failed\s*[:=]\s*|,\s*Failed\s*=\s*)(\d+)/i', $outText, $fMatches)) {
         $failed = (int)$fMatches[1];
+    } elseif (preg_match('/(\d+)\s+Failed/i', $outText, $fMatches2)) {
+        $failed = (int)$fMatches2[1];
     } else {
         $failed = substr_count($outText, '[FAIL]');
     }

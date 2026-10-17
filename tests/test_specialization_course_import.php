@@ -6,10 +6,18 @@
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
+putenv('TCET_DB_NAME=tcet_st_test');
+putenv('TCET_TEST_DB=tcet_st_test');
 require_once __DIR__ . '/../database/db_connect.php';
 
-$db = new DBController();
+$db = new DBController('tcet_st_test');
 $conn = $db->conn;
+
+$dbCheckRes = $db->runQuery("SELECT DATABASE() as db");
+$activeDb = $dbCheckRes[0]['db'] ?? '';
+if ($activeDb !== 'tcet_st_test') {
+    die("[FATAL SAFETY ABORT] Connected database is '$activeDb', expected 'tcet_st_test'. Aborting test.\n");
+}
 
 echo "=== TCET ERP SPECIALIZATION & COURSE DATA VERIFICATION SUITE ===\n\n";
 
