@@ -23,6 +23,8 @@ $suites = [
     'Semester-Wise Mentor Allocation Suite' => __DIR__ . '/test_semester_wise_mentor_allocation.php',
     'RBAC & Data Accuracy Suite' => __DIR__ . '/test_role_based_access_control.php',
     'Browser & HTTP Role Verification Suite' => __DIR__ . '/test_browser_role_sessions.php',
+    'Master Implementation Updates Suite' => __DIR__ . '/test_master_implementation_suite.php',
+    'Session Security & Cookie Configuration Suite' => __DIR__ . '/test_session_security_configuration.php',
 ];
 
 $totalTests = 0;

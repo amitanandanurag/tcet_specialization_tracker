@@ -49,7 +49,14 @@ if (isset($_POST['save'])) {
     ];
 
     // Get form data
-    $academic_year_id = mysqli_real_escape_string($conn, $_POST['academic'] ?? '');
+    $ayValId = intval($_POST['academic'] ?? 0);
+    $ayCheck = mysqli_query($conn, "SELECT session_id FROM st_session_master WHERE session_id = $ayValId LIMIT 1");
+    if (!$ayCheck || mysqli_num_rows($ayCheck) === 0) {
+        echo '<script type="text/javascript">alert("Invalid or missing Academic Year selected.");</script>';
+        echo "<script>window.open('student_admission.php','_self')</script>";
+        exit;
+    }
+    $academic_year_id = strval($ayValId);
     $registration_no = mysqli_real_escape_string($conn, $_POST['registration_no'] ?? '');
     $class_id = mysqli_real_escape_string($conn, $_POST['class'] ?? '');
     $division_id = mysqli_real_escape_string($conn, $_POST['batch'] ?? '');

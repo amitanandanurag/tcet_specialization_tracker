@@ -413,6 +413,8 @@ function executeSpecializationCourseImport($db_handle, $userId = 1) {
         'departments_updated' => 0,
         'departments_inserted' => 0,
         'academic_years_synced' => 0,
+        'academic_years_matched' => 0,
+        'academic_years_inserted' => 0,
         'specializations_inserted' => 0,
         'specializations_updated' => 0,
         'courses_inserted' => 0,
@@ -512,8 +514,11 @@ function executeSpecializationCourseImport($db_handle, $userId = 1) {
                 $newAyId = mysqli_insert_id($conn);
                 mysqli_stmt_close($insAy);
                 $ayIdMap[$ayName] = $newAyId;
-                $stats['academic_years_synced']++;
+                $stats['academic_years_inserted']++;
+            } else {
+                $stats['academic_years_matched']++;
             }
+            $stats['academic_years_synced']++;
         }
 
         // --- STEP 3: SEMESTERS ---
@@ -658,8 +663,8 @@ function executeSpecializationCourseImport($db_handle, $userId = 1) {
 
 // -------------------------------------------------------------
 // EXECUTION: CLI MODE
-// -------------------------------------------------------------
-if ($isCli) {
+$isDirectCli = ($isCli && isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) === realpath(__FILE__));
+if ($isDirectCli) {
     echo "=======================================================\n";
     echo "TCET ERP SPECIALIZATION & COURSE DATA IMPORTER (CLI)\n";
     echo "=======================================================\n\n";
@@ -684,11 +689,12 @@ if ($isCli) {
 // -------------------------------------------------------------
 // EXECUTION: WEB ADMIN UI
 // -------------------------------------------------------------
-$message = '';
-$messageType = '';
-$importResults = null;
+if (!$isCli) {
+    $message = '';
+    $messageType = '';
+    $importResults = null;
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'run_import') {
+    if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'run_import') {
     if (!DBController::validateCsrfToken()) {
         $message = "Security token validation failed. Please try again.";
         $messageType = "danger";
@@ -823,4 +829,7 @@ include "header/header.php";
   </section>
 </div>
 
-<?php include "header/footer.php"; ?>
+<?php
+include "header/footer.php";
+}
+?>

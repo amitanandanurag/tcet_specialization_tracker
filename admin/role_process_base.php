@@ -29,6 +29,7 @@ $userNameEsc = mysqli_real_escape_string($db_handle->conn, $userName);
 $emailEsc = mysqli_real_escape_string($db_handle->conn, $emailId);
 $phoneEsc = mysqli_real_escape_string($db_handle->conn, $phoneNumber);
 
+$classId = intval($_POST['class_id'] ?? 0);
 $subjectId = intval($_POST['subject_id'] ?? 0);
 $semesterId = intval($_POST['semester_id'] ?? 0);
 $academicYearId = intval($_POST['academic_year_id'] ?? 0);
@@ -40,8 +41,34 @@ if ($roleId === 4) {
     exit;
   }
 
-  // Validate subject belongs to department where department relationship is defined
-  $subjCheck = mysqli_query($db_handle->conn, "SELECT subject_id, department_id FROM st_specialization_subject_master WHERE subject_id = $subjectId AND is_active = 1 LIMIT 1");
+  // Validate Class if provided
+  if ($classId > 0) {
+    $classCheck = mysqli_query($db_handle->conn, "SELECT class_id, UPPER(class_name) AS class_name FROM st_class_master WHERE class_id = $classId LIMIT 1");
+    if (!$classCheck || mysqli_num_rows($classCheck) === 0) {
+      echo "<script>alert('Selected class does not exist.'); window.history.back();</script>";
+      exit;
+    }
+    $cRow = mysqli_fetch_assoc($classCheck);
+    $cName = $cRow['class_name'];
+    $allowedSems = [];
+    if ($cName === 'FY' || $cName === 'FE') {
+      $allowedSems = [1, 2];
+    } elseif ($cName === 'SY' || $cName === 'SE') {
+      $allowedSems = [3, 4];
+    } elseif ($cName === 'TY' || $cName === 'TE') {
+      $allowedSems = [5, 6];
+    } elseif ($cName === 'BE') {
+      $allowedSems = [7, 8];
+    }
+
+    if (!empty($allowedSems) && !in_array($semesterId, $allowedSems, true)) {
+      echo "<script>alert('Selected semester does not belong to the selected class.'); window.history.back();</script>";
+      exit;
+    }
+  }
+
+  // Validate subject belongs to department and semester where relationships are defined
+  $subjCheck = mysqli_query($db_handle->conn, "SELECT subject_id, department_id, semester_id FROM st_specialization_subject_master WHERE subject_id = $subjectId AND is_active = 1 LIMIT 1");
   if (!$subjCheck || mysqli_num_rows($subjCheck) === 0) {
     echo "<script>alert('Selected subject does not exist or is inactive.'); window.history.back();</script>";
     exit;
@@ -49,6 +76,10 @@ if ($roleId === 4) {
   $subjData = mysqli_fetch_assoc($subjCheck);
   if (!empty($subjData['department_id']) && intval($subjData['department_id']) > 0 && intval($subjData['department_id']) !== $departmentId) {
     echo "<script>alert('This subject does not belong to the selected department.'); window.history.back();</script>";
+    exit;
+  }
+  if (!empty($subjData['semester_id']) && intval($subjData['semester_id']) > 0 && intval($subjData['semester_id']) !== $semesterId) {
+    echo "<script>alert('This subject does not belong to the selected semester.'); window.history.back();</script>";
     exit;
   }
 

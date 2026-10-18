@@ -807,14 +807,29 @@ if (($isEditMode || (empty($admissionForm) && (int) ($usertype ?? 0) === 5)) && 
                     <?php
                     // Fetch all batches from the database
                     $batch_result = $db_handle->query("SELECT session_id, session_name FROM `st_session_master` ORDER BY session_id DESC");
+                    $allSessions = [];
+                    $defaultSessionId = 0;
+                    if ($batch_result) {
+                      while ($row = $batch_result->fetch_assoc()) {
+                        $allSessions[] = $row;
+                        $cleanName = preg_replace('/\s+/', '', strtolower($row['session_name']));
+                        if (strpos($cleanName, '2026-2027') !== false || (strpos($cleanName, '2026') !== false && strpos($cleanName, '2027') !== false)) {
+                          $defaultSessionId = intval($row['session_id']);
+                        }
+                      }
+                    }
+                    if ($defaultSessionId === 0 && !empty($allSessions)) {
+                      $defaultSessionId = 2; // Standard fallback for 2026-2027
+                    }
 
-                    while ($row = $batch_result->fetch_assoc()) {
-                      $id = $row['session_id'];
-                      $name = $row['session_name'];
-
-                      // This makes the latest batch selected by default
-                      $selected = (!empty($admissionForm['academic']) && (string)$admissionForm['academic'] === (string)$id) ? 'selected' : (($id == 1 && empty($admissionForm['academic'])) ? 'selected' : '');
-
+                    foreach ($allSessions as $row) {
+                      $id = intval($row['session_id']);
+                      $name = htmlspecialchars($row['session_name']);
+                      if (!empty($admissionForm['academic'])) {
+                        $selected = ((string)$admissionForm['academic'] === (string)$id) ? 'selected' : '';
+                      } else {
+                        $selected = ($id === $defaultSessionId) ? 'selected' : '';
+                      }
                       echo "<option value='{$id}' {$selected}>{$name}</option>";
                     }
                     ?>

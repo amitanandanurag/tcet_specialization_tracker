@@ -1,10 +1,26 @@
 <?php
 require "header/header.php";
 
-if ((int) ($usertype ?? 0) !== 1 && (int) ($usertype ?? 0) !== 2) {
+$allowedRoles = array(1, 2, 3, 4);
+if (!in_array((int) ($usertype ?? 0), $allowedRoles, true)) {
     echo "<script>window.location.href='index.php';</script>";
     exit;
 }
+
+// Fetch filter master data with RBAC scoping
+$scope = $db_handle->getUserScope($userid, $usertype);
+
+$deptWhere = ($scope['is_hod'] && $scope['department_id'] > 0) ? "WHERE department_id = " . intval($scope['department_id']) : "WHERE status = 1";
+$filterDepts = $db_handle->runQuery("SELECT department_id, department_name FROM st_department_master $deptWhere ORDER BY department_name ASC") ?? [];
+$filterSessions = $db_handle->runQuery("SELECT session_id, session_name FROM st_session_master ORDER BY session_id DESC") ?? [];
+$filterClasses = $db_handle->runQuery("SELECT class_id, class_name FROM st_class_master WHERE status = 1 ORDER BY class_id ASC") ?? [];
+$filterSemesters = $db_handle->runQuery("SELECT semester_id, semester_name FROM st_semester_master ORDER BY semester_id ASC") ?? [];
+$filterSections = $db_handle->runQuery("SELECT id, sections FROM st_section_master WHERE status = 1 ORDER BY sections ASC") ?? [];
+$filterSpecs = $db_handle->runQuery("SELECT specialization_id, specialization_name FROM st_specialization_master WHERE status = 1 ORDER BY specialization_name ASC") ?? [];
+
+$mentorWhere = ($scope['is_hod'] && $scope['department_id'] > 0) ? "AND department_id = " . intval($scope['department_id']) : "";
+$filterMentors = $db_handle->runQuery("SELECT user_id, user_name FROM st_user_master WHERE role_id = 4 $mentorWhere ORDER BY user_name ASC") ?? [];
+$filterHods = $db_handle->runQuery("SELECT user_id, user_name, department_id FROM st_user_master WHERE role_id = 3 ORDER BY user_name ASC") ?? [];
 ?>
 
 <style>
@@ -32,51 +48,252 @@ if ((int) ($usertype ?? 0) !== 1 && (int) ($usertype ?? 0) !== 2) {
         gap: 8px;
     }
 
-    .search-input-group {
+    .unified-student-search-container {
+        position: relative;
+        width: 100%;
+        max-width: 680px;
+    }
+    .student-search-box-wrapper {
         position: relative;
         display: flex;
+        align-items: center;
         width: 100%;
-        max-width: 600px;
-        gap: 10px;
     }
-
-    .search-input {
-        flex: 1;
-        height: 38px;
+    .search-leading-icon {
+        position: absolute;
+        left: 14px;
+        color: #94a3b8;
+        font-size: 14px;
+        pointer-events: none;
+        z-index: 2;
+    }
+    .unified-search-input {
+        width: 100%;
+        height: 42px;
+        padding: 6px 68px 6px 38px;
         border-radius: var(--erp-radius-sm, 4px);
         border: 1px solid var(--erp-border-dark, #cbd5e1);
-        padding: 6px 14px;
         font-size: 13px;
         font-weight: 500;
+        color: var(--erp-text-main, #0f172a);
+        background: #ffffff;
         transition: all 0.15s ease;
         outline: none;
-        color: var(--erp-text-main, #0f172a);
     }
-
-    .search-input:focus {
+    .unified-search-input:focus {
         border-color: var(--erp-primary, #423cbc);
         box-shadow: 0 0 0 3px rgba(66, 60, 188, 0.12);
     }
-
-    .search-btn {
-        height: 38px;
-        padding: 0 16px;
-        border-radius: var(--erp-radius-sm, 4px);
-        background: var(--erp-primary, #423cbc);
-        color: white;
-        border: 1px solid var(--erp-primary-hover, #352fa1);
+    .search-clear-btn {
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        color: #94a3b8;
+        font-size: 16px;
+        cursor: pointer;
+        padding: 4px;
+        line-height: 1;
+        transition: color 0.15s ease;
+        z-index: 3;
+    }
+    .search-clear-btn:hover {
+        color: #ef4444;
+    }
+    .search-inline-spinner {
+        position: absolute;
+        right: 36px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--erp-primary, #423cbc);
+        font-size: 13px;
+        z-index: 3;
+    }
+    .student-autocomplete-dropdown {
+        position: absolute;
+        top: calc(100% + 4px);
+        left: 0;
+        right: 0;
+        background: #ffffff;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.12), 0 8px 10px -6px rgba(15, 23, 42, 0.08);
+        max-height: 360px;
+        overflow-y: auto;
+        z-index: 1050;
+    }
+    .autocomplete-item {
+        padding: 10px 14px;
+        border-bottom: 1px solid #f1f5f9;
+        cursor: pointer;
+        transition: background-color 0.15s ease;
+    }
+    .autocomplete-item:last-child {
+        border-bottom: none;
+    }
+    .autocomplete-item:hover,
+    .autocomplete-item.active {
+        background-color: #f8fafc;
+        border-left: 3px solid var(--erp-primary, #423cbc);
+        padding-left: 11px;
+    }
+    .autocomplete-item-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 3px;
+    }
+    .autocomplete-item-name {
         font-size: 13px;
         font-weight: 600;
-        cursor: pointer;
+        color: #0f172a;
+    }
+    .autocomplete-item-reg {
+        font-size: 11px;
+        font-weight: 700;
+        font-family: monospace;
+        color: var(--erp-primary, #423cbc);
+        background: #eef2ff;
+        border: 1px solid #c7d2fe;
+        border-radius: 4px;
+        padding: 1px 6px;
+        white-space: nowrap;
+    }
+    .autocomplete-item-details {
+        font-size: 12px;
+        color: #64748b;
         display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
         align-items: center;
-        gap: 6px;
-        transition: all 0.15s ease;
+    }
+    .autocomplete-item-details span {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+    .autocomplete-state-msg {
+        padding: 16px 14px;
+        text-align: center;
+        font-size: 13px;
+    }
+    .search-match-highlight {
+        background-color: #fef08a;
+        color: #854d0e;
+        font-weight: 700;
+        border-radius: 2px;
+        padding: 0 1px;
     }
 
-    .search-btn:hover {
-        background: var(--erp-primary-hover, #352fa1);
+    /* Filter & Roster Styling */
+    .monitor-filter-card {
+        background: #ffffff;
+        border-radius: var(--erp-radius-md, 6px);
+        border: 1px solid var(--erp-border, #e2e8f0);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+        padding: 16px 20px;
+        margin-bottom: 20px;
     }
+    .filter-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 12px;
+        margin-bottom: 14px;
+    }
+    .filter-item label {
+        display: block;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: #64748b;
+        margin-bottom: 4px;
+    }
+    .filter-actions {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        justify-content: flex-end;
+        padding-top: 10px;
+        border-top: 1px solid #f1f5f9;
+    }
+    .roster-card {
+        background: #ffffff;
+        border-radius: var(--erp-radius-md, 6px);
+        border: 1px solid var(--erp-border, #e2e8f0);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+        margin-bottom: 20px;
+        overflow: hidden;
+    }
+    .roster-header {
+        padding: 14px 20px;
+        background: #f8fafc;
+        border-bottom: 1px solid #e2e8f0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    .roster-header h3 {
+        margin: 0;
+        font-size: 15px;
+        font-weight: 700;
+        color: #0f172a;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .roster-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+    }
+    .roster-table th {
+        background: #f8fafc;
+        color: #475569;
+        font-weight: 700;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        padding: 10px 14px;
+        border-bottom: 1px solid #e2e8f0;
+        text-align: left;
+    }
+    .roster-table td {
+        padding: 10px 14px;
+        border-bottom: 1px solid #f1f5f9;
+        color: #1e293b;
+        vertical-align: middle;
+    }
+    .roster-table tbody tr:hover {
+        background-color: #f8fafc;
+    }
+    .roster-pagination {
+        padding: 12px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: #ffffff;
+        border-top: 1px solid #e2e8f0;
+        font-size: 13px;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    .badge-mentor {
+        background: #f1f5f9;
+        color: #334155;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 500;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+
 
     /* Student Profile Styling */
     .profile-card {
@@ -599,19 +816,222 @@ if ((int) ($usertype ?? 0) !== 1 && (int) ($usertype ?? 0) !== 2) {
             </p>
         </div>
 
-        <!-- Search Bar Card -->
+        <!-- Search & Student Selection Card -->
         <div class="search-card">
             <div class="search-title">
-                <i class="fa fa-search" style="color: var(--erp-primary, #423cbc);"></i> Student Profile
+                <i class="fa fa-search" style="color: var(--erp-primary, #423cbc);"></i> Student Search & Direct Selection
             </div>
-            <form id="searchForm" onsubmit="event.preventDefault(); searchStudent();">
-                <div class="search-input-group">
-                    <input type="text" id="regNoInput" class="search-input" placeholder="Search by Reg No." required autocomplete="off">
-                    <button type="submit" class="search-btn">
-                        <i class="fa fa-arrow-right"></i> Search
+            <div class="unified-student-search-container">
+                <label style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 6px; display: block;">
+                    Select Student to Monitor
+                </label>
+                <div class="student-search-box-wrapper">
+                    <i class="fa fa-search search-leading-icon"></i>
+                    <input type="text"
+                           id="studentSearchInput"
+                           class="unified-search-input"
+                           placeholder="Search by student name or registration number..."
+                           autocomplete="off"
+                           spellcheck="false"
+                           aria-label="Search by student name or registration number"
+                           aria-autocomplete="list"
+                           aria-expanded="false">
+                    <button type="button" id="btnClearStudentSearch" class="search-clear-btn" title="Clear search" style="display: none;" aria-label="Clear student search">
+                        <i class="fa fa-times-circle"></i>
+                    </button>
+                    <div id="searchSpinner" class="search-inline-spinner" style="display: none;">
+                        <i class="fa fa-spinner fa-spin"></i>
+                    </div>
+                    <div id="studentAutocompleteMenu" class="student-autocomplete-dropdown" style="display: none;" role="listbox"></div>
+                </div>
+                <input type="hidden" id="regNoInput" value="">
+                <div style="margin-top: 6px; font-size: 11px; color: #94a3b8;">
+                    <i class="fa fa-info-circle"></i> Type student name or registration number. Use <span style="background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 3px; padding: 1px 4px; font-family: monospace;">&uarr;</span> <span style="background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 3px; padding: 1px 4px; font-family: monospace;">&darr;</span> keys to navigate, <span style="background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 3px; padding: 1px 4px; font-family: monospace;">Enter</span> to select, <span style="background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 3px; padding: 1px 4px; font-family: monospace;">Esc</span> to close.
+                </div>
+            </div>
+        </div>
+
+        <!-- Advanced Filters & Sorting Card -->
+        <div class="monitor-filter-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; cursor: pointer;" onclick="$('#filterGridWrapper').slideToggle(200);">
+                <div style="font-size: 14px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                    <i class="fa fa-filter text-primary"></i> Advanced Filters & Sorting
+                </div>
+                <div class="text-muted" style="font-size: 12px;">
+                    <span id="filterToggleIcon"><i class="fa fa-chevron-down"></i></span>
+                </div>
+            </div>
+
+            <div id="filterGridWrapper">
+                <div class="filter-grid">
+                    <?php if (!$scope['is_hod']): ?>
+                    <div class="filter-item">
+                        <label>Department</label>
+                        <select id="filterDept" class="form-control input-sm">
+                            <option value="0">All Departments</option>
+                            <?php foreach ($filterDepts as $d): ?>
+                                <option value="<?= $d['department_id'] ?>"><?= htmlspecialchars($d['department_name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <?php else: ?>
+                    <div class="filter-item">
+                        <label>Department</label>
+                        <select id="filterDept" class="form-control input-sm" disabled>
+                            <?php foreach ($filterDepts as $d): ?>
+                                <option value="<?= $d['department_id'] ?>" selected><?= htmlspecialchars($d['department_name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <?php endif; ?>
+
+                    <div class="filter-item">
+                        <label>Academic Year</label>
+                        <select id="filterSession" class="form-control input-sm">
+                            <option value="0">All Academic Years</option>
+                            <?php foreach ($filterSessions as $s): ?>
+                                <option value="<?= $s['session_id'] ?>"><?= htmlspecialchars($s['session_name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <?php if (!$scope['is_mentor']): ?>
+                    <div class="filter-item">
+                        <label>Under Mentor</label>
+                        <select id="filterMentor" class="form-control input-sm">
+                            <option value="0">All Mentors</option>
+                            <?php foreach ($filterMentors as $m): ?>
+                                <option value="<?= $m['user_id'] ?>"><?= htmlspecialchars($m['user_name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <?php endif; ?>
+
+                    <div class="filter-item">
+                        <label>Under HOD</label>
+                        <select id="filterHod" class="form-control input-sm">
+                            <option value="0">All HODs</option>
+                            <?php foreach ($filterHods as $h): ?>
+                                <option value="<?= $h['user_id'] ?>"><?= htmlspecialchars($h['user_name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <div class="filter-item">
+                        <label>Class</label>
+                        <select id="filterClass" class="form-control input-sm">
+                            <option value="0">All Classes</option>
+                            <?php foreach ($filterClasses as $c): ?>
+                                <option value="<?= $c['class_id'] ?>"><?= htmlspecialchars($c['class_name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <div class="filter-item">
+                        <label>Semester</label>
+                        <select id="filterSemester" class="form-control input-sm">
+                            <option value="0">All Semesters</option>
+                            <?php foreach ($filterSemesters as $sem): ?>
+                                <option value="<?= $sem['semester_id'] ?>"><?= htmlspecialchars($sem['semester_name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <div class="filter-item">
+                        <label>Division</label>
+                        <select id="filterSection" class="form-control input-sm">
+                            <option value="0">All Divisions</option>
+                            <?php foreach ($filterSections as $sec): ?>
+                                <option value="<?= $sec['id'] ?>"><?= htmlspecialchars($sec['sections']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <div class="filter-item">
+                        <label>Specialization Track</label>
+                        <select id="filterSpec" class="form-control input-sm">
+                            <option value="0">All Specializations</option>
+                            <?php foreach ($filterSpecs as $sp): ?>
+                                <option value="<?= $sp['specialization_id'] ?>"><?= htmlspecialchars($sp['specialization_name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <div class="filter-item">
+                        <label>Sort By</label>
+                        <select id="filterSortBy" class="form-control input-sm">
+                            <option value="name">Student Name</option>
+                            <option value="registration_no">Registration Number</option>
+                            <option value="academic_year">Academic Year</option>
+                            <option value="department">Department</option>
+                            <option value="class">Class</option>
+                            <option value="semester">Semester</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-item">
+                        <label>Order</label>
+                        <select id="filterSortDir" class="form-control input-sm">
+                            <option value="ASC">Ascending (A-Z)</option>
+                            <option value="DESC">Descending (Z-A)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="filter-actions">
+                    <button type="button" class="btn btn-sm btn-default" onclick="resetFilters();">
+                        <i class="fa fa-undo"></i> Reset Filters
+                    </button>
+                    <button type="button" class="btn btn-sm btn-primary" onclick="loadStudentTable(1);">
+                        <i class="fa fa-search"></i> Apply Filters & Sort
                     </button>
                 </div>
-            </form>
+            </div>
+        </div>
+
+        <!-- Student Roster Directory Card -->
+        <div class="roster-card" id="studentRosterSection">
+            <div class="roster-header">
+                <h3><i class="fa fa-users text-primary"></i> Student Directory Roster</h3>
+                <div style="font-size: 12px; color: #64748b;">
+                    <span id="rosterCountText">Loading student records...</span>
+                </div>
+            </div>
+
+            <div class="table-responsive" style="max-height: 480px; overflow-y: auto;">
+                <table class="roster-table" id="rosterTable">
+                    <thead>
+                        <tr>
+                            <th style="width: 120px;">Reg No</th>
+                            <th>Student Name</th>
+                            <th>Department</th>
+                            <th>AY</th>
+                            <th>Class / Sem</th>
+                            <th>Div</th>
+                            <th>Specialization</th>
+                            <th>Assigned Mentor</th>
+                            <th style="width: 110px; text-align: center;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rosterTableBody">
+                        <tr>
+                            <td colspan="9" class="text-center text-muted" style="padding: 24px;">Loading student directory...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="roster-pagination">
+                <div id="paginationInfo" class="text-muted">Page 1 of 1</div>
+                <div class="btn-group" id="paginationControls">
+                    <button type="button" class="btn btn-xs btn-default" id="btnPrevPage" onclick="changePage(-1);" disabled>
+                        <i class="fa fa-chevron-left"></i> Previous
+                    </button>
+                    <button type="button" class="btn btn-xs btn-default" id="btnNextPage" onclick="changePage(1);" disabled>
+                        Next <i class="fa fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
         </div>
 
         <!-- Loading spinner -->
@@ -715,8 +1135,371 @@ if ((int) ($usertype ?? 0) !== 1 && (int) ($usertype ?? 0) !== 2) {
 <?php require "header/footer.php"; ?>
 
 <script>
-    function searchStudent() {
-        var regNo = $('#regNoInput').val().trim();
+    var currentRosterPage = 1;
+    var totalRosterPages = 1;
+
+    $(document).ready(function() {
+        loadStudentTable(1);
+        initStudentAutocomplete();
+    });
+
+    function initStudentAutocomplete() {
+        var $input = $('#studentSearchInput');
+        var $clearBtn = $('#btnClearStudentSearch');
+        var $spinner = $('#searchSpinner');
+        var $menu = $('#studentAutocompleteMenu');
+        var currentSearchXhr = null;
+        var debounceTimer = null;
+        var currentItems = [];
+        var selectedIndex = -1;
+
+        function escapeHtml(text) {
+            return $('<div>').text(text || '').html();
+        }
+
+        function highlightMatch(text, query) {
+            if (!text) return '';
+            var escapedText = escapeHtml(text);
+            if (!query || !query.trim()) return escapedText;
+            var escapedQuery = query.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            return escapedText.replace(new RegExp('(' + escapedQuery + ')', 'gi'), '<span class="search-match-highlight">$1</span>');
+        }
+
+        function closeMenu() {
+            $menu.hide().empty();
+            $input.attr('aria-expanded', 'false');
+            selectedIndex = -1;
+            currentItems = [];
+        }
+
+        function updateActiveItem() {
+            var items = $menu.find('.autocomplete-item');
+            items.removeClass('active').attr('aria-selected', 'false');
+            if (selectedIndex >= 0 && selectedIndex < items.length) {
+                var activeItem = items.eq(selectedIndex);
+                activeItem.addClass('active').attr('aria-selected', 'true');
+                var menuEl = $menu[0];
+                var itemEl = activeItem[0];
+                if (itemEl.offsetTop < menuEl.scrollTop) {
+                    menuEl.scrollTop = itemEl.offsetTop;
+                } else if (itemEl.offsetTop + itemEl.offsetHeight > menuEl.scrollTop + menuEl.clientHeight) {
+                    menuEl.scrollTop = itemEl.offsetTop + itemEl.offsetHeight - menuEl.clientHeight;
+                }
+            }
+        }
+
+        function selectItem(student) {
+            if (!student) return;
+            var displayName = student.name ? (student.name + ' (' + student.registration_no + ')') : student.registration_no;
+            $input.val(displayName);
+            $('#regNoInput').val(student.registration_no);
+            $clearBtn.show();
+            closeMenu();
+            loadStudentProfile(student.registration_no);
+        }
+
+        function fetchSuggestions(query) {
+            if (currentSearchXhr && currentSearchXhr.readyState !== 4) {
+                currentSearchXhr.abort();
+            }
+            $spinner.show();
+            $menu.html('<div class="autocomplete-state-msg"><i class="fa fa-spinner fa-spin text-primary"></i> Searching matching students...</div>').show();
+            $input.attr('aria-expanded', 'true');
+
+            var deptId = ($('#filterDept').length && $('#filterDept').val()) ? $('#filterDept').val() : 0;
+
+            currentSearchXhr = $.ajax({
+                url: 'student_monitor_ajax.php',
+                type: 'GET',
+                data: {
+                    action: 'autocomplete_students',
+                    q: query,
+                    department_id: deptId,
+                    limit: 25
+                },
+                dataType: 'json',
+                success: function(response) {
+                    $spinner.hide();
+                    if (response && response.success) {
+                        currentItems = response.students || [];
+                        selectedIndex = -1;
+                        if (currentItems.length === 0) {
+                            $menu.html('<div class="autocomplete-state-msg text-muted"><i class="fa fa-info-circle"></i> No students found matching "<strong>' + escapeHtml(query) + '</strong>"</div>').show();
+                        } else {
+                            var html = '';
+                            $.each(currentItems, function(idx, s) {
+                                var nameHtml = highlightMatch(s.name, query);
+                                var regHtml = highlightMatch(s.registration_no, query);
+                                html += '<div class="autocomplete-item" role="option" data-index="' + idx + '">' +
+                                        '  <div class="autocomplete-item-header">' +
+                                        '    <span class="autocomplete-item-name">' + nameHtml + '</span>' +
+                                        '    <span class="autocomplete-item-reg">' + regHtml + '</span>' +
+                                        '  </div>' +
+                                        '  <div class="autocomplete-item-details">' +
+                                        '    <span class="student-item-dept"><i class="fa fa-building-o"></i> ' + escapeHtml(s.department || 'N/A') + '</span>' +
+                                        '    <span class="student-item-class"><i class="fa fa-graduation-cap"></i> ' + escapeHtml(s.class || 'N/A') + '</span>' +
+                                        (s.roll_no ? '    <span class="student-item-roll"><i class="fa fa-id-badge"></i> Roll ' + escapeHtml(s.roll_no) + '</span>' : '') +
+                                        '  </div>' +
+                                        '</div>';
+                            });
+                            $menu.html(html).show();
+                        }
+                    } else {
+                        var errMsg = (response && response.message) ? response.message : 'Unable to load matching students.';
+                        $menu.html('<div class="autocomplete-state-msg text-danger"><i class="fa fa-exclamation-circle"></i> ' + escapeHtml(errMsg) + '</div>').show();
+                    }
+                },
+                error: function(xhr, status) {
+                    if (status === 'abort') return;
+                    $spinner.hide();
+                    $menu.html('<div class="autocomplete-state-msg text-danger"><i class="fa fa-exclamation-triangle"></i> Network or server error communicating with student monitor.</div>').show();
+                }
+            });
+        }
+
+        $input.on('input', function() {
+            var val = $(this).val();
+            $clearBtn.toggle(val.length > 0);
+            clearTimeout(debounceTimer);
+            var query = val.trim();
+            if (query.length === 0) {
+                if (currentSearchXhr && currentSearchXhr.readyState !== 4) {
+                    currentSearchXhr.abort();
+                }
+                $spinner.hide();
+                closeMenu();
+                return;
+            }
+            debounceTimer = setTimeout(function() {
+                fetchSuggestions(query);
+            }, 250);
+        });
+
+        $input.on('keydown', function(e) {
+            if (!$menu.is(':visible') && (e.keyCode === 40 || e.keyCode === 38)) {
+                var query = $input.val().trim();
+                if (query.length > 0) {
+                    fetchSuggestions(query);
+                    e.preventDefault();
+                    return;
+                }
+            }
+
+            if (e.keyCode === 40) { // Arrow Down
+                e.preventDefault();
+                if (currentItems.length > 0) {
+                    selectedIndex = (selectedIndex + 1) % currentItems.length;
+                    updateActiveItem();
+                }
+            } else if (e.keyCode === 38) { // Arrow Up
+                e.preventDefault();
+                if (currentItems.length > 0) {
+                    selectedIndex = (selectedIndex <= 0) ? (currentItems.length - 1) : (selectedIndex - 1);
+                    updateActiveItem();
+                }
+            } else if (e.keyCode === 13) { // Enter
+                e.preventDefault();
+                if (selectedIndex >= 0 && selectedIndex < currentItems.length) {
+                    selectItem(currentItems[selectedIndex]);
+                } else if (currentItems.length === 1) {
+                    selectItem(currentItems[0]);
+                } else {
+                    var rawVal = $input.val().trim();
+                    if (rawVal !== '') {
+                        closeMenu();
+                        loadStudentProfile(rawVal);
+                    }
+                }
+            } else if (e.keyCode === 27) { // Escape
+                e.preventDefault();
+                closeMenu();
+            }
+        });
+
+        $menu.on('click', '.autocomplete-item', function() {
+            var idx = $(this).data('index');
+            if (typeof idx !== 'undefined' && currentItems[idx]) {
+                selectItem(currentItems[idx]);
+            }
+        });
+
+        $menu.on('mouseenter', '.autocomplete-item', function() {
+            var idx = $(this).data('index');
+            if (typeof idx !== 'undefined') {
+                selectedIndex = idx;
+                updateActiveItem();
+            }
+        });
+
+        $clearBtn.on('click', function() {
+            $input.val('');
+            $('#regNoInput').val('');
+            $clearBtn.hide();
+            if (currentSearchXhr && currentSearchXhr.readyState !== 4) {
+                currentSearchXhr.abort();
+            }
+            $spinner.hide();
+            closeMenu();
+            $input.focus();
+        });
+
+        $(document).on('mousedown', function(e) {
+            if (!$(e.target).closest('.student-search-box-wrapper').length) {
+                closeMenu();
+            }
+        });
+
+        $input.on('focus', function() {
+            var query = $input.val().trim();
+            if (query.length > 0 && currentItems.length > 0) {
+                $menu.show();
+                $input.attr('aria-expanded', 'true');
+            }
+        });
+    }
+
+    function loadStudentTable(page) {
+        currentRosterPage = page || 1;
+        var deptId = $('#filterDept').val() || 0;
+        var sessionId = $('#filterSession').val() || 0;
+        var mentorId = $('#filterMentor').length ? ($('#filterMentor').val() || 0) : 0;
+        var hodId = $('#filterHod').val() || 0;
+        var classId = $('#filterClass').val() || 0;
+        var semId = $('#filterSemester').val() || 0;
+        var divId = $('#filterSection').val() || 0;
+        var specId = $('#filterSpec').val() || 0;
+        var sortBy = $('#filterSortBy').val() || 'name';
+        var sortDir = $('#filterSortDir').val() || 'ASC';
+        var search = $('#regNoInput').val().trim();
+
+        $('#rosterTableBody').html('<tr><td colspan="9" class="text-center text-muted" style="padding: 24px;"><i class="fa fa-spinner fa-spin"></i> Loading student records...</td></tr>');
+
+        $.ajax({
+            url: 'student_monitor_ajax.php',
+            type: 'GET',
+            data: {
+                action: 'list_students',
+                department_id: deptId,
+                academic_year_id: sessionId,
+                mentor_id: mentorId,
+                hod_id: hodId,
+                class_id: classId,
+                semester_id: semId,
+                division_id: divId,
+                specialization_id: specId,
+                sort_by: sortBy,
+                sort_dir: sortDir,
+                search: search,
+                page: currentRosterPage,
+                per_page: 10
+            },
+            dataType: 'json',
+            success: function(response) {
+                if (response && response.success) {
+                    renderRosterTable(response.students, response.pagination);
+                } else {
+                    var msg = response && response.message ? response.message : 'Failed to load student directory.';
+                    $('#rosterTableBody').html('<tr><td colspan="9" class="text-center text-danger" style="padding: 24px;"><i class="fa fa-exclamation-circle"></i> ' + $('<div>').text(msg).html() + '</td></tr>');
+                    $('#rosterCountText').text('0 records found');
+                }
+            },
+            error: function() {
+                $('#rosterTableBody').html('<tr><td colspan="9" class="text-center text-danger" style="padding: 24px;"><i class="fa fa-exclamation-triangle"></i> Network or server error communicating with student monitor endpoint.</td></tr>');
+                $('#rosterCountText').text('Error loading data');
+            }
+        });
+    }
+
+    function renderRosterTable(students, pagination) {
+        var tbody = $('#rosterTableBody');
+        tbody.empty();
+
+        if (!students || students.length === 0) {
+            tbody.html('<tr><td colspan="9" class="text-center text-muted" style="padding: 24px;"><i class="fa fa-info-circle"></i> No student records found matching the specified filters.</td></tr>');
+            $('#rosterCountText').text('0 records found');
+            $('#paginationInfo').text('Page 1 of 1 (0 total)');
+            $('#btnPrevPage').prop('disabled', true);
+            $('#btnNextPage').prop('disabled', true);
+            return;
+        }
+
+        totalRosterPages = pagination.total_pages || 1;
+        currentRosterPage = pagination.page || 1;
+        var startIdx = ((currentRosterPage - 1) * pagination.per_page) + 1;
+        var endIdx = Math.min(startIdx + students.length - 1, pagination.total);
+
+        $('#rosterCountText').text('Showing ' + startIdx + ' - ' + endIdx + ' of ' + pagination.total + ' students');
+        $('#paginationInfo').text('Page ' + currentRosterPage + ' of ' + totalRosterPages + ' (' + pagination.total + ' total)');
+        $('#btnPrevPage').prop('disabled', currentRosterPage <= 1);
+        $('#btnNextPage').prop('disabled', currentRosterPage >= totalRosterPages);
+
+        $.each(students, function(i, s) {
+            var tr = $('<tr></tr>');
+            tr.append('<td><strong style="color: var(--erp-primary, #423cbc);">' + $('<div>').text(s.registration_no).html() + '</strong></td>');
+            tr.append('<td><div style="font-weight: 600; color: #0f172a;">' + $('<div>').text(s.name).html() + '</div><small class="text-muted">Roll: ' + $('<div>').text(s.roll_no).html() + '</small></td>');
+            tr.append('<td>' + $('<div>').text(s.department).html() + '</td>');
+            tr.append('<td><span class="badge" style="background: #e2e8f0; color: #334155;">' + $('<div>').text(s.academic_year).html() + '</span></td>');
+            tr.append('<td>' + $('<div>').text(s.class).html() + ' &bull; ' + $('<div>').text(s.semester).html() + '</td>');
+            tr.append('<td>' + $('<div>').text(s.division).html() + '</td>');
+            tr.append('<td><span style="font-size: 12px; color: #475569;">' + $('<div>').text(s.specialization).html() + '</span></td>');
+            tr.append('<td><span class="badge-mentor"><i class="fa fa-user"></i> ' + $('<div>').text(s.mentor).html() + '</span></td>');
+
+            var actionTd = $('<td style="text-align: center;"></td>');
+            var btn = $('<button type="button" class="btn btn-xs btn-primary" style="font-weight: 600; border-radius: 3px;"><i class="fa fa-line-chart"></i> Monitor</button>');
+            btn.on('click', function() {
+                loadStudentProfile(s.registration_no);
+            });
+            actionTd.append(btn);
+            tr.append(actionTd);
+
+            tbody.append(tr);
+        });
+    }
+
+    function changePage(delta) {
+        var target = currentRosterPage + delta;
+        if (target >= 1 && target <= totalRosterPages) {
+            loadStudentTable(target);
+        }
+    }
+
+    function resetFilters() {
+        if ($('#filterDept').length && !$('#filterDept').prop('disabled')) {
+            $('#filterDept').val('0');
+        }
+        $('#filterSession').val('0');
+        if ($('#filterMentor').length) {
+            $('#filterMentor').val('0');
+        }
+        $('#filterHod').val('0');
+        $('#filterClass').val('0');
+        $('#filterSemester').val('0');
+        $('#filterSection').val('0');
+        $('#filterSpec').val('0');
+        $('#filterSortBy').val('name');
+        $('#filterSortDir').val('ASC');
+        $('#regNoInput').val('');
+        $('#studentSearchInput').val('');
+        $('#btnClearStudentSearch').hide();
+        $('#studentAutocompleteMenu').hide().empty();
+        loadStudentTable(1);
+    }
+
+    function loadStudentProfile(regNo, studentName) {
+        if (!regNo) return;
+        $('#regNoInput').val(regNo);
+        if (studentName) {
+            $('#studentSearchInput').val(studentName + ' (' + regNo + ')');
+        } else {
+            $('#studentSearchInput').val(regNo);
+        }
+        $('#btnClearStudentSearch').show();
+        $('#studentAutocompleteMenu').hide().empty();
+        searchStudent(regNo);
+    }
+
+    function searchStudent(customRegNo) {
+        var regNo = (customRegNo || $('#regNoInput').val() || '').trim();
         if (regNo === '') {
             return;
         }
@@ -726,6 +1509,11 @@ if ((int) ($usertype ?? 0) !== 1 && (int) ($usertype ?? 0) !== 2) {
         $('#studentProfile').hide();
         $('#progressReportSection').hide();
         $('#loadingSpinner').show();
+
+        // Smooth scroll to loading section
+        $('html, body').animate({
+            scrollTop: $('#loadingSpinner').offset().top - 80
+        }, 300);
 
         $.ajax({
             url: 'student_monitor_ajax.php',
@@ -737,6 +1525,10 @@ if ((int) ($usertype ?? 0) !== 1 && (int) ($usertype ?? 0) !== 2) {
                 if (response.success) {
                     renderStudentProfile(response.student);
                     renderSemesterProgress(response.semesters);
+                    // Scroll to profile
+                    $('html, body').animate({
+                        scrollTop: $('#studentProfile').offset().top - 70
+                    }, 400);
                 } else {
                     $('#errorMessage').text(response.message);
                     $('#errorBanner').css('display', 'flex');
@@ -760,6 +1552,12 @@ if ((int) ($usertype ?? 0) !== 1 && (int) ($usertype ?? 0) !== 2) {
             initials += student.name.charAt(1).toUpperCase();
         }
         
+        if (student && student.name && student.registration_no) {
+            $('#studentSearchInput').val(student.name + ' (' + student.registration_no + ')');
+            $('#regNoInput').val(student.registration_no);
+            $('#btnClearStudentSearch').show();
+        }
+
         $('#profileInitials').text(initials);
         $('#studentName').text(student.name);
         $('#studentRegNo').text(student.registration_no);

@@ -1,8 +1,10 @@
 <?php
-if (session_status() !== PHP_SESSION_ACTIVE) {
+include_once("../database/db_connect.php");
+if (class_exists('DBController')) {
+    DBController::startSecureSession();
+} elseif (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
 }
-include_once("../database/db_connect.php");
 ?>
 <!DOCTYPE html>
 <html lang="en">
