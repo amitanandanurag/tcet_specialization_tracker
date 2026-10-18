@@ -215,6 +215,129 @@ foreach ($subjectAssignments as $sub) {
 require "header/header.php";
 ?>
 
+<style>
+    /* Compact Professional Mentor Assignments Styling */
+    .erp-assignment-summary {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+    .erp-assignment-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        padding: 14px 16px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        min-height: 86px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .erp-assignment-card:hover {
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.06);
+    }
+    .erp-card-metric-title {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #64748b;
+        margin-bottom: 4px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .erp-card-metric-val {
+        font-size: 22px;
+        font-weight: 800;
+        color: #0f172a;
+        line-height: 1.2;
+    }
+    .erp-card-metric-sub {
+        font-size: 11px;
+        color: #94a3b8;
+        margin-top: 4px;
+    }
+    .assignment-filter-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        padding: 14px 16px;
+        margin-bottom: 16px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+    }
+    .assignment-filter-grid {
+        display: grid;
+        grid-template-columns: 2fr 1fr 1.2fr 1.2fr auto;
+        gap: 12px;
+        align-items: flex-end;
+    }
+    .filter-field label {
+        display: block;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: #64748b;
+        margin-bottom: 4px;
+        letter-spacing: 0.3px;
+    }
+    .filter-field input, .filter-field select {
+        height: 36px;
+        border-radius: 4px;
+        font-size: 13px;
+        border: 1px solid #cbd5e1;
+        width: 100%;
+        padding: 6px 10px;
+    }
+    .filter-field input:focus, .filter-field select:focus {
+        border-color: var(--erp-primary, #423cbc);
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(66, 60, 188, 0.12);
+    }
+    .filter-search-wrap {
+        position: relative;
+    }
+    .filter-search-wrap i {
+        position: absolute;
+        left: 10px;
+        top: 11px;
+        color: #94a3b8;
+        font-size: 13px;
+    }
+    .filter-search-wrap input {
+        padding-left: 32px;
+    }
+    .table-container-responsive {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        border-radius: 0 0 6px 6px;
+    }
+    .table-container-responsive table {
+        width: 100%;
+        min-width: 900px;
+        margin-bottom: 0;
+    }
+    @media (max-width: 991px) {
+        .assignment-filter-grid {
+            grid-template-columns: 1fr 1fr;
+        }
+        .filter-field-search {
+            grid-column: span 2;
+        }
+    }
+    @media (max-width: 576px) {
+        .assignment-filter-grid {
+            grid-template-columns: 1fr;
+        }
+        .filter-field-search {
+            grid-column: span 1;
+        }
+    }
+</style>
+
 <div class="content-wrapper">
     <!-- Institutional ERP Page Header -->
     <div class="erp-page-header">
@@ -230,48 +353,64 @@ require "header/header.php";
 
     <!-- Main Content Area -->
     <section class="content" style="padding-top: 0;">
-        <!-- Compact Institutional Summary Metric Bar -->
-        <div class="erp-summary-bar">
-            <div class="erp-metric-item">
-                <span class="erp-metric-label">Total Subjects</span>
-                <span class="erp-metric-value"><?= $totalSubjects ?></span>
-                <span class="erp-metric-sub">Active Courses</span>
+        <!-- Compact Institutional Summary Metric Cards -->
+        <div class="erp-assignment-summary">
+            <div class="erp-assignment-card" style="border-left: 3px solid var(--erp-primary, #423cbc);">
+                <div class="erp-card-metric-title">
+                    <span>Total Subjects</span>
+                    <i class="fa fa-book text-primary"></i>
+                </div>
+                <div class="erp-card-metric-val"><?= $totalSubjects ?></div>
+                <div class="erp-card-metric-sub">Active Courses</div>
             </div>
-            <div class="erp-metric-item">
-                <span class="erp-metric-label">Enrolled Students</span>
-                <span class="erp-metric-value"><?= $totalEnrolled ?></span>
-                <span class="erp-metric-sub">Across All Semesters</span>
+            <div class="erp-assignment-card" style="border-left: 3px solid #0284c7;">
+                <div class="erp-card-metric-title">
+                    <span>Enrolled Students</span>
+                    <i class="fa fa-users text-info"></i>
+                </div>
+                <div class="erp-card-metric-val"><?= $totalEnrolled ?></div>
+                <div class="erp-card-metric-sub">Across All Semesters</div>
             </div>
-            <div class="erp-metric-item">
-                <span class="erp-metric-label">Faculty Mentors</span>
-                <span class="erp-metric-value" style="color: #16a34a;"><?= $facultyMentorCount ?></span>
-                <span class="erp-metric-sub">Allocated</span>
+            <div class="erp-assignment-card" style="border-left: 3px solid #16a34a;">
+                <div class="erp-card-metric-title">
+                    <span>Faculty Mentors</span>
+                    <i class="fa fa-check-circle text-success"></i>
+                </div>
+                <div class="erp-card-metric-val" style="color: #16a34a;"><?= $facultyMentorCount ?></div>
+                <div class="erp-card-metric-sub">Allocated</div>
             </div>
-            <div class="erp-metric-item">
-                <span class="erp-metric-label">Placeholder Mentors</span>
-                <span class="erp-metric-value" style="color: #7c3aed;"><?= $dummyMentorCount ?></span>
-                <span class="erp-metric-sub">Temporary</span>
+            <div class="erp-assignment-card" style="border-left: 3px solid #7c3aed;">
+                <div class="erp-card-metric-title">
+                    <span>Placeholder Mentors</span>
+                    <i class="fa fa-user-secret" style="color: #7c3aed;"></i>
+                </div>
+                <div class="erp-card-metric-val" style="color: #7c3aed;"><?= $dummyMentorCount ?></div>
+                <div class="erp-card-metric-sub">Temporary</div>
             </div>
-            <?php if ($unassignedCount > 0): ?>
-            <div class="erp-metric-item">
-                <span class="erp-metric-label" style="color: #dc2626;">Unassigned</span>
-                <span class="erp-metric-value" style="color: #dc2626;"><?= $unassignedCount ?></span>
-                <span class="erp-metric-sub">Needs Attention</span>
+            <div class="erp-assignment-card" style="border-left: 3px solid <?= ($unassignedCount > 0 ? '#dc2626' : '#94a3b8') ?>;">
+                <div class="erp-card-metric-title">
+                    <span style="<?= ($unassignedCount > 0 ? 'color: #dc2626;' : '') ?>">Unassigned</span>
+                    <i class="fa fa-exclamation-triangle" style="<?= ($unassignedCount > 0 ? 'color: #dc2626;' : 'color: #94a3b8;') ?>"></i>
+                </div>
+                <div class="erp-card-metric-val" style="<?= ($unassignedCount > 0 ? 'color: #dc2626;' : 'color: #64748b;') ?>"><?= $unassignedCount ?></div>
+                <div class="erp-card-metric-sub"><?= ($unassignedCount > 0 ? 'Needs Attention' : 'All Covered') ?></div>
             </div>
-            <?php endif; ?>
         </div>
 
-        <!-- ERP Filter & Search Toolbar -->
-        <div class="erp-filter-card">
-            <div class="erp-filter-row">
-                <div class="erp-search-hero">
-                    <i class="fa fa-search"></i>
-                    <input type="text" id="subjectLiveSearch" placeholder="Search subject name, mentor, or department...">
+        <!-- ERP Filter & Search Toolbar (Compact Grid) -->
+        <div class="assignment-filter-card">
+            <div class="assignment-filter-grid">
+                <div class="filter-field filter-field-search">
+                    <label>Search Directory</label>
+                    <div class="filter-search-wrap">
+                        <i class="fa fa-search"></i>
+                        <input type="text" id="subjectLiveSearch" placeholder="Search subject name, mentor, or department...">
+                    </div>
                 </div>
 
-                <div class="erp-filter-item">
-                    <label class="erp-filter-label">Semester</label>
-                    <select id="semFilterSelect" class="form-control input-sm">
+                <div class="filter-field">
+                    <label>Semester</label>
+                    <select id="semFilterSelect" class="form-control">
                         <option value="all">All Semesters</option>
                         <option value="3">Semester III</option>
                         <option value="4">Semester IV</option>
@@ -282,9 +421,9 @@ require "header/header.php";
                     </select>
                 </div>
 
-                <div class="erp-filter-item">
-                    <label class="erp-filter-label">Department</label>
-                    <select id="deptFilterSelect" class="form-control input-sm">
+                <div class="filter-field">
+                    <label>Department</label>
+                    <select id="deptFilterSelect" class="form-control">
                         <option value="all">All Departments</option>
                         <?php foreach ($departments as $d): ?>
                             <option value="<?= strtolower(htmlspecialchars($d['department_name'])) ?>"><?= htmlspecialchars($d['department_name']) ?></option>
@@ -292,9 +431,9 @@ require "header/header.php";
                     </select>
                 </div>
 
-                <div class="erp-filter-item">
-                    <label class="erp-filter-label">Mentor Status</label>
-                    <select id="mentorStatusFilter" class="form-control input-sm">
+                <div class="filter-field">
+                    <label>Mentor Status</label>
+                    <select id="mentorStatusFilter" class="form-control">
                         <option value="all">All Mentors</option>
                         <option value="faculty">Faculty Mentors</option>
                         <option value="placeholder">Placeholder Mentors</option>
@@ -302,8 +441,8 @@ require "header/header.php";
                     </select>
                 </div>
 
-                <div class="erp-filter-actions">
-                    <button type="button" class="btn btn-erp-secondary btn-sm" id="btnResetFilters" title="Reset all filters">
+                <div class="filter-field" style="text-align: right;">
+                    <button type="button" class="btn btn-default" id="btnResetFilters" title="Reset all filters" style="height: 36px; padding: 0 16px; font-weight: 600;">
                         <i class="fa fa-undo"></i> Reset
                     </button>
                 </div>
@@ -321,18 +460,18 @@ require "header/header.php";
                     <span id="matchingCountText" class="erp-badge erp-badge-secondary" style="font-size: 12px; padding: 5px 10px;">Showing <?= $totalSubjects ?> subjects</span>
                 </div>
             </div>
-            <div class="erp-card-body table-responsive" style="padding: 0;">
-                <table id="mentorAssignmentsTable" class="erp-table">
+            <div class="erp-card-body table-container-responsive" style="padding: 0;">
+                <table id="mentorAssignmentsTable" class="erp-table table table-hover">
                     <thead>
                         <tr>
-                            <th style="width: 45px;" class="col-center">#</th>
-                            <th>Specialization Subject</th>
-                            <th>Department(s)</th>
-                            <th style="width: 110px;">Semester</th>
-                            <th style="width: 90px;">Session</th>
-                            <th style="width: 120px;" class="col-center">Enrolled</th>
-                            <th>Assigned Mentor</th>
-                            <th style="width: 90px;" class="col-center">Action</th>
+                            <th style="width: 45px; text-align: center;">#</th>
+                            <th style="min-width: 240px;">Specialization Subject</th>
+                            <th style="min-width: 160px;">Department(s)</th>
+                            <th style="width: 110px; text-align: center;">Semester</th>
+                            <th style="width: 90px; text-align: center;">Session</th>
+                            <th style="width: 110px; text-align: center;">Enrolled</th>
+                            <th style="min-width: 180px;">Assigned Mentor</th>
+                            <th style="width: 90px; text-align: center;">Action</th>
                         </tr>
                     </thead>
                     <tbody>

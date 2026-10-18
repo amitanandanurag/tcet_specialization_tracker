@@ -18,6 +18,14 @@ if ($userId <= 0) {
 	exit;
 }
 
+$currentUserId = intval($_SESSION['user_id'] ?? $_SESSION['user_session'] ?? 0);
+$userRole = intval($_SESSION['role_id'] ?? $_SESSION['user_type'] ?? 0);
+if ($currentUserId <= 0 || $userRole <= 0) {
+	echo "<div class='alert alert-danger'>Unauthorized access. Please login.</div>";
+	exit;
+}
+$callerScope = $db_handle->getUserScope($currentUserId, $userRole);
+
 $sql = "SELECT * FROM st_user_master WHERE user_id = $userId AND role_id = $roleId LIMIT 1";
 $result = $db_handle->query($sql);
 $row = $result ? $result->fetch_assoc() : null;
@@ -25,6 +33,20 @@ $row = $result ? $result->fetch_assoc() : null;
 if (!$row) {
 	echo "<div class='alert alert-danger'>Record not found.</div>";
 	exit;
+}
+
+if ($userRole === 3 && $roleId === 4) {
+	$callerDept = intval($callerScope['department_id'] ?? 0);
+	$targetDept = intval($row['department_id'] ?? 0);
+	$isAssigned = false;
+	$cCheck = mysqli_query($db_handle->conn, "SELECT 1 FROM st_coordinator_mentor WHERE mentor_id = $userId AND coordinator_id = $currentUserId LIMIT 1");
+	if ($cCheck && mysqli_num_rows($cCheck) > 0) {
+		$isAssigned = true;
+	}
+	if (!$isAssigned && ($callerDept <= 0 || $targetDept !== $callerDept)) {
+		echo "<div class='alert alert-danger'>Access Denied: You cannot edit mentors outside your department or coordinator scope.</div>";
+		exit;
+	}
 }
 
 $currentSubjectId = 0;

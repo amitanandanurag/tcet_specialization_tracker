@@ -1,8 +1,10 @@
 <?php
-if (session_status() !== PHP_SESSION_ACTIVE && !headers_sent()) {
+require_once __DIR__ . "/../../database/db_connect.php";
+if (class_exists('DBController')) {
+	DBController::startSecureSession();
+} elseif (session_status() !== PHP_SESSION_ACTIVE && !headers_sent()) {
 	@session_start();
 }
-require_once __DIR__ . "/../../database/db_connect.php";
 if (isset($_SESSION['user_session'])) {
 } elseif (php_sapi_name() !== 'cli') {
 	header("location: ../index.php");

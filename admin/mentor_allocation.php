@@ -22,34 +22,49 @@ $userData = $db_handle->runQuery("
 $loginRole = intval($userData[0]['role_id'] ?? 0);
 $loginDepartment = intval($userData[0]['department_id'] ?? 0);
 
-function mentor_allocation_fetch_mentors($db_handle)
+function mentor_allocation_fetch_mentors($db_handle, $loginRole = 0, $loginDepartment = 0, $loginUserId = 0)
 {
+  $where = " WHERE u.role_id = 4 ";
+  if ($loginRole == 3) {
+    if ($loginDepartment > 0) {
+      $where .= " AND (u.department_id = " . intval($loginDepartment) . " OR cm.coordinator_id = " . intval($loginUserId) . ") ";
+    } else {
+      $where .= " AND cm.coordinator_id = " . intval($loginUserId) . " ";
+    }
+  } elseif ($loginRole == 4) {
+    $where .= " AND u.user_id = " . intval($loginUserId) . " ";
+  }
+
   $sql = "SELECT
             u.user_id AS mentor_id,
-            COALESCE(NULLIF(TRIM(u.user_name), ''), l.username) AS mentor_name,l.username,
+            COALESCE(NULLIF(TRIM(u.user_name), ''), l.username) AS mentor_name,
+            l.username,
             COALESCE(d.department_name, '') AS department_name,
             COUNT(msm.mapping_id) AS assigned_students
           FROM st_user_master u
           LEFT JOIN st_login l ON l.user_id = u.user_id
           LEFT JOIN st_department_master d ON d.department_id = u.department_id
+          LEFT JOIN st_coordinator_mentor cm ON cm.mentor_id = u.user_id
           LEFT JOIN st_mentor_student_mapping msm ON msm.mentor_id = u.user_id
-          WHERE u.role_id = 4
+          {$where}
           GROUP BY u.user_id, mentor_name, l.username, d.department_name
           ORDER BY mentor_name ASC";
 
   return $db_handle->runQuery($sql) ?? array();
 }
 
-function mentor_allocation_build_student_where($conn, $filters, $loginRole, $loginDepartment)
+function mentor_allocation_build_student_where($conn, $filters, $loginRole, $loginDepartment, $loginUserId = 0)
 {
   $statusFilter = isset($filters['student_status']) && $filters['student_status'] !== ''
       ? intval($filters['student_status'])
       : 1;
   $where = " WHERE sm.status = {$statusFilter} ";
 
-   if ($loginRole == 3) {          // change 3 to your Department role id
-        $where .= " AND sm.department_id = '".intval($loginDepartment)."' ";
-    }
+  if ($loginRole == 3 && $loginDepartment > 0) {
+    $where .= " AND sm.department_id = '" . intval($loginDepartment) . "' ";
+  } elseif ($loginRole == 4 && $loginUserId > 0) {
+    $where .= " AND EXISTS (SELECT 1 FROM st_mentor_student_mapping msm2 WHERE msm2.student_id = sm.student_id AND msm2.mentor_id = " . intval($loginUserId) . ") ";
+  }
 
   if (!empty($filters['class_id'])) {
     $classId = mysqli_real_escape_string($conn, $filters['class_id']);
@@ -101,8 +116,8 @@ function mentor_allocation_build_student_where($conn, $filters, $loginRole, $log
 
 function mentor_allocation_fetch_student_ids($db_handle, $filters)
 {
-  global $loginRole, $loginDepartment;
-  $where = mentor_allocation_build_student_where($db_handle->conn, $filters,$loginRole,$loginDepartment);
+  global $loginRole, $loginDepartment, $loginUserId;
+  $where = mentor_allocation_build_student_where($db_handle->conn, $filters, $loginRole, $loginDepartment, $loginUserId);
   
   $sql = "SELECT sm.student_id
           FROM st_student_master sm
@@ -128,13 +143,32 @@ function mentor_allocation_fetch_student_ids($db_handle, $filters)
   return $ids;
 }
 
-function mentor_allocation_assign_students($db_handle, $mentorId, $studentIds, $semesterId = '')
+function mentor_allocation_assign_students($db_handle, $mentorId, $studentIds, $semesterId = '', $loginUserId = 0, $loginRole = 0, $loginDepartment = 0)
 {
   $mentorId = intval($mentorId);
   $cleanIds = array_values(array_unique(array_filter(array_map('intval', $studentIds))));
 
   if ($mentorId <= 0 || empty($cleanIds)) {
     return false;
+  }
+
+  // Mentors are not permitted to allocate students
+  if ($loginRole === 4) {
+    return false;
+  }
+
+  // HOD / Coordinator scope validation on target mentor
+  if ($loginRole === 3) {
+    $mScopeSql = "SELECT u.user_id\n" .
+                 "FROM st_user_master u\n" .
+                 "LEFT JOIN st_coordinator_mentor cm ON cm.mentor_id = u.user_id\n" .
+                 "WHERE u.user_id = {$mentorId}\n" .
+                 "  AND (u.department_id = " . intval($loginDepartment) . " OR cm.coordinator_id = " . intval($loginUserId) . ")\n" .
+                 "LIMIT 1";
+    $mScopeRes = mysqli_query($db_handle->conn, $mScopeSql);
+    if (!$mScopeRes || mysqli_num_rows($mScopeRes) === 0) {
+      return false; // Unauthorized target mentor
+    }
   }
 
   // Verify mentor exists and is active
@@ -154,10 +188,16 @@ function mentor_allocation_assign_students($db_handle, $mentorId, $studentIds, $
       if (!$studentRes || !($studentRow = mysqli_fetch_assoc($studentRes))) {
         continue;
       }
+      $deptId = intval($studentRow['department_id'] ?? 0);
+
+      // Caller scoping: HOD can only allocate students in their department
+      if ($loginRole === 3 && $loginDepartment > 0 && $deptId !== intval($loginDepartment)) {
+        continue;
+      }
+
       $semId = ($semesterId !== '') ? intval($semesterId) : intval($studentRow['current_semester_id'] ?? 1);
       $ayId = intval($studentRow['academic_year_id'] ?? 1);
       $subjId = intval($studentRow['specialization_subject_id'] ?? 0);
-      $deptId = intval($studentRow['department_id'] ?? 0);
 
       // Verify active mentor allocation exists for this exact 4-dimension key
       $allocSql = "
@@ -289,6 +329,11 @@ if (isset($_GET['action']) && $_GET['action'] === 'load_students') {
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && $_POST['action'] === 'assign_selected') {
   header('Content-Type: application/json');
 
+  if ($loginRole === 4) {
+    echo json_encode(array('success' => false, 'message' => 'Mentors are not authorized to allocate students.'));
+    exit();
+  }
+
   if (!DBController::validateCsrfToken()) {
     echo json_encode(array('success' => false, 'message' => 'Security token expired. Please refresh the page.'));
     exit();
@@ -297,7 +342,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && 
   $mentorId = intval($_POST['mentor_id'] ?? 0);
   $studentIds = $_POST['student_ids'] ?? array();
   $semesterId = $_POST['semester_id'] ?? '';
-  $success = mentor_allocation_assign_students($db_handle, $mentorId, is_array($studentIds) ? $studentIds : array(), $semesterId);
+  $success = mentor_allocation_assign_students($db_handle, $mentorId, is_array($studentIds) ? $studentIds : array(), $semesterId, $loginUserId, $loginRole, $loginDepartment);
 
   if ($success) {
     if (method_exists($db_handle, 'writeAuditLog')) {
@@ -312,6 +357,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && 
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && $_POST['action'] === 'assign_filtered') {
   header('Content-Type: application/json');
+
+  if ($loginRole === 4) {
+    echo json_encode(array('success' => false, 'message' => 'Mentors are not authorized to allocate students.'));
+    exit();
+  }
 
   if (!DBController::validateCsrfToken()) {
     echo json_encode(array('success' => false, 'message' => 'Security token expired. Please refresh the page.'));
@@ -335,7 +385,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && 
     exit();
   }
 
-  $success = mentor_allocation_assign_students($db_handle, $mentorId, $studentIds, $filters['semester_id']);
+  $success = mentor_allocation_assign_students($db_handle, $mentorId, $studentIds, $filters['semester_id'], $loginUserId, $loginRole, $loginDepartment);
 
   if ($success) {
     if (method_exists($db_handle, 'writeAuditLog')) {
@@ -352,7 +402,7 @@ if (php_sapi_name() === 'cli' && basename($_SERVER['SCRIPT_FILENAME'] ?? '') !==
   return;
 }
 
-$mentors = mentor_allocation_fetch_mentors($db_handle);
+$mentors = mentor_allocation_fetch_mentors($db_handle, $loginRole, $loginDepartment, $loginUserId);
 $classRows = $db_handle->runQuery("SELECT class_id, class_name FROM st_class_master ORDER BY class_name ASC") ?? array();
 $sectionRows = $db_handle->runQuery("SELECT id, sections FROM st_section_master ORDER BY sections ASC") ?? array();
 $sessionRows = $db_handle->runQuery("SELECT DISTINCT academic_year_id FROM st_student_master WHERE academic_year_id IS NOT NULL AND academic_year_id != '' ORDER BY academic_year_id DESC") ?? array();

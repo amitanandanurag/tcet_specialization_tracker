@@ -36,6 +36,9 @@
                   <th>Email</th>
                   <th>Phone</th>
                   <th>Department</th>
+                  <?php if (isset($roleLabel) && $roleLabel === 'Mentor') { ?>
+                    <th>Under Coordinator</th>
+                  <?php } ?>
                   <th>Role</th>
                   <th style="width: 40px;" class="col-center">View</th>
                   <th style="width: 40px;" class="col-center">Edit</th>
@@ -98,7 +101,7 @@ $(document).ready(function() {
       type: 'POST'
     },
     columnDefs: [
-      { orderable: false, targets: [6, 7, 8] }
+      { orderable: false, targets: [<?php echo (isset($roleLabel) && $roleLabel === 'Mentor') ? '7, 8, 9' : '6, 7, 8'; ?>] }
     ]
   });
 

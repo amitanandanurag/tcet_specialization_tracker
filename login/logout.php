@@ -1,7 +1,10 @@
 <?php
-	session_start();
-
 	include_once("../database/db_connect.php");
+	if (class_exists('DBController')) {
+		DBController::startSecureSession();
+	} elseif (session_status() !== PHP_SESSION_ACTIVE) {
+		session_start();
+	}
 
 	try {
 		$db_handle = new DBController();

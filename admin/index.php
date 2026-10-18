@@ -3,7 +3,10 @@
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-if (session_status() !== PHP_SESSION_ACTIVE) {
+require_once __DIR__ . "/../database/db_connect.php";
+if (class_exists('DBController')) {
+	DBController::startSecureSession();
+} elseif (session_status() !== PHP_SESSION_ACTIVE) {
 	session_start();
 }
 

@@ -18,22 +18,307 @@ if (!$db_handle || !($db_handle->conn instanceof mysqli)) {
     exit;
 }
 
-// Check authorization: SUPER ADMIN (1), ADMIN (2), or HOD (3)
+// Check authorization: SUPER ADMIN (1), ADMIN (2), HOD (3), MENTOR (4), or STUDENT (5)
 $sessionRoleId = intval($_SESSION['user_type'] ?? 0);
 $sessionUserId = intval($_SESSION['user_id'] ?? 0);
-if (!in_array($sessionRoleId, array(1, 2, 3), true)) {
+if (!in_array($sessionRoleId, array(1, 2, 3, 4, 5), true)) {
     echo json_encode(array('success' => false, 'message' => 'Unauthorized access.'));
     exit;
 }
 
+$conn = $db_handle->conn;
+$action = trim($_GET['action'] ?? $_POST['action'] ?? '');
+
+// -------------------------------------------------------------
+// ACTION: student_options / autocomplete_students (Unified Searchable Selector)
+// -------------------------------------------------------------
+if ($action === 'student_options' || $action === 'autocomplete_students') {
+    $search = trim($_GET['q'] ?? $_GET['search'] ?? $_GET['term'] ?? '');
+    $deptFilter = intval($_GET['department_id'] ?? 0);
+    $scope = $db_handle->getUserScope($sessionUserId, $sessionRoleId);
+
+    $where = ["sm.student_id > 0"];
+    $types = "";
+    $params = [];
+
+    if ($scope['is_hod']) {
+        $where[] = "sm.department_id = ?";
+        $types .= "i";
+        $params[] = $scope['department_id'];
+    } elseif ($scope['is_mentor']) {
+        $where[] = "sm.student_id IN (SELECT student_id FROM st_mentor_student_mapping WHERE mentor_id = ?)";
+        $types .= "i";
+        $params[] = $scope['user_id'];
+    } elseif ($scope['is_student']) {
+        $where[] = "sm.student_id = ?";
+        $types .= "i";
+        $params[] = $scope['student_id'];
+    } elseif ($deptFilter > 0) {
+        $where[] = "sm.department_id = ?";
+        $types .= "i";
+        $params[] = $deptFilter;
+    }
+
+    if ($search !== '') {
+        $where[] = "(sm.fname LIKE ? OR sm.registration_no LIKE ? OR sm.roll_no LIKE ?)";
+        $types .= "sss";
+        $like = "%$search%";
+        $params[] = $like;
+        $params[] = $like;
+        $params[] = $like;
+    }
+
+    $limit = min(50, max(5, intval($_GET['limit'] ?? 25)));
+
+    $sql = "SELECT sm.student_id, sm.registration_no, sm.fname, sm.roll_no,
+                   COALESCE(cl.class_name, 'N/A') AS class_name,
+                   COALESCE(dep.department_name, 'N/A') AS department_name
+            FROM st_student_master sm
+            LEFT JOIN st_class_master cl ON cl.class_id = sm.class_id
+            LEFT JOIN st_department_master dep ON dep.department_id = sm.department_id
+            WHERE " . implode(" AND ", $where) . "
+            ORDER BY sm.fname ASC
+            LIMIT ?";
+
+    $types .= "i";
+    $params[] = $limit;
+
+    $stmt = mysqli_prepare($conn, $sql);
+    if ($stmt) {
+        if (!empty($params)) {
+            mysqli_stmt_bind_param($stmt, $types, ...$params);
+        }
+        mysqli_stmt_execute($stmt);
+        $res = mysqli_stmt_get_result($stmt);
+        $options = [];
+        while ($row = mysqli_fetch_assoc($res)) {
+            $options[] = [
+                'student_id' => intval($row['student_id']),
+                'registration_no' => $row['registration_no'],
+                'name' => $row['fname'],
+                'roll_no' => $row['roll_no'] ?? '',
+                'class' => $row['class_name'],
+                'department' => $row['department_name'],
+                'label' => $row['registration_no'] . ' - ' . $row['fname'] . ' (' . $row['class_name'] . ')'
+            ];
+        }
+        mysqli_stmt_close($stmt);
+        echo json_encode(array('success' => true, 'students' => $options));
+    } else {
+        echo json_encode(array('success' => false, 'message' => 'Failed to prepare student search query.'));
+    }
+    exit;
+}
+
+// -------------------------------------------------------------
+// ACTION: list_students (Paginated, Filterable & Sortable Roster)
+// -------------------------------------------------------------
+if ($action === 'list_students') {
+    $search = trim($_GET['search'] ?? $_GET['keyword'] ?? '');
+    $deptId = intval($_GET['department_id'] ?? 0);
+    $ayId = intval($_GET['academic_year_id'] ?? 0);
+    $mentorId = intval($_GET['mentor_id'] ?? 0);
+    $hodId = intval($_GET['hod_id'] ?? 0);
+    $classId = intval($_GET['class_id'] ?? 0);
+    $semId = intval($_GET['semester_id'] ?? 0);
+    $divId = intval($_GET['division_id'] ?? 0);
+    $specId = intval($_GET['specialization_id'] ?? 0);
+
+    $sortBy = trim($_GET['sort_by'] ?? 'name');
+    $sortDir = strtoupper(trim($_GET['sort_dir'] ?? 'ASC')) === 'DESC' ? 'DESC' : 'ASC';
+    $page = max(1, intval($_GET['page'] ?? 1));
+    $perPage = min(50, max(5, intval($_GET['per_page'] ?? 10)));
+    $offset = ($page - 1) * $perPage;
+
+    $scope = $db_handle->getUserScope($sessionUserId, $sessionRoleId);
+    $where = ["sm.student_id > 0"];
+    $types = "";
+    $params = [];
+
+    // RBAC scoping
+    if ($scope['is_hod']) {
+        $where[] = "sm.department_id = ?";
+        $types .= "i";
+        $params[] = $scope['department_id'];
+    } elseif ($scope['is_mentor']) {
+        $where[] = "sm.student_id IN (SELECT student_id FROM st_mentor_student_mapping WHERE mentor_id = ?)";
+        $types .= "i";
+        $params[] = $scope['user_id'];
+    } elseif ($scope['is_student']) {
+        $where[] = "sm.student_id = ?";
+        $types .= "i";
+        $params[] = $scope['student_id'];
+    } elseif ($deptId > 0) {
+        $where[] = "sm.department_id = ?";
+        $types .= "i";
+        $params[] = $deptId;
+    }
+
+    if ($ayId > 0) {
+        $where[] = "sm.academic_year_id = ?";
+        $types .= "i";
+        $params[] = $ayId;
+    }
+    if ($classId > 0) {
+        $where[] = "sm.class_id = ?";
+        $types .= "i";
+        $params[] = $classId;
+    }
+    if ($semId > 0) {
+        $where[] = "sm.current_semester_id = ?";
+        $types .= "i";
+        $params[] = $semId;
+    }
+    if ($divId > 0) {
+        $where[] = "sm.division_id = ?";
+        $types .= "i";
+        $params[] = $divId;
+    }
+    if ($specId > 0) {
+        $where[] = "sm.specialization_id = ?";
+        $types .= "i";
+        $params[] = $specId;
+    }
+    if ($mentorId > 0 && !$scope['is_mentor']) {
+        $where[] = "sm.student_id IN (SELECT student_id FROM st_mentor_student_mapping WHERE mentor_id = ?)";
+        $types .= "i";
+        $params[] = $mentorId;
+    }
+    if ($hodId > 0) {
+        $where[] = "sm.department_id IN (SELECT department_id FROM st_user_master WHERE user_id = ? AND role_id = 3)";
+        $types .= "i";
+        $params[] = $hodId;
+    }
+    if ($search !== '') {
+        $where[] = "(sm.fname LIKE ? OR sm.registration_no LIKE ? OR sm.roll_no LIKE ?)";
+        $types .= "sss";
+        $like = "%$search%";
+        $params[] = $like;
+        $params[] = $like;
+        $params[] = $like;
+    }
+
+    // Sorting allowlist
+    $sortMap = array(
+        'name' => 'sm.fname',
+        'registration_no' => 'sm.registration_no',
+        'academic_year' => 'sess.session_name',
+        'department' => 'dep.department_name',
+        'class' => 'cl.class_name',
+        'semester' => 'sm.current_semester_id'
+    );
+    $orderCol = $sortMap[$sortBy] ?? 'sm.fname';
+    $orderClause = "ORDER BY $orderCol $sortDir, sm.student_id ASC";
+
+    $whereClause = implode(" AND ", $where);
+
+    // Total Count
+    $countSql = "SELECT COUNT(DISTINCT sm.student_id) AS total
+                 FROM st_student_master sm
+                 LEFT JOIN st_department_master dep ON dep.department_id = sm.department_id
+                 LEFT JOIN st_session_master sess ON sess.session_id = sm.academic_year_id
+                 LEFT JOIN st_class_master cl ON cl.class_id = sm.class_id
+                 LEFT JOIN st_semester_master sem ON sem.semester_id = sm.current_semester_id
+                 LEFT JOIN st_section_master sec ON sec.id = sm.division_id
+                 LEFT JOIN st_specialization_master sp ON sp.specialization_id = sm.specialization_id
+                 WHERE $whereClause";
+
+    $total = 0;
+    $countStmt = mysqli_prepare($conn, $countSql);
+    if ($countStmt) {
+        if (!empty($params)) {
+            mysqli_stmt_bind_param($countStmt, $types, ...$params);
+        }
+        mysqli_stmt_execute($countStmt);
+        $countRes = mysqli_stmt_get_result($countStmt);
+        if ($cRow = mysqli_fetch_assoc($countRes)) {
+            $total = intval($cRow['total']);
+        }
+        mysqli_stmt_close($countStmt);
+    }
+
+    // Records Query
+    $dataSql = "SELECT sm.student_id, sm.registration_no, sm.fname, sm.roll_no, sm.status,
+                       COALESCE(dep.department_name, 'N/A') AS department_name,
+                       COALESCE(sess.session_name, 'N/A') AS academic_year,
+                       COALESCE(cl.class_name, 'N/A') AS class_name,
+                       COALESCE(sem.semester_name, CONCAT('Semester ', sm.current_semester_id)) AS semester_name,
+                       COALESCE(sec.sections, 'N/A') AS division_name,
+                       COALESCE(sp.specialization_name, 'N/A') AS specialization_name,
+                       (
+                           SELECT u.user_name
+                           FROM st_mentor_student_mapping msm
+                           JOIN st_user_master u ON u.user_id = msm.mentor_id
+                           WHERE msm.student_id = sm.student_id
+                           ORDER BY msm.mapping_id DESC LIMIT 1
+                       ) AS mentor_name,
+                       (
+                           SELECT u.user_name
+                           FROM st_user_master u
+                           WHERE u.role_id = 3 AND u.department_id = sm.department_id
+                           LIMIT 1
+                       ) AS hod_name
+                FROM st_student_master sm
+                LEFT JOIN st_department_master dep ON dep.department_id = sm.department_id
+                LEFT JOIN st_session_master sess ON sess.session_id = sm.academic_year_id
+                LEFT JOIN st_class_master cl ON cl.class_id = sm.class_id
+                LEFT JOIN st_semester_master sem ON sem.semester_id = sm.current_semester_id
+                LEFT JOIN st_section_master sec ON sec.id = sm.division_id
+                LEFT JOIN st_specialization_master sp ON sp.specialization_id = sm.specialization_id
+                WHERE $whereClause
+                $orderClause
+                LIMIT ? OFFSET ?";
+
+    $dataStmt = mysqli_prepare($conn, $dataSql);
+    $students = [];
+    if ($dataStmt) {
+        $dataTypes = $types . "ii";
+        $dataParams = array_merge($params, [$perPage, $offset]);
+        mysqli_stmt_bind_param($dataStmt, $dataTypes, ...$dataParams);
+        mysqli_stmt_execute($dataStmt);
+        $dataRes = mysqli_stmt_get_result($dataStmt);
+        while ($row = mysqli_fetch_assoc($dataRes)) {
+            $students[] = [
+                'student_id' => intval($row['student_id']),
+                'registration_no' => $row['registration_no'],
+                'name' => $row['fname'],
+                'roll_no' => $row['roll_no'] ?? 'N/A',
+                'status' => intval($row['status']) === 1 ? 'Active' : 'Inactive',
+                'department' => $row['department_name'],
+                'academic_year' => $row['academic_year'],
+                'class' => $row['class_name'],
+                'semester' => $row['semester_name'],
+                'division' => $row['division_name'],
+                'specialization' => $row['specialization_name'],
+                'mentor' => $row['mentor_name'] ?: 'Not Assigned',
+                'hod' => $row['hod_name'] ?: 'Not Assigned'
+            ];
+        }
+        mysqli_stmt_close($dataStmt);
+    }
+
+    echo json_encode(array(
+        'success' => true,
+        'students' => $students,
+        'pagination' => array(
+            'total' => $total,
+            'page' => $page,
+            'per_page' => $perPage,
+            'total_pages' => ($total > 0) ? (int) ceil($total / $perPage) : 1
+        )
+    ));
+    exit;
+}
+
+// -------------------------------------------------------------
+// DEFAULT ACTION: Individual Student Progress Profile
+// -------------------------------------------------------------
 $registrationNo = trim($_GET['reg_no'] ?? $_POST['reg_no'] ?? '');
 
 if (empty($registrationNo)) {
     echo json_encode(array('success' => false, 'message' => 'Please enter a Registration / Enrollment Number.'));
     exit;
 }
-
-$conn = $db_handle->conn;
 
 // 1. Fetch Student Details
 $studentSql = "SELECT sm.student_id, sm.registration_no, sm.fname, sm.roll_no, sm.grad_year, sm.cgpa, sm.mobile, sm.email, sm.status, sm.created_at,

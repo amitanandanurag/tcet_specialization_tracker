@@ -39,6 +39,23 @@ if ($userId <= 0) {
     exit();
 }
 
+$callerScope = $db_handle->getUserScope($_SESSION['user_id'] ?? 0, $userRole);
+if ($userRole === 3 && $targetRoleId === 4) {
+    $callerDept = intval($callerScope['department_id'] ?? 0);
+    $targetRes = mysqli_query($db_handle->conn, "SELECT department_id FROM st_user_master WHERE user_id = $userId LIMIT 1");
+    $targetDept = ($targetRes && ($tRow = mysqli_fetch_assoc($targetRes))) ? intval($tRow['department_id']) : 0;
+    $isAssigned = false;
+    $cCheck = mysqli_query($db_handle->conn, "SELECT 1 FROM st_coordinator_mentor WHERE mentor_id = $userId AND coordinator_id = " . intval($_SESSION['user_id'] ?? 0) . " LIMIT 1");
+    if ($cCheck && mysqli_num_rows($cCheck) > 0) {
+        $isAssigned = true;
+    }
+    if (!$isAssigned && ($callerDept <= 0 || $targetDept !== $callerDept)) {
+        http_response_code(403);
+        echo json_encode(array('success' => false, 'message' => 'Access Denied: You cannot delete mentors outside your authorized department or coordinator scope.'));
+        exit();
+    }
+}
+
 // Fetch user name for audit log
 $userName = '';
 $userStmt = mysqli_prepare($db_handle->conn, "SELECT user_name FROM st_user_master WHERE user_id = ? AND role_id = ?");

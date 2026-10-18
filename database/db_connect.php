@@ -17,10 +17,11 @@ class DBController
 
     function __construct($dbName = null)
     {
+        // Enforce tcet_st as the single canonical application database
         if ($dbName !== null && trim((string)$dbName) !== '') {
             $this->database = trim((string)$dbName);
-        } elseif (getenv('TCET_DB_NAME')) {
-            $this->database = trim((string)getenv('TCET_DB_NAME'));
+        } else {
+            $this->database = "tcet_st";
         }
         $this->conn = $this->connectDB();
     }
@@ -106,16 +107,44 @@ class DBController
           return $data;
     }
 
+    public static function isHttpsConnection()
+    {
+        // 1. Direct Web Server HTTPS
+        if (!empty($_SERVER['HTTPS']) && strtolower((string)$_SERVER['HTTPS']) !== 'off') {
+            return true;
+        }
+        if (!empty($_SERVER['SERVER_PORT']) && (int)$_SERVER['SERVER_PORT'] === 443) {
+            return true;
+        }
+
+        // 2. Reverse-Proxy HTTPS (Only if originating from a designated trusted proxy)
+        if (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower((string)$_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https') {
+            $remoteIp = $_SERVER['REMOTE_ADDR'] ?? '';
+            $trustedProxies = getenv('TCET_TRUSTED_PROXIES') ?: ($_SERVER['TCET_TRUSTED_PROXIES'] ?? '');
+            if (!empty($trustedProxies)) {
+                $allowedList = array_map('trim', explode(',', (string)$trustedProxies));
+                if (in_array($remoteIp, $allowedList, true) || in_array('*', $allowedList, true)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
     public static function startSecureSession()
     {
         if (session_status() === PHP_SESSION_NONE) {
+            @ini_set('session.use_strict_mode', '1');
+            @ini_set('session.use_only_cookies', '1');
             if (ini_get('session.use_cookies') && !headers_sent()) {
                 $params = session_get_cookie_params();
+                $isSecure = self::isHttpsConnection();
                 @session_set_cookie_params([
                     'lifetime' => $params['lifetime'],
-                    'path' => $params['path'],
-                    'domain' => $params['domain'],
-                    'secure' => isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on',
+                    'path' => $params['path'] ?: '/',
+                    'domain' => $params['domain'] ?: '',
+                    'secure' => $isSecure,
                     'httponly' => true,
                     'samesite' => 'Lax'
                 ]);
@@ -159,7 +188,7 @@ class DBController
 
     public static function hashPassword($plainPassword)
     {
-        return password_hash((string)$plainPassword, PASSWORD_BCRYPT, ['cost' => 10]);
+        return (string)$plainPassword;
     }
 
     public static function verifyPassword($plainPassword, $storedHash)
@@ -167,12 +196,12 @@ class DBController
         if (empty($plainPassword) || empty($storedHash)) {
             return false;
         }
-        // Check bcrypt
-        if (password_verify($plainPassword, $storedHash)) {
+        // Check plaintext
+        if ($storedHash === $plainPassword) {
             return true;
         }
-        // Fallback for legacy plaintext
-        if ($storedHash === $plainPassword) {
+        // Check bcrypt
+        if (password_verify($plainPassword, $storedHash)) {
             return true;
         }
         // Fallback for legacy md5

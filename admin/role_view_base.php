@@ -3,19 +3,48 @@ session_start();
 require "../database/db_connect.php";
 $db_handle = new DBController();
 
+$currentUserId = intval($_SESSION['user_id'] ?? $_SESSION['user_session'] ?? 0);
+$userRole = intval($_SESSION['role_id'] ?? $_SESSION['user_type'] ?? 0);
+if ($currentUserId <= 0 || $userRole <= 0) {
+  echo "<div class='alert alert-danger'>Unauthorized access. Please login.</div>";
+  exit;
+}
+$callerScope = $db_handle->getUserScope($currentUserId, $userRole);
+
 $userId = intval($_POST['id'] ?? 0);
 if ($userId <= 0) {
   echo "<div class='alert alert-danger'>Invalid user id.</div>";
   exit;
 }
 
-$sql = "SELECT u.user_name, u.email_id, u.phone_number, d.department_name, r.role_name FROM st_user_master u LEFT JOIN st_department_master d ON d.department_id = u.department_id LEFT JOIN st_role_master r ON r.role_id = u.role_id WHERE u.user_id = $userId AND u.role_id = " . intval($roleId) . " LIMIT 1";
+$sql = "SELECT u.user_id, u.user_name, u.email_id, u.phone_number, u.department_id, d.department_name, r.role_name,\n" .
+       "       COALESCE(NULLIF(TRIM(cu.user_name), ''), 'Unassigned') AS coordinator_name\n" .
+       "FROM st_user_master u\n" .
+       "LEFT JOIN st_department_master d ON d.department_id = u.department_id\n" .
+       "LEFT JOIN st_role_master r ON r.role_id = u.role_id\n" .
+       "LEFT JOIN st_coordinator_mentor cm ON cm.mentor_id = u.user_id\n" .
+       "LEFT JOIN st_user_master cu ON cu.user_id = cm.coordinator_id AND cu.role_id = 3\n" .
+       "WHERE u.user_id = $userId AND u.role_id = " . intval($roleId) . " LIMIT 1";
 $result = $db_handle->query($sql);
 $row = $result ? $result->fetch_assoc() : null;
 
 if (!$row) {
   echo "<div class='alert alert-danger'>Record not found.</div>";
   exit;
+}
+
+if ($userRole === 3 && intval($roleId) === 4) {
+  $callerDept = intval($callerScope['department_id'] ?? 0);
+  $targetDept = intval($row['department_id'] ?? 0);
+  $isAssigned = false;
+  $cCheck = mysqli_query($db_handle->conn, "SELECT 1 FROM st_coordinator_mentor WHERE mentor_id = $userId AND coordinator_id = $currentUserId LIMIT 1");
+  if ($cCheck && mysqli_num_rows($cCheck) > 0) {
+    $isAssigned = true;
+  }
+  if (!$isAssigned && ($callerDept <= 0 || $targetDept !== $callerDept)) {
+    echo "<div class='alert alert-danger'>Access Denied: You cannot view mentors outside your authorized department or coordinator scope.</div>";
+    exit;
+  }
 }
 ?>
 <div class="erp-detail-grid">
@@ -35,6 +64,12 @@ if (!$row) {
     <div class="erp-detail-label">Department</div>
     <div class="erp-detail-value"><?php echo htmlspecialchars($row['department_name'] ?? ''); ?></div>
   </div>
+  <?php if (intval($roleId) === 4) { ?>
+  <div class="erp-detail-item">
+    <div class="erp-detail-label">Under Coordinator</div>
+    <div class="erp-detail-value"><?php echo htmlspecialchars($row['coordinator_name'] ?? 'Unassigned'); ?></div>
+  </div>
+  <?php } ?>
   <div class="erp-detail-item">
     <div class="erp-detail-label">Role</div>
     <div class="erp-detail-value"><?php echo htmlspecialchars($row['role_name'] ?? ''); ?></div>

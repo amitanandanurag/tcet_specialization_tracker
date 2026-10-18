@@ -1,9 +1,10 @@
 <?php
-if (session_status() !== PHP_SESSION_ACTIVE) {
+include_once("../database/db_connect.php");
+if (class_exists('DBController')) {
+    DBController::startSecureSession();
+} elseif (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
 }
-
-include_once("../database/db_connect.php");
 
 if (!isset($_POST['login_button'])) {
     exit();
@@ -62,17 +63,6 @@ if (!$isPasswordValid) {
     exit();
 }
 
-/* ---------------- AUTO-UPGRADE TO BCRYPT ---------------- */
-if (!password_get_info($row['password'])['algo']) {
-    $newHashedPassword = DBController::hashPassword($user_password);
-    $updStmt = mysqli_prepare($db_handle->conn, "UPDATE st_login SET password = ? WHERE login_id = ?");
-    if ($updStmt) {
-        $loginIdInt = intval($row['login_id']);
-        mysqli_stmt_bind_param($updStmt, "si", $newHashedPassword, $loginIdInt);
-        mysqli_stmt_execute($updStmt);
-        mysqli_stmt_close($updStmt);
-    }
-}
 
 /* ---------------- LOGIN SUCCESS ---------------- */
 session_regenerate_id(true);
