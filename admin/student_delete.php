@@ -4,7 +4,7 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 }
 @header('Content-Type: application/json');
 require_once __DIR__ . "/../database/db_connect.php";
-$db_handle = new DBController();
+$db_handle = $db_handle ?? new DBController();
 
 // Authentication and Authorization Check (Admin only: Role 1 or 2)
 if (empty($_SESSION['user_id']) || intval($_SESSION['role_id'] ?? 0) > 2) {

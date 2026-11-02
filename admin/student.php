@@ -5,7 +5,18 @@ ini_set('display_errors', 1);
 require_once "../database/db_connect.php";
 $database = new DBController();
 
+if (empty($_SESSION['user_session']) && empty($_SESSION['user_id'])) {
+  http_response_code(403);
+  exit('Access Denied: Please log in.');
+}
+
 if (isset($_POST['save'])) {
+  if (!DBController::validateCsrfToken()) {
+    echo '<script type="text/javascript">alert("Security validation failed (CSRF). Please refresh and try again.");</script>';
+    echo "<script>window.open('student_admission.php','_self')</script>";
+    exit;
+  }
+
   $conn = $database->conn;
 
   // Get form data - DON'T add quotes here, just escape

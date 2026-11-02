@@ -329,8 +329,9 @@ if (isset($_GET['action']) && $_GET['action'] === 'load_students') {
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && $_POST['action'] === 'assign_selected') {
   header('Content-Type: application/json');
 
-  if ($loginRole === 4) {
-    echo json_encode(array('success' => false, 'message' => 'Mentors are not authorized to allocate students.'));
+  if (!in_array($loginRole, [1, 2, 3], true)) {
+    http_response_code(403);
+    echo json_encode(array('success' => false, 'message' => 'Access Denied: You are not authorized to allocate students to mentors.'));
     exit();
   }
 
@@ -358,8 +359,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && 
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && $_POST['action'] === 'assign_filtered') {
   header('Content-Type: application/json');
 
-  if ($loginRole === 4) {
-    echo json_encode(array('success' => false, 'message' => 'Mentors are not authorized to allocate students.'));
+  if (!in_array($loginRole, [1, 2, 3], true)) {
+    http_response_code(403);
+    echo json_encode(array('success' => false, 'message' => 'Access Denied: You are not authorized to allocate students to mentors.'));
     exit();
   }
 

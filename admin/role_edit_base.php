@@ -24,6 +24,12 @@ if ($currentUserId <= 0 || $userRole <= 0) {
 	echo "<div class='alert alert-danger'>Unauthorized access. Please login.</div>";
 	exit;
 }
+
+// Enforce role boundary
+if ($userRole > 2 && !($userRole === 3 && $roleId === 4)) {
+	echo "<div class='alert alert-danger'>Access Denied: Insufficient permissions for this role.</div>";
+	exit;
+}
 $callerScope = $db_handle->getUserScope($currentUserId, $userRole);
 
 $sql = "SELECT * FROM st_user_master WHERE user_id = $userId AND role_id = $roleId LIMIT 1";

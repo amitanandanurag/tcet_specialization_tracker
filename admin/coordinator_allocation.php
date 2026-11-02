@@ -224,6 +224,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     exit();
 }
 
+// Enforce Admin authorization on assignment actions
+$sessionUserRole = intval($_SESSION['role_id'] ?? $_SESSION['user_type'] ?? 0);
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && in_array($_POST['action'], ['assign_selected', 'assign_filtered'], true)) {
+  if (!in_array($sessionUserRole, [1, 2], true)) {
+    header('Content-Type: application/json');
+    http_response_code(403);
+    echo json_encode(array('success' => false, 'message' => 'Access Denied: Only Administrators can allocate coordinators.'));
+    exit();
+  }
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'assign_selected') {
   header('Content-Type: application/json');
 
