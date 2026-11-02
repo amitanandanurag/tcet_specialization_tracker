@@ -5,7 +5,29 @@ ini_set('display_errors', 1);
 require_once "../database/db_connect.php";
 $database = new DBController();
 
+$currentUserId = intval($_SESSION['user_id'] ?? $_SESSION['user_session'] ?? 0);
+$userRole = intval($_SESSION['role_id'] ?? $_SESSION['user_type'] ?? 0);
+if ($currentUserId <= 0 || $userRole <= 0 || !in_array($userRole, [1, 2, 3], true)) {
+    http_response_code(403);
+    echo '<script type="text/javascript">alert("Access Denied: Unauthorized access.");</script>';
+    echo "<script>window.open('student-info.php','_self')</script>";
+    exit;
+}
+
 if (isset($_POST['save'])) {
+    if ($userRole === 3) {
+        $chkScope = $database->getUserScope($currentUserId, $userRole);
+        $chkCallerDept = intval($chkScope['department_id'] ?? 0);
+        $targetStudentId = intval($_POST['student_id'] ?? 0);
+        $chkDeptRes = mysqli_query($database->conn, "SELECT department_id FROM st_student_master WHERE student_id = $targetStudentId LIMIT 1");
+        $tDept = ($chkDeptRes && ($td = mysqli_fetch_assoc($chkDeptRes))) ? intval($td['department_id']) : 0;
+        if ($chkCallerDept <= 0 || $tDept !== $chkCallerDept) {
+            echo '<script type="text/javascript">alert("Access Denied: Cannot edit students outside your department.");</script>';
+            echo "<script>window.open('student-info.php','_self')</script>";
+            exit;
+        }
+    }
+
     if (!DBController::validateCsrfToken()) {
         echo '<script type="text/javascript">alert("Invalid security token. Please try again.");</script>';
         echo "<script>window.open('student-info.php','_self')</script>";
@@ -246,7 +268,11 @@ if (isset($_POST['save'])) {
                     $file_ext = strtolower(pathinfo($_FILES[$field]['name'], PATHINFO_EXTENSION));
                     $file_size = intval($_FILES[$field]['size'] ?? 0);
                     
-                    if (in_array($file_ext, $allowed_extensions, true) && $file_size > 0 && $file_size <= $max_file_size) {
+                    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                    $mimeType = finfo_file($finfo, $_FILES[$field]['tmp_name']);
+                    finfo_close($finfo);
+                    $allowedMimes = ['application/pdf', 'image/jpeg', 'image/png', 'image/pjpeg', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+                    if (in_array($file_ext, $allowed_extensions, true) && in_array($mimeType, $allowedMimes, true) && $file_size > 0 && $file_size <= $max_file_size) {
                         $safe_reg_no = preg_replace('/[^a-zA-Z0-9]/', '_', $registration_no);
                         $file_name = time() . '_' . $safe_reg_no . '_' . preg_replace('/[^a-zA-Z0-9_-]/', '', $field) . '.' . $file_ext;
                         $target_path = $upload_dir . $file_name;

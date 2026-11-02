@@ -188,7 +188,7 @@ class DBController
 
     public static function hashPassword($plainPassword)
     {
-        return (string)$plainPassword;
+        return password_hash((string)$plainPassword, PASSWORD_DEFAULT);
     }
 
     public static function verifyPassword($plainPassword, $storedHash)
@@ -196,16 +196,16 @@ class DBController
         if (empty($plainPassword) || empty($storedHash)) {
             return false;
         }
-        // Check plaintext
-        if ($storedHash === $plainPassword) {
-            return true;
-        }
-        // Check bcrypt
+        // 1. Primary check: Verify bcrypt / argon2 hash
         if (password_verify($plainPassword, $storedHash)) {
             return true;
         }
-        // Fallback for legacy md5
-        if ($storedHash === md5($plainPassword)) {
+        // 2. Legacy fallback: Constant-time comparison for plaintext accounts pending migration
+        if (hash_equals((string)$storedHash, (string)$plainPassword)) {
+            return true;
+        }
+        // 3. Legacy fallback: MD5 comparison for historical accounts
+        if (hash_equals((string)$storedHash, md5($plainPassword))) {
             return true;
         }
         return false;

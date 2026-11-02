@@ -109,14 +109,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_password']) &&
       $currentPasswordRow = $currentPasswordResult ? mysqli_fetch_assoc($currentPasswordResult) : null;
       mysqli_stmt_close($currentPasswordStmt);
 
-      if (!$currentPasswordRow || (string) ($currentPasswordRow['password'] ?? '') !== $currentPassword) {
+      if (!$currentPasswordRow || !DBController::verifyPassword($currentPassword, (string) ($currentPasswordRow['password'] ?? ''))) {
         $passwordAlertType = 'danger';
         $passwordAlertMessage = 'Current password is incorrect.';
       } else {
+          $hashedNewPassword = DBController::hashPassword($newPassword);
           $updatePasswordSql = "UPDATE st_login SET password = ? WHERE user_id = ?";
         $updatePasswordStmt = mysqli_prepare($db_handle->conn, $updatePasswordSql);
         if ($updatePasswordStmt) {
-            mysqli_stmt_bind_param($updatePasswordStmt, 'si', $newPassword, $currentUserId);
+            mysqli_stmt_bind_param($updatePasswordStmt, 'si', $hashedNewPassword, $currentUserId);
           if (mysqli_stmt_execute($updatePasswordStmt)) {
             $passwordAlertType = 'success';
             $passwordAlertMessage = 'Password updated successfully.';

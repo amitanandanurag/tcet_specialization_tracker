@@ -3,7 +3,30 @@ session_start();
 require "../database/db_connect.php";
 $db_handle = new DBController();
 
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_start();
+}
+$currentUserId = intval($_SESSION['user_id'] ?? $_SESSION['user_session'] ?? 0);
+$userRole = intval($_SESSION['role_id'] ?? $_SESSION['user_type'] ?? 0);
+if ($currentUserId <= 0 || $userRole <= 0 || !in_array($userRole, [1, 2, 3], true)) {
+    http_response_code(403);
+    echo "<div class='alert alert-danger'>Access Denied: Unauthorized access.</div>";
+    exit;
+}
+$callerScope = $db_handle->getUserScope($currentUserId, $userRole);
+
 if (isset($_REQUEST['id'])) {
+  $student_id = intval($_REQUEST['id']);
+  if ($userRole === 3) {
+    $callerDept = intval($callerScope['department_id'] ?? 0);
+    $chkDept = $db_handle->query("SELECT department_id FROM st_student_master WHERE student_id = $student_id LIMIT 1");
+    $sDept = ($chkDept && ($sd = $chkDept->fetch_assoc())) ? intval($sd['department_id']) : 0;
+    if ($callerDept <= 0 || $sDept !== $callerDept) {
+      echo "<div class='alert alert-danger'>Access Denied: You cannot view or edit students outside your authorized department.</div>";
+      exit;
+    }
+  }
+
   $student_id = intval($_REQUEST['id']);
   $table = 'st_student_master';
   

@@ -5,8 +5,14 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 require "../database/db_connect.php";
 $db_handle = new DBController();
 
-// Authorization check: Admin only (Role 1 or 2)
-if (empty($_SESSION['user_id']) || intval($_SESSION['role_id'] ?? 0) > 2) {
+// Authorization check: Super Admin only (Role 1)
+if (empty($_SESSION['user_id']) || intval($_SESSION['role_id'] ?? 0) !== 1) {
+    http_response_code(403);
+    echo "0";
+    exit();
+}
+
+if (!DBController::validateCsrfToken()) {
     http_response_code(403);
     echo "0";
     exit();

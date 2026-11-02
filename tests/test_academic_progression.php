@@ -59,6 +59,7 @@ echo "\nTest 2: Verification of Existing Student Academic History\n";
 $firstStudentRes = mysqli_query($conn, "SELECT student_id, fname, registration_no, current_semester_id FROM st_student_master LIMIT 1");
 if ($firstStudentRes && ($sRow = mysqli_fetch_assoc($firstStudentRes))) {
     $testStudentId = intval($sRow['student_id']);
+    $db->syncStudentSemesterHistory($testStudentId, intval($sRow['current_semester_id'] ?? 3));
     $history = $db->getStudentAcademicHistory($testStudentId);
     assertCondition("Student #{$testStudentId} ({$sRow['fname']}) has academic history records", count($history) > 0, "Found " . count($history) . " history records");
     

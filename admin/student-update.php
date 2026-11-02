@@ -1,6 +1,20 @@
 <?php
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_start();
+}
+require_once __DIR__ . "/../database/db_connect.php";
 
- include "../database/db_connect.php";
+// Security Guard: Super Admin (1) or Admin (2) only
+if (empty($_SESSION['user_id']) || intval($_SESSION['role_id'] ?? 0) > 2) {
+    http_response_code(403);
+    exit("Access Denied: Unauthorized request.");
+}
+
+if (!DBController::validateCsrfToken()) {
+    http_response_code(403);
+    exit("Access Denied: Invalid security token.");
+}
+
  $db_handel = new DBController();
 
 if(isset($_POST['update'])){

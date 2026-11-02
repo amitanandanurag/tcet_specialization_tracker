@@ -91,8 +91,8 @@ $subRes = mysqli_query($conn, "SELECT subject_id FROM st_specialization_subject_
 $subRow = mysqli_fetch_assoc($subRes);
 $sub1 = intval($subRow['subject_id'] ?? 1);
 
-// Pick mentor 4
-$db->assignSubjectMentor($sub1, 4, 1, 5, 1);
+// Pick mentor 5 (verified role_id = 4)
+$db->assignSubjectMentor($sub1, 5, 1, 5, 1);
 
 // 2.1 Admission -> Creation in st_student_master
 $insStudent = "INSERT INTO st_student_master (
@@ -117,15 +117,24 @@ checkTest($initialHistory[0]['roll_no'] === 'TEST-E2E-01', "Initial history roll
 
 // 2.3 Dynamic Mentor Resolution for Semester 5
 $resolvedMentorSem5 = $db->getResolvedMentorForStudent($testStudentId, 5, 1);
-checkTest(!empty($resolvedMentorSem5) && intval($resolvedMentorSem5['mentor_id']) === 4, "Dynamic mentor resolved for Semester 5 is Mentor #4");
+checkTest(!empty($resolvedMentorSem5) && intval($resolvedMentorSem5['mentor_id']) === 5, "Dynamic mentor resolved for Semester 5 is Mentor #5");
 
 // 2.4 Semester Promotion (SEM V -> SEM VI)
 $newSubRes = mysqli_query($conn, "SELECT subject_id FROM st_specialization_subject_master WHERE subject_id != $sub1 LIMIT 1");
 $newSubRow = mysqli_fetch_assoc($newSubRes);
 $newSubId = $newSubRow ? intval($newSubRow['subject_id']) : 2;
 
-// Assign mentor 6 for SEM VI
-$db->assignSubjectMentor($newSubId, 6, 1, 6, 1);
+// Ensure second mentor with role_id = 4 exists for SEM VI
+$m2Check = mysqli_query($conn, "SELECT user_id FROM st_user_master WHERE role_id = 4 AND user_id != 5 LIMIT 1");
+if ($m2Check && ($m2Row = mysqli_fetch_assoc($m2Check))) {
+    $mentor2Id = intval($m2Row['user_id']);
+} else {
+    mysqli_query($conn, "INSERT INTO st_user_master (user_id, user_name, email_id, department_id, role_id, student_id) VALUES (7, 'UAT Second Mentor', 'mentor2@tcet.in', 1, 4, 0)");
+    $mentor2Id = 7;
+}
+
+// Assign mentor for SEM VI
+$db->assignSubjectMentor($newSubId, $mentor2Id, 1, 6, 1);
 
 $promoteSuccess = $db->promoteStudentSemester(
     $testStudentId,
@@ -161,8 +170,8 @@ checkTest($sem6Hist !== null && $sem6Hist['roll_no'] === 'TEST-E2E-01-SEM6', "Se
 // 2.6 Verify Dynamic Mentor Resolution for Historical vs Current
 $histMentorSem5 = $db->getResolvedMentorForStudent($testStudentId, 5, 1);
 $histMentorSem6 = $db->getResolvedMentorForStudent($testStudentId, 6, 1);
-checkTest(intval($histMentorSem5['mentor_id']) === 4, "Historical SEM 5 resolves to Mentor #4");
-checkTest(intval($histMentorSem6['mentor_id']) === 6, "Current SEM 6 resolves to Mentor #6");
+checkTest(intval($histMentorSem5['mentor_id']) === 5, "Historical SEM 5 resolves to Mentor #5");
+checkTest(intval($histMentorSem6['mentor_id']) === $mentor2Id, "Current SEM 6 resolves to Mentor #$mentor2Id");
 
 // 2.7 Verify Active Profile in st_student_master
 $activeProf = $db->runQuery("SELECT current_semester_id, roll_no, specialization_subject_id FROM st_student_master WHERE student_id = $testStudentId LIMIT 1");

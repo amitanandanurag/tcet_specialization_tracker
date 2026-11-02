@@ -8,6 +8,14 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
   exit;
 }
 
+$currentUserId = intval($_SESSION['user_id'] ?? $_SESSION['user_session'] ?? 0);
+$userRole = intval($_SESSION['role_id'] ?? $_SESSION['user_type'] ?? 0);
+if ($currentUserId <= 0 || $userRole <= 0) {
+  http_response_code(403);
+  echo "<script>alert('Unauthorized access. Please login.'); window.location.href = '../';</script>";
+  exit;
+}
+
 if (!DBController::validateCsrfToken()) {
   echo "<script>alert('Invalid security token (CSRF). Please refresh and try again.'); window.history.back();</script>";
   exit;
@@ -19,6 +27,23 @@ $emailId = trim($_POST['email_id'] ?? '');
 $phoneNumber = trim($_POST['phone_number'] ?? '');
 $departmentId = intval($_POST['department_id'] ?? 0);
 $roleId = intval($roleId ?? ($_POST['role_id'] ?? 0));
+
+// Super Admin (1) & Admin (2) manage all roles; Coordinator (3) can only manage Mentors (4)
+if ($userRole > 2) {
+  if (!($userRole === 3 && $roleId === 4)) {
+    echo "<script>alert('Access Denied: Insufficient permissions for this role.'); window.history.back();</script>";
+    exit;
+  }
+}
+if ($userRole === 3 && $roleId === 4) {
+  $callerScope = $db_handle->getUserScope($currentUserId, $userRole);
+  $callerDept = intval($callerScope['department_id'] ?? 0);
+  if ($callerDept > 0 && $departmentId !== $callerDept) {
+    echo "<script>alert('Access Denied: You cannot assign mentors outside your department.'); window.history.back();</script>";
+    exit;
+  }
+}
+
 
 if ($userName === '' || $emailId === '' || $departmentId <= 0) {
   echo "<script>alert('Please fill all required fields.'); window.history.back();</script>";

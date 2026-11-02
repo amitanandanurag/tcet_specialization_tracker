@@ -2,6 +2,12 @@
   session_start();
   include "../database/db_connect.php";
 
+  // Restrict to Super Admin (1)
+  if (empty($_SESSION['user_id']) || intval($_SESSION['role_id'] ?? 0) !== 1) {
+      echo "<div class='alert alert-danger'>Access Denied: Super Admin access required.</div>";
+      exit;
+  }
+
   $db_handle = new DBcontroller();
  
 	if (isset($_REQUEST['id'])) {
@@ -30,7 +36,7 @@
                               for="Book Name">Class Name</label>
                     <div class="col-sm-8">
                         <input type="text" class="form-control"
-                        id="class_name" name="class_name" value="<?php echo $class_name; ?>" />
+                        id="class_name" name="class_name" value="<?php echo htmlspecialchars($class_name ?? '', ENT_QUOTES, 'UTF-8'); ?>" />
 
 
                         <input type="hidden" class="form-control"

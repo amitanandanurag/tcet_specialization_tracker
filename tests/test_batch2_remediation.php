@@ -76,7 +76,7 @@ $newStudentStatus = $checkStatusRes ? intval(mysqli_fetch_assoc($checkStatusRes)
 assertTest($newStudentStatus === 1, "P4-T2", "New student record is created with active status = 1");
 
 // P4-T3: Test student soft-delete / deactivation via admin/student_delete.php sets status = 0
-$_SERVER['REQUEST_METHOD'] = 'POST';
+$db_handle = $db; $_SERVER['REQUEST_METHOD'] = 'POST';
 $_SESSION['user_session'] = 1;
 $_SESSION['user_id'] = 1;
 $_SESSION['role_id'] = 1;
@@ -103,7 +103,7 @@ assertTest(
 );
 
 // P4-T4: Test student reactivation via student_delete.php sets status = 1
-$_SERVER['REQUEST_METHOD'] = 'POST';
+$db_handle = $db; $_SERVER['REQUEST_METHOD'] = 'POST';
 $_POST = [
     'id' => $testStudentId,
     'delete_type' => 'reactivate',
@@ -165,7 +165,7 @@ assertTest(
 );
 
 // P5-T2: Registration rejects missing CSRF token
-$_SERVER['REQUEST_METHOD'] = 'POST';
+$db_handle = $db; $_SERVER['REQUEST_METHOD'] = 'POST';
 $_POST = [
     'register' => '1',
     'username' => 'TestRegUser',

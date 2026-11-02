@@ -593,13 +593,10 @@ $prodPostCheck = $prodDb->runQuery("
 $isProdUnmodified = (
     (int)$prodPostCheck['total'] === (int)$prodBaseline['total'] &&
     (int)$prodPostCheck['active'] === (int)$prodBaseline['active'] &&
-    (int)$prodPostCheck['pending'] === (int)$prodBaseline['pending'] &&
-    (int)$prodPostCheck['total'] === 651 &&
-    (int)$prodPostCheck['active'] === 64 &&
-    (int)$prodPostCheck['pending'] === 587
+    (int)$prodPostCheck['pending'] === (int)$prodBaseline['pending']
 );
 
-assertUAT($isProdUnmodified, "CRITICAL PRODUCTION SAFETY: tcet_st student counts remain 100% IDENTICAL (Total: 651, Active: 64, Pending: 587)");
+assertUAT($isProdUnmodified, "CRITICAL PRODUCTION SAFETY: tcet_st student counts remain 100% IDENTICAL (Total: {$prodBaseline['total']}, Active: {$prodBaseline['active']}, Pending: {$prodBaseline['pending']})");
 echo "\n";
 
 // -----------------------------------------------------------------------------

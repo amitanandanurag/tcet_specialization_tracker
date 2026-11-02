@@ -118,8 +118,15 @@ while ($nc = mysqli_fetch_assoc($ncolRes)) {
 }
 assertTest(isset($ncolumns['student_id']) && isset($ncolumns['course_name']) && isset($ncolumns['reason']) && isset($ncolumns['status']), "P2-T2", "st_nptel_cancellations has student_id, course_name, reason, and status");
 
-// Test cancellation insertion with transaction
+// Test cancellation insertion with transaction (respecting foreign key to st_student_master)
 $sampleStudentId = 9001; // Test Student One
+$createdFixtureStudent = false;
+$sCheck = mysqli_query($db->conn, "SELECT student_id FROM st_student_master WHERE student_id = 9001");
+if (!$sCheck || mysqli_num_rows($sCheck) === 0) {
+    mysqli_query($db->conn, "INSERT INTO st_student_master (student_id, registration_no, class_id, division_id, fname, mobile, email, status, m_sem1, m_sem2, m_sem3) VALUES (9001, 'TEST-NPTEL-9001', 1, 1, 'Test NPTEL Student', '9999999001', 'nptel9001@test.com', 1, '[]', '[]', '[]')");
+    $createdFixtureStudent = true;
+}
+
 $courseName = "Deep Learning for Computer Vision";
 $reason = "Course content overlapped with semester project commitments";
 
@@ -151,7 +158,7 @@ assertTest($isoRes && mysqli_num_rows($isoRes) === 0, "P2-T5", "Student data iso
 mysqli_stmt_close($isoStmt);
 
 // Clean up test cancellation
-mysqli_query($db->conn, "DELETE FROM st_nptel_cancellations WHERE cancellation_id = {$cId}");
+mysqli_query($db->conn, "DELETE FROM st_nptel_cancellations WHERE cancellation_id = {$cId}"); if ($createdFixtureStudent) { mysqli_query($db->conn, "DELETE FROM st_student_master WHERE student_id = 9001"); }
 
 
 // -------------------------------------------------------------

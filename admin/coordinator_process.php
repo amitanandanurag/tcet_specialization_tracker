@@ -11,6 +11,11 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
   exit;
 }
 
+if (!isset($_SESSION['user_id']) || !in_array($_SESSION['user_type'] ?? 0, [1, 2])) {
+  header('HTTP/1.1 403 Forbidden');
+  exit('Access Denied: Only Super Admin and Admin can manage coordinators.');
+}
+
 $userId = intval($_POST['user_id'] ?? 0);
 $userName = trim($_POST['user_name'] ?? '');
 $emailId = trim($_POST['email_id'] ?? '');
@@ -51,7 +56,7 @@ try {
             $updateLoginSql = "UPDATE st_login SET username='$emailEsc' WHERE user_id=$userId";
             $db_handle->query($updateLoginSql);
         } else {
-            $passwordEsc = mysqli_real_escape_string($db_handle->conn, "123456"); 
+            $passwordEsc = mysqli_real_escape_string($db_handle->conn, DBController::hashPassword("Tcet@1234")); 
             $loginSql = "INSERT INTO st_login (username, password, user_id) VALUES ('$emailEsc', '$passwordEsc', $userId)";
             $db_handle->query($loginSql);
             $loginId = $db_handle->conn->insert_id;
@@ -68,7 +73,7 @@ try {
         $newUserId = $db_handle->conn->insert_id;
         
         // Ensure data is inserted into st_login
-        $passwordEsc = mysqli_real_escape_string($db_handle->conn, "123456"); 
+        $passwordEsc = mysqli_real_escape_string($db_handle->conn, DBController::hashPassword("Tcet@1234")); 
         $checkLogin = mysqli_query($db_handle->conn, "SELECT login_id FROM st_login WHERE user_id = $newUserId LIMIT 1");
         if ($checkLogin && mysqli_num_rows($checkLogin) === 0) {
             $loginSql = "INSERT INTO st_login (username, password, user_id) VALUES ('$emailEsc', '$passwordEsc', $newUserId)";

@@ -63,6 +63,17 @@ if (!$isPasswordValid) {
     exit();
 }
 
+/* ---------------- PASSWORD REHASH / AUTO-MIGRATION ---------------- */
+if (password_needs_rehash($row['password'], PASSWORD_DEFAULT) || $row['password'] === $user_password) {
+    $secureHash = DBController::hashPassword($user_password);
+    $updStmt = mysqli_prepare($db_handle->conn, "UPDATE st_login SET password = ? WHERE login_id = ?");
+    if ($updStmt) {
+        mysqli_stmt_bind_param($updStmt, "si", $secureHash, $row['login_id']);
+        mysqli_stmt_execute($updStmt);
+        mysqli_stmt_close($updStmt);
+    }
+}
+
 
 /* ---------------- LOGIN SUCCESS ---------------- */
 session_regenerate_id(true);
@@ -76,7 +87,10 @@ $_SESSION['student_id'] = intval($row['student_id'] ?? 0);
 $_SESSION['login_time'] = time();
 
 if (method_exists($db_handle, 'writeAuditLog')) {
-    $db_handle->writeAuditLog($row['user_id'], 'LOGIN_SUCCESS', 'st_login', $row['login_id'], "User {$row['username']} logged in successfully", $row['username'], $ipAddress, $userAgent);
+    $auditId = $db_handle->writeAuditLog($row['user_id'], 'LOGIN_SUCCESS', 'st_login', $row['login_id'], "User {$row['username']} logged in successfully", $row['username'], $ipAddress, $userAgent);
+    if ($auditId) {
+        $_SESSION['audit_login_id'] = $auditId;
+    }
 }
 
 /* ---------------- FIRST LOGIN CHECK ---------------- */
