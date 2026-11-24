@@ -1,4 +1,9 @@
 <?php
+if (!isset($db_handle) || !is_object($db_handle)) {
+	require_once __DIR__ . '/../../database/db_connect.php';
+	$db_handle = new DBController();
+}
+
 if (!function_exists('sidebar_has_column')) {
 function sidebar_has_column($conn, $table, $column)
 {
@@ -45,6 +50,7 @@ $subMenuIconSelect = $subMenuHasIconColumn
 	? "COALESCE(NULLIF(TRIM(sm.sub_menu_icon), ''), 'fa fa-angle-double-right') AS sub_menu_icon"
 	: "'fa fa-angle-double-right' AS sub_menu_icon";
 
+if (!function_exists('sidebar_seed_super_admin_settings')) {
 function sidebar_seed_super_admin_settings($db_handle)
 {
 	$menuId = sidebar_resolve_system_menu_id($db_handle->conn);
@@ -93,7 +99,9 @@ function sidebar_seed_super_admin_settings($db_handle)
 		}
 	}
 }
+}
 
+if (!function_exists('sidebar_seed_mentor_menu')) {
 function sidebar_seed_mentor_menu($db_handle)
 {
 	$menuId = 0;
@@ -174,7 +182,9 @@ function sidebar_seed_mentor_menu($db_handle)
 		}
 	}
 }
+}
 
+if (!function_exists('sidebar_seed_coordinator_allocation_menu')) {
 function sidebar_seed_coordinator_allocation_menu($db_handle)
 {
 	$menuId = 0;
@@ -230,7 +240,9 @@ function sidebar_seed_coordinator_allocation_menu($db_handle)
 		mysqli_query($db_handle->conn, "INSERT INTO st_menu_allocation_master (user_id, role_id, menu_id, sub_menu_id) VALUES (0, 1, {$menuId}, {$subMenuId})");
 	}
 }
+}
 
+if (!function_exists('sidebar_seed_student_monitor_menu')) {
 function sidebar_seed_student_monitor_menu($db_handle)
 {
 	$menuId = 0;
@@ -298,7 +310,9 @@ function sidebar_seed_student_monitor_menu($db_handle)
 		mysqli_query($db_handle->conn, "INSERT INTO st_menu_allocation_master (user_id, role_id, menu_id, sub_menu_id) VALUES (0, 2, {$menuId}, {$subMenuId})");
 	}
 }
+}
 
+if (!function_exists('sidebar_resolve_system_menu_id')) {
 function sidebar_resolve_system_menu_id($conn)
 {
 	$menuSql = "SELECT menu_id FROM st_menu_master WHERE LOWER(TRIM(menu_name)) IN ('settings', 'admin') ORDER BY CASE WHEN LOWER(TRIM(menu_name)) = 'settings' THEN 0 ELSE 1 END, menu_id ASC LIMIT 1";
@@ -308,7 +322,7 @@ function sidebar_resolve_system_menu_id($conn)
 		return (int) ($menuRow['menu_id'] ?? 0);
 	}
 
-	$routeSql = "SELECT menu_id FROM st_sub_menu_master WHERE sub_menu_route IN ('allocation_master.php', 'profile.php', 'change_password.php') ORDER BY menu_id ASC, sort_order ASC, sub_menu_id ASC LIMIT 1";
+	$routeSql = "SELECT menu_id FROM st_sub_menu_master WHERE sub_menu_route IN ('menu_submenu_allocation.php', 'allocation_master.php', 'profile.php', 'change_password.php') ORDER BY menu_id ASC, sort_order ASC, sub_menu_id ASC LIMIT 1";
 	$routeResult = mysqli_query($conn, $routeSql);
 	if ($routeResult && mysqli_num_rows($routeResult) > 0) {
 		$routeRow = mysqli_fetch_assoc($routeResult);
@@ -317,7 +331,9 @@ function sidebar_resolve_system_menu_id($conn)
 
 	return 0;
 }
+}
 
+if (!function_exists('sidebar_seed_mentor_subject_menu')) {
 function sidebar_seed_mentor_subject_menu($db_handle)
 {
 	$menuId = 0;
@@ -391,7 +407,9 @@ function sidebar_seed_mentor_subject_menu($db_handle)
 		mysqli_query($db_handle->conn, "INSERT INTO st_menu_allocation_master (user_id, role_id, menu_id, sub_menu_id) VALUES (0, 3, {$menuId}, {$subMenuId})");
 	}
 }
+}
 
+if (!function_exists('sidebar_seed_subject_management_menu')) {
 function sidebar_seed_subject_management_menu($db_handle)
 {
 	$menuResult = mysqli_query($db_handle->conn, "SELECT menu_id FROM st_menu_master WHERE LOWER(TRIM(menu_name)) = 'coordinator' LIMIT 1");
@@ -418,7 +436,9 @@ function sidebar_seed_subject_management_menu($db_handle)
 		mysqli_query($db_handle->conn, "INSERT INTO st_menu_allocation_master (user_id, role_id, menu_id, sub_menu_id) SELECT 0, {$roleId}, {$menuId}, {$subMenuId} WHERE NOT EXISTS (SELECT 1 FROM st_menu_allocation_master WHERE user_id = 0 AND role_id = {$roleId} AND sub_menu_id = {$subMenuId})");
 	}
 }
+}
 
+if (!function_exists('sidebar_seed_student_nptel_menu')) {
 function sidebar_seed_student_nptel_menu($db_handle)
 {
 	$menuId = 0;
@@ -525,28 +545,189 @@ function sidebar_seed_student_nptel_menu($db_handle)
 		}
 	}
 }
-
-if ((int) $usertype === 1) {
-	sidebar_seed_super_admin_settings($db_handle);
-	sidebar_seed_mentor_menu($db_handle);
-	sidebar_seed_coordinator_allocation_menu($db_handle);
-	sidebar_seed_student_monitor_menu($db_handle);
-	sidebar_seed_student_nptel_menu($db_handle);
-	sidebar_seed_mentor_subject_menu($db_handle);
 }
 
-if (in_array((int) $usertype, array(1, 2, 3), true)) {
-	sidebar_seed_subject_management_menu($db_handle);
+if (!function_exists('sidebar_seed_bulk_student_upload_menu')) {
+function sidebar_seed_bulk_student_upload_menu($db_handle)
+{
+	$menuId = 0;
+	$menuResult = mysqli_query($db_handle->conn, "SELECT menu_id FROM st_menu_master WHERE LOWER(TRIM(menu_name)) = 'students' ORDER BY menu_id ASC LIMIT 1");
+	if ($menuResult && mysqli_num_rows($menuResult) > 0) {
+		$menuRow = mysqli_fetch_assoc($menuResult);
+		$menuId = (int) ($menuRow['menu_id'] ?? 0);
+	}
+	if ($menuId <= 0) {
+		$menuId = 1;
+	}
+
+	// Decommission retired historical submenus from active navigation allocation
+	mysqli_query($db_handle->conn, "DELETE FROM st_menu_allocation_master WHERE sub_menu_id IN (
+		SELECT sub_menu_id FROM st_sub_menu_master WHERE sub_menu_route IN ('historical_students.php', 'superadmin_approval_monitoring.php', 'hod_historical_approvals.php')
+	)");
+
+	$items = array(
+		array('Bulk Student Upload', 'fa fa-file-excel-o', 'student_bulk_import.php', array(1))
+	);
+
+	foreach ($items as $item) {
+		$name = mysqli_real_escape_string($db_handle->conn, $item[0]);
+		$icon = mysqli_real_escape_string($db_handle->conn, $item[1]);
+		$route = mysqli_real_escape_string($db_handle->conn, $item[2]);
+		$allowedRoles = $item[3];
+
+		$subSql = "SELECT sub_menu_id FROM st_sub_menu_master WHERE menu_id = {$menuId} AND (sub_menu_route = '$route' OR sub_menu_name = '$name') LIMIT 1";
+		$subResult = mysqli_query($db_handle->conn, $subSql);
+		$subMenuId = 0;
+
+		if ($subResult && mysqli_num_rows($subResult) > 0) {
+			$subRow = mysqli_fetch_assoc($subResult);
+			$subMenuId = (int) ($subRow['sub_menu_id'] ?? 0);
+			mysqli_query($db_handle->conn, "UPDATE st_sub_menu_master SET menu_id = {$menuId}, sub_menu_name = '$name', sub_menu_icon = '$icon', sub_menu_route = '$route' WHERE sub_menu_id = {$subMenuId}");
+		} else {
+			$orderSql = "SELECT COALESCE(MAX(sort_order), 0) + 1 AS next_order FROM st_sub_menu_master WHERE menu_id = {$menuId}";
+			$orderResult = mysqli_query($db_handle->conn, $orderSql);
+			$nextOrder = 6;
+			if ($orderResult && mysqli_num_rows($orderResult) > 0) {
+				$orderRow = mysqli_fetch_assoc($orderResult);
+				$nextOrder = max(6, (int) ($orderRow['next_order'] ?? 6));
+			}
+
+			$insertSql = "INSERT INTO st_sub_menu_master (menu_id, sort_order, sub_menu_name, sub_menu_icon, sub_menu_route) VALUES ({$menuId}, {$nextOrder}, '$name', '$icon', '$route')";
+			if (mysqli_query($db_handle->conn, $insertSql)) {
+				$subMenuId = (int) mysqli_insert_id($db_handle->conn);
+			}
+		}
+
+		if ($subMenuId <= 0) {
+			continue;
+		}
+
+		$rolesList = implode(',', array_map('intval', $allowedRoles));
+		mysqli_query($db_handle->conn, "DELETE FROM st_menu_allocation_master WHERE sub_menu_id = {$subMenuId} AND role_id NOT IN ({$rolesList})");
+
+		foreach ($allowedRoles as $rId) {
+			$parentSql = "SELECT 1 FROM st_menu_allocation_master WHERE user_id = 0 AND role_id = {$rId} AND menu_id = {$menuId} AND sub_menu_id IS NULL LIMIT 1";
+			$parentResult = mysqli_query($db_handle->conn, $parentSql);
+			if (!$parentResult || mysqli_num_rows($parentResult) === 0) {
+				mysqli_query($db_handle->conn, "INSERT INTO st_menu_allocation_master (user_id, role_id, menu_id, sub_menu_id) VALUES (0, {$rId}, {$menuId}, NULL)");
+			}
+
+			$allocSql = "SELECT 1 FROM st_menu_allocation_master WHERE user_id = 0 AND role_id = {$rId} AND menu_id = {$menuId} AND sub_menu_id = {$subMenuId} LIMIT 1";
+			$allocResult = mysqli_query($db_handle->conn, $allocSql);
+			if (!$allocResult || mysqli_num_rows($allocResult) === 0) {
+				mysqli_query($db_handle->conn, "INSERT INTO st_menu_allocation_master (user_id, role_id, menu_id, sub_menu_id) VALUES (0, {$rId}, {$menuId}, {$subMenuId})");
+			}
+		}
+	}
+}
 }
 
+if (!function_exists('sidebar_seed_hod_mentor_allocation_menu')) {
+function sidebar_seed_hod_mentor_allocation_menu($db_handle)
+{
+	$menuResult = mysqli_query($db_handle->conn, "SELECT menu_id FROM st_menu_master WHERE LOWER(TRIM(menu_name)) = 'admin' ORDER BY menu_id ASC LIMIT 1");
+	$menuId = 0;
+	if ($menuResult && mysqli_num_rows($menuResult) > 0) {
+		$menuRow = mysqli_fetch_assoc($menuResult);
+		$menuId = (int) ($menuRow['menu_id'] ?? 0);
+	}
+	if ($menuId <= 0) {
+		$menuId = 2; // Default admin menu id
+	}
+
+	$name = mysqli_real_escape_string($db_handle->conn, 'Department & HOD Monitoring');
+	$icon = mysqli_real_escape_string($db_handle->conn, 'fa fa-sitemap');
+	$route = mysqli_real_escape_string($db_handle->conn, 'hod_mentor_allocation.php');
+
+	$subSql = "SELECT sub_menu_id FROM st_sub_menu_master WHERE menu_id = {$menuId} AND (sub_menu_route = '$route' OR sub_menu_route = 'department_hod_monitoring.php' OR sub_menu_name = '$name' OR sub_menu_name = 'HOD & Mentor Allocation') LIMIT 1";
+	$subResult = mysqli_query($db_handle->conn, $subSql);
+	$subMenuId = 0;
+
+	if ($subResult && mysqli_num_rows($subResult) > 0) {
+		$subRow = mysqli_fetch_assoc($subResult);
+		$subMenuId = (int) ($subRow['sub_menu_id'] ?? 0);
+		mysqli_query($db_handle->conn, "UPDATE st_sub_menu_master SET menu_id = {$menuId}, sub_menu_name = '$name', sub_menu_icon = '$icon', sub_menu_route = '$route' WHERE sub_menu_id = {$subMenuId}");
+	} else {
+		$orderSql = "SELECT COALESCE(MAX(sort_order), 0) + 1 AS next_order FROM st_sub_menu_master WHERE menu_id = {$menuId}";
+		$orderResult = mysqli_query($db_handle->conn, $orderSql);
+		$nextOrder = 3;
+		if ($orderResult && mysqli_num_rows($orderResult) > 0) {
+			$orderRow = mysqli_fetch_assoc($orderResult);
+			$nextOrder = max(3, (int) ($orderRow['next_order'] ?? 3));
+		}
+
+		$insertSql = "INSERT INTO st_sub_menu_master (menu_id, sort_order, sub_menu_name, sub_menu_icon, sub_menu_route) VALUES ({$menuId}, {$nextOrder}, '$name', '$icon', '$route')";
+		if (mysqli_query($db_handle->conn, $insertSql)) {
+			$subMenuId = (int) mysqli_insert_id($db_handle->conn);
+		}
+	}
+
+	if ($subMenuId <= 0) {
+		return;
+	}
+
+	// Strictly allowed roles: 1 (Super Admin) and 2 (Admin)
+	$allowedRoles = array(1, 2);
+	$rolesList = implode(',', $allowedRoles);
+	mysqli_query($db_handle->conn, "DELETE FROM st_menu_allocation_master WHERE sub_menu_id = {$subMenuId} AND role_id NOT IN ({$rolesList})");
+
+	foreach ($allowedRoles as $rId) {
+		$parentSql = "SELECT 1 FROM st_menu_allocation_master WHERE user_id = 0 AND role_id = {$rId} AND menu_id = {$menuId} AND sub_menu_id IS NULL LIMIT 1";
+		$parentResult = mysqli_query($db_handle->conn, $parentSql);
+		if (!$parentResult || mysqli_num_rows($parentResult) === 0) {
+			mysqli_query($db_handle->conn, "INSERT INTO st_menu_allocation_master (user_id, role_id, menu_id, sub_menu_id) VALUES (0, {$rId}, {$menuId}, NULL)");
+		}
+
+		$allocSql = "SELECT 1 FROM st_menu_allocation_master WHERE user_id = 0 AND role_id = {$rId} AND menu_id = {$menuId} AND sub_menu_id = {$subMenuId} LIMIT 1";
+		$allocResult = mysqli_query($db_handle->conn, $allocSql);
+		if (!$allocResult || mysqli_num_rows($allocResult) === 0) {
+			mysqli_query($db_handle->conn, "INSERT INTO st_menu_allocation_master (user_id, role_id, menu_id, sub_menu_id) VALUES (0, {$rId}, {$menuId}, {$subMenuId})");
+		}
+	}
+}
+}
+
+// Only run default initial seeding if allocation table has no active records
+$allocCountCheck = mysqli_query($db_handle->conn, "SELECT COUNT(*) as cnt FROM st_menu_allocation_master");
+$allocCountRow = $allocCountCheck ? mysqli_fetch_assoc($allocCountCheck) : null;
+$isUnseeded = (!$allocCountRow || (int)($allocCountRow['cnt'] ?? 0) === 0);
+
+if ($isUnseeded) {
+	if ((int) $usertype === 1) {
+		sidebar_seed_super_admin_settings($db_handle);
+		sidebar_seed_mentor_menu($db_handle);
+		sidebar_seed_coordinator_allocation_menu($db_handle);
+		sidebar_seed_student_monitor_menu($db_handle);
+		sidebar_seed_student_nptel_menu($db_handle);
+		sidebar_seed_mentor_subject_menu($db_handle);
+		sidebar_seed_bulk_student_upload_menu($db_handle);
+		sidebar_seed_hod_mentor_allocation_menu($db_handle);
+	}
+}
+
+// Check if user is a verified HOD
+$isVerifiedHod = false;
+if ((int)$usertype === 3) {
+	$deptIdForCheck = intval($_SESSION['department_id'] ?? 0);
+	$userIdForCheck = intval($_SESSION['user_id'] ?? 0);
+	if ($userIdForCheck > 0 && $deptIdForCheck > 0) {
+		$hAuth = $db_handle->verifyHodAuthorization($userIdForCheck, $deptIdForCheck);
+		$isVerifiedHod = (!empty($hAuth['is_authorized']) && !empty($hAuth['is_hod']));
+	}
+}
+
+$hodParentCondition = $isVerifiedHod ? " OR mar.user_id = -3 " : "";
+$hodParentConditionA = $isVerifiedHod ? " OR maa.user_id = -3 " : "";
 $menuSql = "SELECT m.menu_id, m.menu_name, $menuIconSelect
 			FROM st_menu_master m
-			WHERE (
+			WHERE (m.is_active IS NULL OR m.is_active = 1)
+			  AND (
 				EXISTS (
 					SELECT 1
 					FROM st_menu_allocation_master mar
 					WHERE mar.menu_id = m.menu_id
 					  AND mar.role_id = ?
+					  AND (mar.user_id = 0 OR mar.user_id = ? {$hodParentCondition})
 					  AND mar.sub_menu_id IS NULL
 				)
 				OR EXISTS (
@@ -554,14 +735,16 @@ $menuSql = "SELECT m.menu_id, m.menu_name, $menuIconSelect
 					FROM st_menu_allocation_master maa
 					WHERE maa.menu_id = m.menu_id
 					  AND maa.role_id = ?
+					  AND (maa.user_id = 0 OR maa.user_id = ? {$hodParentConditionA})
 					  AND maa.sub_menu_id IS NOT NULL
 				)
 			)
-			ORDER BY m.menu_id";
+			ORDER BY COALESCE(m.sort_order, m.menu_id) ASC, m.menu_id ASC";
 $menuStmt = mysqli_prepare($db_handle->conn, $menuSql);
 
 if ($menuStmt) {
-	mysqli_stmt_bind_param($menuStmt, 'ii', $usertype, $usertype);
+	$menuUserParam = ($userid > 0) ? $userid : 0;
+	mysqli_stmt_bind_param($menuStmt, 'iiii', $usertype, $menuUserParam, $usertype, $menuUserParam);
 	mysqli_stmt_execute($menuStmt);
 	$menuResult = mysqli_stmt_get_result($menuStmt);
 
@@ -573,22 +756,26 @@ if ($menuStmt) {
 			'submenus' => array()
 		);
 
+		$hodSubCondition = $isVerifiedHod ? " OR mar.user_id = -3 " : "";
 		$subSql = "SELECT sm.sub_menu_id, sm.sub_menu_name, $subMenuRouteSelect, $subMenuIconSelect
 				   FROM st_sub_menu_master sm
 				   WHERE sm.menu_id = ?
-				   AND (
+				     AND (sm.is_active IS NULL OR sm.is_active = 1)
+				     AND (
 					   EXISTS (
 						   SELECT 1
 						   FROM st_menu_allocation_master mar
 						   WHERE mar.sub_menu_id = sm.sub_menu_id
 							 AND mar.role_id = ?
+							 AND (mar.user_id = 0 OR mar.user_id = ? {$hodSubCondition})
 					   )
 				   )
 				   ORDER BY sm.sort_order ASC, sm.sub_menu_id ASC";
 		$subStmt = mysqli_prepare($db_handle->conn, $subSql);
 
 		if ($subStmt) {
-			mysqli_stmt_bind_param($subStmt, 'ii', $menuId, $usertype);
+			$subUserParam = ($userid > 0) ? $userid : 0;
+			mysqli_stmt_bind_param($subStmt, 'iii', $menuId, $usertype, $subUserParam);
 			mysqli_stmt_execute($subStmt);
 			$subResult = mysqli_stmt_get_result($subStmt);
 
@@ -602,7 +789,7 @@ if ($menuStmt) {
 				}
 
 				// 2. Strict Super Admin only settings routes (Master, Audit Log, Allocation)
-				$superAdminSubRoutes = array('class_crud_new.php', 'audit_log.php', 'allocation_master.php');
+				$superAdminSubRoutes = array('class_crud_new.php', 'audit_log.php', 'menu_submenu_allocation.php', 'allocation_master.php', 'menu_submenu_management.php');
 				if ((int)$usertype !== 1) {
 					if (in_array($subId, array(13, 25, 49), true)) {
 						continue;
@@ -649,6 +836,35 @@ if ($menuStmt) {
 					}
 				}
 
+				// 5. Historical Archive Retirement:
+				// Retired per business requirement in favor of consolidated Student Directory & Excel Bulk Import
+				if (strpos($subRoute, 'historical_students.php') !== false ||
+					strpos($subRoute, 'superadmin_approval_monitoring.php') !== false ||
+					strpos($subRoute, 'hod_historical_approvals.php') !== false) {
+					continue; // Suppress retired historical pages from navigation for all roles
+				}
+
+				// Bulk Student Upload is Super Admin only:
+				if (strpos($subRoute, 'student_bulk_import.php') !== false) {
+					if ((int)$usertype !== 1) {
+						continue;
+					}
+				}
+
+				// C) hod_mentor_allocation.php / department_hod_monitoring.php is strictly restricted to Super Admin (1) and Admin (2):
+				if (strpos($subRoute, 'hod_mentor_allocation.php') !== false || strpos($subRoute, 'department_hod_monitoring.php') !== false) {
+					if ((int)$usertype !== 1 && (int)$usertype !== 2) {
+						continue;
+					}
+				}
+
+				// D) menu_submenu_allocation.php is strictly restricted to Super Admin (1):
+				if (strpos($subRoute, 'menu_submenu_allocation.php') !== false || strpos($subRoute, 'menu_submenu_management.php') !== false || strpos($subRoute, 'allocation_master.php') !== false) {
+					if ((int)$usertype !== 1) {
+						continue;
+					}
+				}
+
 				$menuTree[$menuId]['submenus'][] = $subRow;
 			}
 
@@ -661,6 +877,35 @@ if ($menuStmt) {
 	}
 
 	mysqli_stmt_close($menuStmt);
+
+	// Super Admin Lockout Safeguard: Ensure Menu & Submenu Allocation is ALWAYS present in Settings for Super Admin
+	if ((int)$usertype === 1) {
+		$settingsMenuId = sidebar_resolve_system_menu_id($db_handle->conn);
+		if ($settingsMenuId > 0) {
+			if (!isset($menuTree[$settingsMenuId])) {
+				$menuTree[$settingsMenuId] = array(
+					'menu_name' => 'Settings',
+					'menu_icon' => 'fa fa-user',
+					'submenus' => array()
+				);
+			}
+			$hasMenuAlloc = false;
+			foreach ($menuTree[$settingsMenuId]['submenus'] as $smCheck) {
+				if (strpos($smCheck['sub_menu_route'] ?? '', 'menu_submenu_allocation.php') !== false) {
+					$hasMenuAlloc = true;
+					break;
+				}
+			}
+			if (!$hasMenuAlloc) {
+				$menuTree[$settingsMenuId]['submenus'][] = array(
+					'sub_menu_id' => 25,
+					'sub_menu_name' => 'Menu & Submenu Allocation',
+					'sub_menu_route' => 'menu_submenu_allocation.php',
+					'sub_menu_icon' => 'fa fa-sliders'
+				);
+			}
+		}
+	}
 }
 ?>
 
@@ -674,9 +919,9 @@ $currentScript = basename($_SERVER['PHP_SELF'] ?? '');
 
 <li class="header">MAIN</li>
 <li class="<?php echo ($currentScript === 'index.php' || $currentScript === 'student_dashboard.php') ? 'active' : ''; ?>">
-	<a href="<?php echo htmlspecialchars($sidebarHomeRoute); ?>">
+	<a href="<?php echo htmlspecialchars($sidebarHomeRoute); ?>" style="text-decoration: none !important;">
 		<i class="<?php echo htmlspecialchars($sidebarHomeIcon); ?>"></i>
-		<span><?php echo htmlspecialchars($sidebarHomeLabel); ?></span>
+		<span style="text-decoration: none !important;"><?php echo htmlspecialchars($sidebarHomeLabel); ?></span>
 	</a>
 </li>
 
@@ -718,9 +963,9 @@ foreach ($menuTree as $menuId => $menuData) {
 	}
 ?>
 <li class="treeview <?php echo $isMenuActive ? 'active' : ''; ?>" data-menu-id="<?php echo $menuId; ?>" id="sidebar-menu-<?php echo $menuId; ?>">
-	<a href="#">
+	<a href="#" style="text-decoration: none !important;">
 		<i class="<?php echo htmlspecialchars($menuIcon); ?>" aria-hidden="true"></i>
-		<span><?php echo htmlspecialchars(ucwords(strtolower($menuName))); ?></span>
+		<span style="text-decoration: none !important;"><?php echo htmlspecialchars(ucwords(strtolower($menuName))); ?></span>
 		<span class="pull-right-container">
 			<i class="fa fa-angle-right pull-right"></i>
 		</span>
@@ -744,9 +989,9 @@ foreach ($menuTree as $menuId => $menuData) {
 			$isSubActive = ($subRoute !== '#' && basename($subRoute) === $currentScript);
 	?>
 		<li class="<?php echo $isSubActive ? 'active' : ''; ?>" data-sub-menu-id="<?php echo $subId; ?>" id="sidebar-submenu-item-<?php echo $subId; ?>">
-			<a href="<?php echo htmlspecialchars($subRoute); ?>">
+			<a href="<?php echo htmlspecialchars($subRoute); ?>" style="text-decoration: none !important;">
 				<i class="<?php echo htmlspecialchars($subIcon); ?>"></i>
-				<span><?php echo htmlspecialchars($subName); ?></span>
+				<span style="text-decoration: none !important;"><?php echo htmlspecialchars($subName); ?></span>
 			</a>
 		</li>
 	<?php }

@@ -1,9 +1,30 @@
-# 1. Enable the engine
+# TCET Specialization Tracker - Apache Security Configuration
+
+# 1. Disable Directory Indexing
+Options -Indexes
+
+# 2. Enable Rewrite Engine
 RewriteEngine On
+RewriteBase /st/
 
-# 2. Tell Apache exactly where this project lives
-# This ensures /404.php points to /sp-tracker/404.php
-RewriteBase /sp-tracker/
+# 3. Custom Error Document
+ErrorDocument 404 /st/404.php
 
-# 3. Set the error document relative to the base
-ErrorDocument 404 /sp-tracker/404.php
+# 4. Deny direct access to sensitive extensions and dotfiles
+<FilesMatch "(^\.|\.(sql|bak|log|env|json|yml|yaml|md|lock)$)">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order deny,allow
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# 5. Security Headers
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header set X-XSS-Protection "1; mode=block"
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>

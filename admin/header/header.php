@@ -73,6 +73,17 @@ if ($result && $result->num_rows > 0) {
 	}
 }
 
+if ($usertype === 0 && $sessionRoleId > 0) {
+	$usertype = $sessionRoleId;
+	$userid = $sessionUserId;
+	$loginDepartment = intval($_SESSION['department_id'] ?? 0);
+	$loginStudentId = intval($_SESSION['student_id'] ?? 0);
+	if (empty($username)) {
+		$username = 'SessionUser_' . $userid;
+		$name = $username;
+	}
+}
+
 $name = $username;
 $profileSql = "SELECT COALESCE(NULLIF(TRIM(u.user_name), ''), l.username) AS user_name
 			   FROM st_login l
@@ -108,10 +119,115 @@ if ($stmt) {
 	$dashboardRoute = ($usertype === 5) ? 'student_dashboard.php' : 'index.php';
 
 	// =========================================================================
-	// CENTRALIZED RBAC ROUTE GUARD
+	// CENTRALIZED RBAC ROUTE GUARD & PERMISSION SYSTEM
 	// =========================================================================
+	if (!function_exists('canAccessMenu')) {
+		function canAccessMenu($conn, $userId, $roleId, $menuId) {
+			$mId = intval($menuId);
+			if ($mId <= 0) return false;
+			$mRes = mysqli_query($conn, "SELECT is_active FROM st_menu_master WHERE menu_id = {$mId} LIMIT 1");
+			if ($mRes && ($mRow = mysqli_fetch_assoc($mRes))) {
+				if (isset($mRow['is_active']) && (int)$mRow['is_active'] === 0) {
+					return false;
+				}
+			}
+			if ((int)$roleId === 1) return true;
+			$allocRes = mysqli_query($conn, "SELECT 1 FROM st_menu_allocation_master WHERE menu_id = {$mId} AND (role_id = {$roleId} OR user_id = {$userId}) LIMIT 1");
+			return ($allocRes && mysqli_num_rows($allocRes) > 0);
+		}
+	}
+
+	if (!function_exists('canAccessSubmenu')) {
+		function canAccessSubmenu($conn, $userId, $roleId, $scriptName) {
+			return checkUserRouteAuthorization($conn, $userId, $roleId, $scriptName);
+		}
+	}
+
+	if (!function_exists('requireSubmenuAccess')) {
+		function requireSubmenuAccess($scriptName) {
+			global $db_handle, $userid, $usertype;
+			$allowed = canAccessSubmenu($db_handle->conn, $userid, $usertype, $scriptName);
+			if (!$allowed) {
+				if (method_exists($db_handle, 'writeAuditLog')) {
+					$db_handle->writeAuditLog($userid, 'UNAUTHORIZED_ACCESS_ATTEMPT', null, null, "User role {$usertype} attempted to access restricted route: {$scriptName}");
+				}
+				if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
+					http_response_code(403);
+					header('Content-Type: application/json');
+					echo json_encode(array('status' => 'error', 'message' => 'Access Denied: You do not have permission to access this resource.'));
+					exit;
+				}
+				http_response_code(403);
+				include __DIR__ . '/header.php';
+				echo '<div class="content-wrapper"><section class="content"><div class="alert alert-danger" style="margin: 30px;"><i class="fa fa-ban"></i> <strong>403 Access Denied:</strong> You do not have permission to access this resource.</div></section></div>';
+				include __DIR__ . '/footer.php';
+				exit;
+			}
+			return true;
+		}
+	}
+
 	if (!function_exists('checkUserRouteAuthorization')) {
 		function checkUserRouteAuthorization($conn, $userId, $roleId, $scriptName) {
+			// 1. Centralized Menu & Submenu Allocation / Student Bulk Import: Restricted strictly to Super Admin (role_id = 1)
+			if ($scriptName === 'student_bulk_import.php' || $scriptName === 'menu_submenu_allocation.php' || $scriptName === 'menu_submenu_management.php' || $scriptName === 'allocation_master.php') {
+				return ($roleId === 1);
+			}
+
+			// 2. HOD Operational Sign-Off Page: Strictly restricted to Authorized HODs (role_id = 3 with verified appointment)
+			if ($scriptName === 'hod_historical_approvals.php') {
+				if ($roleId === 3) {
+					$db_inst = new DBController();
+					$deptIdCheck = intval($_SESSION['department_id'] ?? 0);
+					if ($userId > 0 && $deptIdCheck > 0) {
+						$authH = $db_inst->verifyHodAuthorization($userId, $deptIdCheck);
+						return (!empty($authH['is_authorized']) && !empty($authH['is_hod']));
+					}
+				}
+				// Super Admin (1), Coordinators without appointment, Mentors (4), Students (5) are blocked
+				return false;
+			}
+
+			// 3. Shared Historical Action / View / AJAX endpoints: accessible to Super Admin and Authorized HODs
+			$historicalOperationalRoutes = array(
+				'historical_student_view.php',
+				'historical_students_ajax.php',
+				'historical_student_action.php'
+			);
+			if (in_array($scriptName, $historicalOperationalRoutes, true)) {
+				if ($roleId === 1) {
+					return true;
+				}
+				if ($roleId === 3) {
+					$db_inst = new DBController();
+					$deptIdCheck = intval($_SESSION['department_id'] ?? 0);
+					if ($userId > 0 && $deptIdCheck > 0) {
+						$authH = $db_inst->verifyHodAuthorization($userId, $deptIdCheck);
+						return (!empty($authH['is_authorized']) && !empty($authH['is_hod']));
+					}
+				}
+				return false;
+			}
+
+			// 4. HOD & Mentor Allocation / Department & HOD Monitoring: Restricted strictly to Super Admin (1) and Admin (2)
+			if ($scriptName === 'hod_mentor_allocation.php' || $scriptName === 'department_hod_monitoring.php') {
+				return ($roleId === 1 || $roleId === 2);
+			}
+
+			// 5. Check if script corresponds to a globally disabled menu or submenu
+			$escapedScript = mysqli_real_escape_string($conn, $scriptName);
+			$globalCheckSql = "SELECT sm.is_active AS sub_active, m.is_active AS menu_active 
+							   FROM st_sub_menu_master sm 
+							   JOIN st_menu_master m ON m.menu_id = sm.menu_id 
+							   WHERE sm.sub_menu_route LIKE '%{$escapedScript}%' 
+							   LIMIT 1";
+			$globalCheckRes = mysqli_query($conn, $globalCheckSql);
+			if ($globalCheckRes && ($gcRow = mysqli_fetch_assoc($globalCheckRes))) {
+				if ((int)($gcRow['sub_active'] ?? 1) === 0 || (int)($gcRow['menu_active'] ?? 1) === 0) {
+					return false; // Globally disabled across all roles
+				}
+			}
+
 			if ($roleId === 1) {
 				return true;
 			}
@@ -119,7 +235,8 @@ if ($stmt) {
 			// Privileged configuration routes strictly reserved for Super Admin
 			$superAdminOnly = array(
 				'class_crud_new.php', 'class_edit_new.php', 'class_edit_new_ajax.php',
-				'class_manage.php', 'class_manage_new.php', 'audit_log.php', 'allocation_master.php'
+				'class_manage.php', 'class_manage_new.php', 'audit_log.php', 'menu_submenu_allocation.php', 'menu_submenu_management.php', 'allocation_master.php',
+				'historical_students.php', 'superadmin_approval_monitoring.php'
 			);
 			if (in_array($scriptName, $superAdminOnly, true)) {
 				return false;
@@ -177,9 +294,9 @@ if ($stmt) {
 				'logout.php'
 			);
 
-			// Branch Info is accessible to Super Admin (1), Admin (2), and HOD (3)
+			// Branch Info is accessible to Super Admin (1), Admin (2), HOD (3), and Mentor (4)
 			if ($scriptName === 'branch_info.php') {
-				return in_array($roleId, array(1, 2, 3), true);
+				return in_array($roleId, array(1, 2, 3, 4), true);
 			}
 
 			if (in_array($scriptName, $universal, true)) {
@@ -216,10 +333,23 @@ if ($stmt) {
 				}
 			}
 
+			// Support designation-specific Authorized HOD allocations (user_id = -3) for verified HOD accounts
+			$hodCondition = "";
+			if ($roleId === 3) {
+				$db_inst = new DBController();
+				$deptIdCheck = intval($_SESSION['department_id'] ?? 0);
+				if ($userId > 0 && $deptIdCheck > 0) {
+					$authH = $db_inst->verifyHodAuthorization($userId, $deptIdCheck);
+					if (!empty($authH['is_authorized']) && !empty($authH['is_hod'])) {
+						$hodCondition = " OR a.user_id = -3 ";
+					}
+				}
+			}
+
 			$sql = "SELECT 1 
 					FROM st_menu_allocation_master a
 					JOIN st_sub_menu_master sm ON a.sub_menu_id = sm.sub_menu_id
-					WHERE (a.role_id = ? OR a.user_id = ?)
+					WHERE ((a.role_id = ? AND a.user_id = 0) OR a.user_id = ? {$hodCondition})
 					  AND (sm.sub_menu_route LIKE ? OR sm.sub_menu_route LIKE ?)
 					LIMIT 1";
 			$stmt = mysqli_prepare($conn, $sql);
@@ -248,6 +378,7 @@ if ($stmt) {
 			echo json_encode(array('status' => 'error', 'message' => 'Access Denied: You do not have permission to access this resource.'));
 			exit;
 		}
+		http_response_code(403);
 		echo '<!DOCTYPE html>
 		<html lang="en">
 		<head>
@@ -308,7 +439,7 @@ if ($stmt) {
 	<!-- bootstrap wysihtml5 - text editor -->
 	<link rel="stylesheet" href="plugins/bootstrap-wysihtml5/bootstrap3-wysihtml5.min.css">
 	<!-- Institutional ERP Design System -->
-	<link rel="stylesheet" href="css/erp-theme.css">
+	<link rel="stylesheet" href="css/erp-theme.css?v=20261124_03">
 	<script
 		src="https://code.jquery.com/jquery-3.3.1.js"
 		integrity="sha256-2Kok7MbOyxpgUVvAk/HJ2jigOSYS2auK4Pfzbm7uH60="

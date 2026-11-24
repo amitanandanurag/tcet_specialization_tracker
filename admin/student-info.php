@@ -1,13 +1,18 @@
 <?php
-session_start();
+require_once __DIR__ . "/../database/db_connect.php";
+if (class_exists('DBController')) {
+    DBController::startSecureSession();
+} elseif (session_status() !== PHP_SESSION_ACTIVE && !headers_sent()) {
+    @session_start();
+}
 error_reporting(E_ALL);
 ini_set('display_errors', 0);
 ini_set('log_errors', 1);
 
-require "../database/db_connect.php";
 $db_handle = new DBController();
 
 include "header/header.php";
+$sessionRoleId = intval($_SESSION['user_type'] ?? $_SESSION['role_id'] ?? 0);
 ?>
 
 <div class="content-wrapper">
@@ -23,6 +28,11 @@ include "header/header.php";
         </div>
       </div>
       <div class="erp-page-actions">
+        <?php if ($sessionRoleId == 1): ?>
+        <a href="student_bulk_import.php" class="btn-erp-secondary" style="margin-right: 8px;">
+          <i class="fa fa-file-excel-o"></i> Bulk Student Upload
+        </a>
+        <?php endif; ?>
         <a href="student_admission.php" class="btn-erp-primary">
           <i class="fa fa-user-plus"></i> Enroll Student
         </a>
@@ -59,8 +69,7 @@ include "header/header.php";
             <?php
             $result = $db_handle->query("SELECT * FROM `st_session_master`");
             while ($row = $result->fetch_assoc()) {
-              $selected = ($row['session_id'] == 6) ? "selected" : "";
-              echo '<option value="' . $row['session_id'] . '" ' . $selected . '>' . htmlspecialchars($row['session_name']) . '</option>';
+              echo '<option value="' . $row['session_id'] . '">' . htmlspecialchars($row['session_name']) . '</option>';
             }
             ?>
           </select>
@@ -130,6 +139,32 @@ include "header/header.php";
             ?>
           </select>
         </div>
+
+        <div class="erp-filter-select-item">
+          <label for="select_specialization">Specialization</label>
+          <select id="select_specialization" name="select_specialization">
+            <option value="">All Specializations</option>
+            <?php
+            $spec_result = $db_handle->query("SELECT specialization_id, specialization_name FROM `st_specialization_master` ORDER BY specialization_name");
+            while ($row = $spec_result->fetch_assoc()) {
+              echo "<option value='{$row['specialization_id']}'>" . htmlspecialchars($row['specialization_name']) . "</option>";
+            }
+            ?>
+          </select>
+        </div>
+
+        <div class="erp-filter-select-item">
+          <label for="select_mentor">Assigned Mentor</label>
+          <select id="select_mentor" name="select_mentor">
+            <option value="">All Mentors</option>
+            <?php
+            $mentor_result = $db_handle->query("SELECT user_id, user_name FROM `st_user_master` WHERE role_id = 4 ORDER BY user_name");
+            while ($row = $mentor_result->fetch_assoc()) {
+              echo "<option value='{$row['user_id']}'>" . htmlspecialchars($row['user_name']) . "</option>";
+            }
+            ?>
+          </select>
+        </div>
       </div>
     </div>
 
@@ -165,6 +200,134 @@ include "header/header.php";
   </section>
 </div>
 
+<style>
+/* ==========================================================================
+   TCET_ST — Student Profile & Academic Progression Modal Architecture
+   Enforces a strict 3-part layout: Fixed Header, Scrollable Body, Fixed Footer
+   ========================================================================== */
+body.modal-open {
+  overflow: hidden !important;
+}
+
+#view.modal, #edit.modal {
+  overflow: hidden !important;
+  padding-right: 0 !important;
+}
+
+#view .modal-dialog, #edit .modal-dialog {
+  max-width: 980px !important;
+  width: 92% !important;
+  height: 90vh !important;
+  max-height: 90vh !important;
+  margin: 30px auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+#view .modal-content, #edit .modal-content {
+  height: 100%;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  background: #ffffff;
+}
+
+#view .modal-header, #edit .modal-header {
+  flex: 0 0 auto;
+  background: #4338ca !important;
+  color: #ffffff !important;
+  padding: 14px 22px !important;
+  border-bottom: 1px solid #3730a3 !important;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 10;
+}
+
+#view .modal-header .modal-title, #edit .modal-header .modal-title {
+  font-size: 15px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #ffffff !important;
+  margin: 0;
+  display: flex;
+  align-items: center;
+}
+
+#view .modal-header .close, #edit .modal-header .close {
+  color: #ffffff !important;
+  opacity: 0.85;
+  font-size: 24px;
+  margin-top: 0;
+  text-shadow: none;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  line-height: 1;
+}
+
+#view .modal-header .close:hover, #edit .modal-header .close:hover {
+  opacity: 1;
+}
+
+#view .modal-body, #edit .modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  background-color: #f8fafc;
+  padding: 18px 20px 30px 20px !important;
+}
+
+#view .modal-footer, #edit .modal-footer {
+  flex: 0 0 auto;
+  background: #ffffff !important;
+  border-top: 1px solid #e2e8f0 !important;
+  padding: 12px 22px !important;
+  margin: 0 !important;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.04);
+  z-index: 10;
+}
+
+@media (max-width: 768px) {
+  #view .modal-dialog, #edit .modal-dialog {
+    width: 96% !important;
+    height: 94vh !important;
+    max-height: 94vh !important;
+    margin: 15px auto !important;
+  }
+}
+
+@media (max-width: 576px) {
+  #view .modal-dialog, #edit .modal-dialog {
+    width: 98% !important;
+    height: 96vh !important;
+    max-height: 96vh !important;
+    margin: 10px auto !important;
+  }
+  #view .modal-header, #edit .modal-header {
+    padding: 12px 14px !important;
+  }
+  #view .modal-body, #edit .modal-body {
+    padding: 12px 12px 24px 12px !important;
+  }
+  #view .modal-footer, #edit .modal-footer {
+    padding: 10px 14px !important;
+  }
+}
+</style>
+
 <!-- View Modal -->
 <div id="view" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display: none;">
   <div class="modal-dialog modal-lg">
@@ -175,7 +338,7 @@ include "header/header.php";
           <i class="fa fa-user" style="margin-right: 6px;"></i> Student Profile & Academic Progression
         </h4>
       </div>
-      <div class="modal-body" style="max-height: calc(100vh - 170px); overflow-y: auto;">
+      <div class="modal-body">
         <div id="modal-loader" style="display: none; text-align: center; padding: 24px;">
           <i class="fa fa-spinner fa-spin fa-2x text-muted"></i>
           <p style="margin-top: 8px; color: #64748b; font-size: 12px;">Loading student record...</p>
@@ -199,7 +362,7 @@ include "header/header.php";
           <i class="fa fa-pencil" style="margin-right: 6px;"></i> Edit Student Information
         </h4>
       </div>
-      <div class="modal-body" style="max-height: calc(100vh - 170px); overflow-y: auto;">
+      <div class="modal-body">
         <div id="edit-modal-loader" style="display: none; text-align: center; padding: 24px;">
           <i class="fa fa-spinner fa-spin fa-2x text-muted"></i>
           <p style="margin-top: 8px; color: #64748b; font-size: 12px;">Loading student editor...</p>
@@ -260,18 +423,18 @@ include "header/header.php";
   // Bulk Delete
   function bulkDelete() {
     var selectedIds = [];
-    $('.selectRow:checked').each(function() {
+    $('.activeStudentRow:checked').each(function() {
       selectedIds.push($(this).val());
     });
 
     if (selectedIds.length === 0) {
-      Swal.fire('No Selection', 'Please select at least one student checkbox.', 'info');
+      Swal.fire('No Active Selection', 'Please select at least one active student record. Historical archive records cannot be deleted.', 'info');
       return;
     }
 
     Swal.fire({
       title: "Delete " + selectedIds.length + " Student(s)?",
-      text: "This action will archive all selected student records.",
+      text: "This action will archive all selected active student records.",
       icon: "warning",
       showCancelButton: true,
       confirmButtonColor: "#b91c1c",
@@ -322,6 +485,8 @@ include "header/header.php";
           d.select_batch = $('#select_batch').val();
           d.select_semester = $('#select_semester').val();
           d.select_department = $('#select_department').val();
+          d.select_specialization = $('#select_specialization').val();
+          d.select_mentor = $('#select_mentor').val();
         }
       },
       "lengthMenu": [
@@ -339,7 +504,8 @@ include "header/header.php";
       ],
       "language": {
         "processing": "<span style='color: #423cbc; font-size: 13px; font-weight: 600;'><i class='fa fa-spinner fa-spin'></i> Loading records...</span>",
-        "zeroRecords": "<div style='padding: 24px; text-align: center; color: #64748b;'><strong>No students found</strong><br><span style='font-size: 12px;'>Try changing your search or filter parameters.</span></div>",
+        "emptyTable": "<div style='padding: 32px 16px; text-align: center; color: #64748b;'><i class='fa fa-users' style='font-size: 32px; color: #cbd5e1; margin-bottom: 12px; display: block;'></i><strong style='font-size: 14px; color: #334155;'>No Students Found</strong><br><span style='font-size: 12px; color: #64748b;'>To register a student, click <a href=\"student_admission.php\" style=\"color: #4338ca; font-weight: 600;\">Enroll Student</a> or use <a href=\"student_bulk_import.php\" style=\"color: #4338ca; font-weight: 600;\">Bulk Student Upload</a>.</span></div>",
+        "zeroRecords": "<div style='padding: 24px; text-align: center; color: #64748b;'><strong>No matching students found</strong><br><span style='font-size: 12px;'>Try changing your search or filter parameters.</span></div>",
         "info": "Showing _START_ to _END_ of _TOTAL_ students",
         "infoEmpty": "Showing 0 to 0 of 0 students",
         "paginate": {
@@ -373,6 +539,9 @@ include "header/header.php";
       $('#select_batch').val('');
       $('#select_semester').val('');
       $('#select_department').val('');
+      $('#select_specialization').val('');
+      $('#select_mentor').val('');
+      updateExportUrl();
       dataTable.search('').draw();
     });
 
@@ -380,21 +549,25 @@ include "header/header.php";
     function updateExportUrl() {
       var dept = $('#select_department').val() || '';
       var sem = $('#select_semester').val() || '';
+      var spec = $('#select_specialization').val() || '';
+      var mentor = $('#select_mentor').val() || '';
       var url = 'export_service.php?type=students';
       if (dept) url += '&department_id=' + encodeURIComponent(dept);
       if (sem) url += '&semester_id=' + encodeURIComponent(sem);
+      if (spec) url += '&specialization_id=' + encodeURIComponent(spec);
+      if (mentor) url += '&mentor_id=' + encodeURIComponent(mentor);
       $('#btnExportCsv').attr('href', url);
     }
 
-    $('#select_class, #select_section, #select_session, #select_batch, #select_semester, #select_department').change(function() {
+    $('#select_class, #select_section, #select_session, #select_batch, #select_semester, #select_department, #select_specialization, #select_mentor').change(function() {
       updateExportUrl();
       dataTable.ajax.reload();
     });
 
-    // Select All
+    // Select All (Target only enabled active student checkboxes)
     $(document).on('click', '#select_all_header', function() {
       var isChecked = $(this).is(':checked');
-      $('.selectRow').prop('checked', isChecked);
+      $('.activeStudentRow:not(:disabled)').prop('checked', isChecked);
     });
   });
 

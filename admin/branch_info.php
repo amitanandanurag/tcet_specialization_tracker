@@ -4,20 +4,50 @@ require "header/header.php";
 // Database connection
 $db_handle = new DBController();
 
-$selectedDepartmentId = intval($_GET['department_id'] ?? 0);
+$isSuperAdmin = ((int)($usertype ?? 0) === 1);
+$isAdmin = ((int)($usertype ?? 0) === 2);
+$isHod = ((int)($usertype ?? 0) === 3);
+$isMentor = ((int)($usertype ?? 0) === 4);
 
-// Role 3 (HOD / Coordinator) is strictly scoped to their authoritative department
-if ((int)($usertype ?? 0) === 3) {
-    $selectedDepartmentId = intval($loginDepartment ?? 0);
+// Fallback to session values if header lookup was empty (e.g. CLI tests)
+if (!$isSuperAdmin && !$isAdmin && !$isHod && !$isMentor) {
+    $sessRole = (int)($_SESSION['user_type'] ?? 0);
+    if ($sessRole === 1) $isSuperAdmin = true;
+    elseif ($sessRole === 2) $isAdmin = true;
+    elseif ($sessRole === 3) $isHod = true;
+    elseif ($sessRole === 4) $isMentor = true;
+}
+
+$selectedDepartmentId = intval($_GET['department_id'] ?? 0);
+$effectiveDeptId = intval(($loginDepartment > 0) ? $loginDepartment : ($_SESSION['department_id'] ?? 0));
+
+// Role 3 (HOD / Coordinator) and Role 4 (Mentor) are strictly scoped to their authoritative department
+if ($isHod || $isMentor) {
+    $selectedDepartmentId = $effectiveDeptId;
     if ($selectedDepartmentId <= 0) {
-        $selectedDepartmentId = -1; // Unassigned HOD sees 0 branches
+        $selectedDepartmentId = -1; // Unassigned staff sees 0 branches
     }
 }
 
-// Fetch branches from database with accurate metrics
-$whereClause = "";
+// Fetch all 14 recognized academic departments for filter and institutional registry (excluding non-academic ID 15)
+$allDeptsQuery = "SELECT department_id, department_name, program_name FROM st_department_master WHERE department_id != 15 ORDER BY department_id ASC";
+$allDeptsResult = mysqli_query($db_handle->conn, $allDeptsQuery);
+$allDepartments = [];
+$currentDepartmentName = '';
+
+if ($allDeptsResult) {
+    while ($dRow = mysqli_fetch_assoc($allDeptsResult)) {
+        $allDepartments[$dRow['department_id']] = $dRow;
+        if ($selectedDepartmentId > 0 && (int)$dRow['department_id'] === $selectedDepartmentId) {
+            $currentDepartmentName = $dRow['department_name'] . ' (' . ($dRow['program_name'] ?: $dRow['department_name']) . ')';
+        }
+    }
+}
+
+// Fetch branches from database with accurate metrics (excluding non-academic 'All Branch' ID 15)
+$whereClause = "WHERE d.department_id != 15 ";
 if ($selectedDepartmentId > 0) {
-    $whereClause = "WHERE d.department_id = " . intval($selectedDepartmentId) . " ";
+    $whereClause .= "AND d.department_id = " . intval($selectedDepartmentId) . " ";
 } elseif ($selectedDepartmentId === -1) {
     $whereClause = "WHERE 1 = 0 ";
 }
@@ -25,6 +55,7 @@ if ($selectedDepartmentId > 0) {
 $branches_query = "SELECT 
     d.department_id as id,
     d.department_name as name,
+    d.program_name as program,
     CASE 
         WHEN LOCATE(' ', d.department_name) > 0 
         THEN UPPER(SUBSTRING(d.department_name, 1, LOCATE(' ', d.department_name) - 1))
@@ -33,6 +64,7 @@ $branches_query = "SELECT
     (SELECT COUNT(*) FROM st_student_master WHERE department_id = d.department_id AND status = 1) as total_students,
     (SELECT COUNT(*) FROM st_student_master WHERE department_id = d.department_id) as total_registered_students,
     (SELECT COUNT(*) FROM st_user_master WHERE department_id = d.department_id AND role_id = 3) as total_hods,
+    (SELECT COUNT(*) FROM st_user_master WHERE department_id = d.department_id AND role_id = 4) as total_mentors,
     (SELECT COUNT(*) FROM st_user_master WHERE department_id = d.department_id AND role_id IN (3,4)) as total_staff
 FROM st_department_master d
 $whereClause
@@ -57,7 +89,7 @@ $total_branches = count($branches);
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Branch Information</title>
+    <title>Branch Information — TCET ERP</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.5.0/css/font-awesome.min.css">
     <style>
         :root {
@@ -86,6 +118,8 @@ $total_branches = count($branches);
             justify-content: space-between;
             align-items: center;
             box-shadow: var(--card-shadow);
+            flex-wrap: wrap;
+            gap: 12px;
         }
 
         .page-header h1 {
@@ -97,7 +131,7 @@ $total_branches = count($branches);
 
         .page-header p {
             margin: 3px 0 0 0;
-            font-size: 12px;
+            font-size: 13px;
             color: #64748b;
         }
 
@@ -120,6 +154,38 @@ $total_branches = count($branches);
             background: #f8fafc;
             color: #0f172a;
             text-decoration: none;
+        }
+
+        /* Filter Toolbar */
+        .filter-toolbar {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 12px 18px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .filter-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #334155;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .filter-select {
+            padding: 5px 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 4px;
+            font-size: 13px;
+            color: #1e293b;
+            background: #ffffff;
         }
 
         /* Stats Bar */
@@ -171,6 +237,9 @@ $total_branches = count($branches);
             border: 1px solid var(--erp-border, #e2e8f0);
             box-shadow: var(--card-shadow);
             transition: all 0.15s ease;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
         }
 
         .branch-card:hover {
@@ -201,25 +270,26 @@ $total_branches = count($branches);
 
         .branch-header h3 {
             margin: 0 0 2px 0;
-            font-size: 15px;
+            font-size: 16px;
             font-weight: 700;
             color: #0f172a;
         }
 
-        .branch-header .branch-id {
-            font-size: 11px;
+        .branch-header .branch-program {
+            font-size: 12px;
             color: #64748b;
         }
 
         .branch-body {
-            padding: 16px 18px;
+            padding: 14px 18px;
+            flex-grow: 1;
         }
 
         .metric-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 9px 0;
+            padding: 8px 0;
             border-bottom: 1px solid #f1f5f9;
         }
 
@@ -245,22 +315,22 @@ $total_branches = count($branches);
 
         .metric-value {
             font-weight: 700;
-            font-size: 16px;
+            font-size: 15px;
         }
 
         .metric-value.students { color: var(--success); }
         .metric-value.hods { color: var(--warning); }
+        .metric-value.mentors { color: #6366f1; }
         .metric-value.staff { color: var(--info); }
 
-        /* Status Badge */
-        .status-badge {
-            padding: 3px 8px;
-            border-radius: 4px;
-            font-size: 11px;
-            font-weight: 600;
+        .branch-footer {
+            background: #f8fafc;
+            border-top: 1px solid #e2e8f0;
+            padding: 10px 18px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
-
-        .status-active { background: #e8f5e9; color: #2e7d32; }
 
         /* Empty State */
         .empty-state {
@@ -275,7 +345,6 @@ $total_branches = count($branches);
             opacity: 0.3;
         }
 
-        /* Responsive */
         @media (max-width: 768px) {
             .page-header { flex-direction: column; text-align: center; gap: 15px; }
             .branches-grid { grid-template-columns: 1fr; }
@@ -289,12 +358,55 @@ $total_branches = count($branches);
         <div class="page-header">
             <div>
                 <h1><i class="fa fa-building"></i> Branch Information</h1>
-                <p><?php echo $selectedDepartmentId > 0 ? 'Viewing your branch only' : 'View all departments and their details'; ?></p>
+                <p>
+                    <?php 
+                    if ($isSuperAdmin || $isAdmin) {
+                        if ($selectedDepartmentId > 0 && !empty($currentDepartmentName)) {
+                            echo "Filtered by Department: <strong>" . htmlspecialchars($currentDepartmentName) . "</strong> — <a href='branch_info.php' class='btn btn-xs btn-primary' style='margin-left: 6px;'><i class='fa fa-list'></i> View All 14 Departments</a>";
+                        } else {
+                            echo "Institutional Overview — Viewing all <strong>14</strong> authorized academic departments";
+                        }
+                    } else {
+                        echo "Viewing your authorized department scope: <strong>" . htmlspecialchars($currentDepartmentName ?: 'Assigned Branch') . "</strong>";
+                    }
+                    ?>
+                </p>
             </div>
-            <a href="index.php" class="back-btn">
-                <i class="fa fa-arrow-left"></i> Back to Dashboard
-            </a>
+            <div style="display: flex; gap: 8px;">
+                <?php if ($isSuperAdmin || $isAdmin): ?>
+                    <a href="hod_mentor_allocation.php" class="btn btn-sm btn-primary">
+                        <i class="fa fa-sitemap"></i> Department & HOD Monitoring
+                    </a>
+                <?php endif; ?>
+                <a href="index.php" class="back-btn">
+                    <i class="fa fa-arrow-left"></i> Back to Dashboard
+                </a>
+            </div>
         </div>
+
+        <!-- Filter Toolbar (For Super Admin & Admin) -->
+        <?php if ($isSuperAdmin || $isAdmin): ?>
+            <div class="filter-toolbar">
+                <div class="filter-label">
+                    <i class="fa fa-filter text-primary"></i> Select Department Scope:
+                </div>
+                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                    <select class="filter-select" onchange="if(this.value){ window.location.href='branch_info.php?department_id=' + this.value; } else { window.location.href='branch_info.php'; }">
+                        <option value="">All Academic Departments (14)</option>
+                        <?php foreach ($allDepartments as $d): ?>
+                            <option value="<?php echo $d['department_id']; ?>" <?php echo $selectedDepartmentId === (int)$d['department_id'] ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($d['department_name']); ?> — <?php echo htmlspecialchars($d['program_name'] ?: $d['department_name']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <?php if ($selectedDepartmentId > 0): ?>
+                        <a href="branch_info.php" class="btn btn-xs btn-default" title="Reset filter">
+                            <i class="fa fa-times"></i> Reset Filter
+                        </a>
+                    <?php endif; ?>
+                </div>
+            </div>
+        <?php endif; ?>
 
         <!-- Stats Bar -->
         <div class="stats-bar">
@@ -309,6 +421,10 @@ $total_branches = count($branches);
             <div class="stat-item">
                 <div class="stat-number"><?php echo array_sum(array_column($branches, 'total_hods')); ?></div>
                 <div class="stat-label">Total HODs</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number"><?php echo array_sum(array_column($branches, 'total_mentors')); ?></div>
+                <div class="stat-label">Total Mentors</div>
             </div>
             <div class="stat-item">
                 <div class="stat-number"><?php echo array_sum(array_column($branches, 'total_staff')); ?></div>
@@ -330,7 +446,7 @@ $total_branches = count($branches);
                         <div class="branch-header">
                             <span class="branch-code"><?php echo htmlspecialchars($branch['code']); ?></span>
                             <h3><?php echo htmlspecialchars($branch['name']); ?></h3>
-                            <span class="branch-id">ID: <?php echo htmlspecialchars($branch['id']); ?></span>
+                            <div class="branch-program"><?php echo htmlspecialchars($branch['program'] ?: $branch['name']); ?> (ID: <?php echo (int)$branch['id']; ?>)</div>
                         </div>
                         <div class="branch-body">
                             <div class="metric-row">
@@ -354,13 +470,32 @@ $total_branches = count($branches);
                             </div>
                             <div class="metric-row">
                                 <div class="metric-label">
-                                    <i class="fa fa-users" style="background: #e3f2fd; color: #1565c0;"></i>
-                                    Faculty & Staff
+                                    <i class="fa fa-users" style="background: #e0e7ff; color: #4338ca;"></i>
+                                    Faculty Mentors
+                                </div>
+                                <div class="metric-value mentors">
+                                    <?php echo (int)$branch['total_mentors']; ?>
+                                </div>
+                            </div>
+                            <div class="metric-row">
+                                <div class="metric-label">
+                                    <i class="fa fa-briefcase" style="background: #e3f2fd; color: #1565c0;"></i>
+                                    Total Faculty & Staff
                                 </div>
                                 <div class="metric-value staff">
                                     <?php echo (int)$branch['total_staff']; ?>
                                 </div>
                             </div>
+                        </div>
+                        <div class="branch-footer">
+                            <span style="font-size: 11px; color: #64748b;">Branch #<?php echo (int)$branch['id']; ?></span>
+                            <?php if ($isSuperAdmin || $isAdmin): ?>
+                                <a href="hod_mentor_allocation.php?department_id=<?php echo $branch['id']; ?>" class="btn btn-xs btn-primary">
+                                    <i class="fa fa-sitemap"></i> View HOD & Mentors
+                                </a>
+                            <?php else: ?>
+                                <span class="badge bg-green" style="font-size: 10px;">Authorized Branch</span>
+                            <?php endif; ?>
                         </div>
                     </div>
                 <?php endforeach; ?>

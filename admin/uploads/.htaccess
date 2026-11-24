@@ -1,13 +1,21 @@
-# Deny execution of scripts in uploads directory
-<FilesMatch "(?i)\.(php|phtml|php3|php4|php5|php7|phps|inc|pl|py|cgi|sh|bash|exe|asp|aspx|jsp)$">
-    Order Deny,Allow
-    Deny from all
-</FilesMatch>
+# TCET ERP — Upload Directory Security Guard & Access Hardening
+# 1. Default directory index to static security landing page
+DirectoryIndex index.html
 
-# Prevent script handler execution
-<IfModule mod_php7.c>
-    php_flag engine off
-</IfModule>
-<IfModule mod_php.c>
-    php_flag engine off
-</IfModule>
+# 2. Disable directory listing and CGI execution
+Options -Indexes -ExecCGI
+
+# 3. Custom error document for 403 and 404
+ErrorDocument 403 /st/admin/uploads/index.html
+ErrorDocument 404 /st/admin/uploads/index.html
+
+# 4. Strictly deny execution or direct access to executable scripts
+<FilesMatch "\.(php|phtml|php3|php4|php5|php7|php8|phps|pht|phar|exe|pl|cgi|py|sh|sql|bak|log|env)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order Deny,Allow
+        Deny from all
+    </IfModule>
+</FilesMatch>

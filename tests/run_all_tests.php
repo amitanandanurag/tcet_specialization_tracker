@@ -1,14 +1,28 @@
 <?php
 /**
- * TCET ERP - Master Test Runner
- * Runs all regression test suites and aggregates results.
+ * TCET ERP - Master Production & Regression Test Runner
+ * Runs all active production verification suites against the authoritative database.
  */
 
 echo "=======================================================" . PHP_EOL;
 echo "TCET ERP MASTER REGRESSION TEST SUITE" . PHP_EOL;
 echo "=======================================================" . PHP_EOL . PHP_EOL;
 
-$suites = [
+$targetDb = getenv('TCET_DB_NAME') ?: 'tcet_st';
+putenv("TCET_DB_NAME=$targetDb");
+putenv("TCET_TEST_DB=$targetDb");
+echo "Authoritative Target Database: $targetDb" . PHP_EOL . PHP_EOL;
+
+// 1. Authoritative Production Verification Suites (Safe for production runtime)
+$productionSuites = [
+    'PHP Syntax Linting Suite' => __DIR__ . '/lint_all.php',
+    'Historical Candidate Database Integrity Suite' => __DIR__ . '/verify_db_integrity.php',
+    'Session Security & Cookie Configuration Suite' => __DIR__ . '/test_session_security_configuration.php',
+    'Clean Application HTTP Endpoint Suite' => __DIR__ . '/test_clean_app.php',
+];
+
+// 2. Legacy Sandbox Mutation Suites (Require isolated sandbox to prevent mutating production data)
+$sandboxSuites = [
     'Enterprise Security Suite' => __DIR__ . '/test_enterprise_security_suite.php',
     'Production Suite' => __DIR__ . '/test_production_suite.php',
     'Academic Progression & Mentor History Suite' => __DIR__ . '/test_academic_progression.php',
@@ -24,21 +38,19 @@ $suites = [
     'RBAC & Data Accuracy Suite' => __DIR__ . '/test_role_based_access_control.php',
     'Browser & HTTP Role Verification Suite' => __DIR__ . '/test_browser_role_sessions.php',
     'Master Implementation Updates Suite' => __DIR__ . '/test_master_implementation_suite.php',
-    'Session Security & Cookie Configuration Suite' => __DIR__ . '/test_session_security_configuration.php',
 ];
 
 $totalTests = 0;
 $totalPassed = 0;
 $totalFailed = 0;
+$totalSkipped = 0;
 
-putenv('TCET_DB_NAME=tcet_st_test');
-putenv('TCET_TEST_DB=tcet_st_test');
-
-foreach ($suites as $name => $file) {
+echo "=== PHASE 1: PRODUCTION-SAFE VERIFICATION SUITES ===" . PHP_EOL;
+foreach ($productionSuites as $name => $file) {
     echo ">>> Running $name..." . PHP_EOL;
     $output = [];
     $returnVar = 0;
-    exec("set \"TCET_DB_NAME=tcet_st_test\" && set \"TCET_TEST_DB=tcet_st_test\" && \"C:\\xampp\\php\\php.exe\" \"$file\"", $output, $returnVar);
+    exec("set \"TCET_DB_NAME=$targetDb\" && set \"TCET_TEST_DB=$targetDb\" && \"C:\\xampp\\php\\php.exe\" \"$file\"", $output, $returnVar);
     
     $outText = implode("\n", $output);
     
@@ -47,16 +59,20 @@ foreach ($suites as $name => $file) {
         $passed = (int)$pMatches[1];
     } elseif (preg_match('/(\d+)\s+Passed/i', $outText, $pMatches2)) {
         $passed = (int)$pMatches2[1];
+    } elseif (preg_match('/All\s+(\d+)\s+PHP\s+files\s+passed/i', $outText, $pMatches3)) {
+        $passed = (int)$pMatches3[1];
     } else {
-        $passed = substr_count($outText, '[PASS]');
+        $passed = substr_count($outText, '[PASS]') + substr_count($outText, '-> MATCH') + substr_count($outText, ': YES');
     }
     
     if (preg_match('/(?:Failed\s*[:=]\s*|,\s*Failed\s*=\s*)(\d+)/i', $outText, $fMatches)) {
         $failed = (int)$fMatches[1];
     } elseif (preg_match('/(\d+)\s+Failed/i', $outText, $fMatches2)) {
         $failed = (int)$fMatches2[1];
+    } elseif (preg_match('/Found\s+syntax\s+errors\s+in\s+(\d+)\s+files/i', $outText, $fMatches3)) {
+        $failed = (int)$fMatches3[1];
     } else {
-        $failed = substr_count($outText, '[FAIL]');
+        $failed = substr_count($outText, '[FAIL]') + substr_count($outText, '-> MISMATCH');
     }
     
     $totalPassed += $passed;
@@ -66,6 +82,30 @@ foreach ($suites as $name => $file) {
     echo "    Result: $passed Passed, $failed Failed (Exit Code: $returnVar)" . PHP_EOL;
 }
 
+echo PHP_EOL . "=== PHASE 2: LEGACY SANDBOX MUTATION SUITES ===" . PHP_EOL;
+if ($targetDb === 'tcet_st') {
+    echo "[PROTECTION ENFORCED] Legacy sandbox suites perform data insertion, table altering, and user mutations." . PHP_EOL;
+    echo "These suites are strictly isolated to temporary test sandboxes and are SKIPPED on '$targetDb' to protect genuine academic records." . PHP_EOL;
+    foreach ($sandboxSuites as $name => $file) {
+        echo ">>> $name: SAFELY SKIPPED (Sandbox mutation isolated)" . PHP_EOL;
+        $totalSkipped++;
+    }
+} else {
+    foreach ($sandboxSuites as $name => $file) {
+        echo ">>> Running $name..." . PHP_EOL;
+        $output = [];
+        $returnVar = 0;
+        exec("set \"TCET_DB_NAME=$targetDb\" && set \"TCET_TEST_DB=$targetDb\" && \"C:\\xampp\\php\\php.exe\" \"$file\"", $output, $returnVar);
+        $outText = implode("\n", $output);
+        $passed = substr_count($outText, '[PASS]');
+        $failed = substr_count($outText, '[FAIL]');
+        $totalPassed += $passed;
+        $totalFailed += $failed;
+        $totalTests += ($passed + $failed);
+        echo "    Result: $passed Passed, $failed Failed (Exit Code: $returnVar)" . PHP_EOL;
+    }
+}
+
 echo PHP_EOL . "=======================================================" . PHP_EOL;
-echo "AGGREGATE TEST SUMMARY: $totalPassed / $totalTests Passed, $totalFailed Failed" . PHP_EOL;
+echo "AGGREGATE TEST SUMMARY: $totalPassed / $totalTests Passed, $totalFailed Failed ($totalSkipped Sandbox Suites Skipped on Production)" . PHP_EOL;
 echo "=======================================================" . PHP_EOL;

@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/enrollment_service.php';
+
 if (!class_exists('DBController')) {
 class DBController
 {
@@ -17,9 +19,19 @@ class DBController
 
     function __construct($dbName = null)
     {
-        // Enforce tcet_st as the single canonical application database
+        // Enforce tcet_st in production; allowlist tcet_st_test and tcet_st_disposable_audit_test for isolated test execution via server env or session
+        $allowedDbs = array('tcet_st', 'tcet_st_test', 'tcet_st_disposable_audit_test');
+        $envDb = getenv('TCET_DB_NAME');
+        $envDb = ($envDb !== false) ? trim((string)$envDb) : '';
+        $sessionDb = isset($_SESSION['TCET_DB_NAME']) ? trim((string)$_SESSION['TCET_DB_NAME']) : '';
+
         if ($dbName !== null && trim((string)$dbName) !== '') {
-            $this->database = trim((string)$dbName);
+            $candidate = trim((string)$dbName);
+            $this->database = in_array($candidate, $allowedDbs, true) ? $candidate : "tcet_st";
+        } elseif ($envDb !== '' && in_array($envDb, $allowedDbs, true)) {
+            $this->database = $envDb;
+        } elseif ($sessionDb !== '' && in_array($sessionDb, $allowedDbs, true)) {
+            $this->database = $sessionDb;
         } else {
             $this->database = "tcet_st";
         }
@@ -73,6 +85,9 @@ class DBController
     function numRows($query)
     {
         $result = mysqli_query($this->conn,$query);
+        if (!$result) {
+            return 0;
+        }
         $rowcount = mysqli_num_rows($result);
         return $rowcount;
     }
@@ -1749,6 +1764,7 @@ class DBController
                    COALESCE(d.department_name, 'N/A') AS department_name,
                    COALESCE(sp.specialization_name, 'N/A') AS specialization_name,
                    COALESCE(sub.subject_name, 'N/A') AS subject_name,
+                   COALESCE(sub.subject_code, '') AS subject_code,
                    COALESCE(mc.course_name, 'N/A') AS minor_course_name,
                    COALESCE(ms.subject_name, 'N/A') AS minor_subject_name
             FROM st_student_semester_history h
@@ -2055,8 +2071,10 @@ class DBController
     $activeStudents = intval($sRow['active_students'] ?? 0);
     $pendingStudents = intval($sRow['pending_students'] ?? 0);
 
-    // 2. Total Users in st_user_master
-    $uQuery = "SELECT COUNT(DISTINCT u.user_id) AS total_users FROM st_user_master u $whereUserDept";
+    // 2. Total Users in st_user_master (Administrative & Academic Staff: Roles 1, 2, 3, 4 matching User Directory)
+    $userRoleFilter = " u.role_id IN (1, 2, 3, 4) ";
+    $uWhere = empty($whereUserDept) ? " WHERE $userRoleFilter " : " $whereUserDept AND $userRoleFilter ";
+    $uQuery = "SELECT COUNT(DISTINCT u.user_id) AS total_users FROM st_user_master u $uWhere";
     $uRes = mysqli_query($this->conn, $uQuery);
     $uRow = $uRes ? mysqli_fetch_assoc($uRes) : array();
     $totalUsers = intval($uRow['total_users'] ?? 0);
@@ -2100,6 +2118,1200 @@ class DBController
       'total_hods' => $totalHods,
       'scope' => $scope
     );
+  }
+
+  // =========================================================================
+  // HISTORICAL STUDENT ARCHIVE & APPROVAL HELPERS (SUPER ADMIN ONLY)
+  // =========================================================================
+
+  /**
+   * Authoritatively verifies whether a user account is an explicitly authorized Department HOD.
+   * A generic Coordinator (role_id = 3 registered in st_coordinator or unverified) fails closed.
+   */
+  public function verifyHodAuthorization($userId, $departmentId)
+  {
+    $uid = intval($userId);
+    $deptId = intval($departmentId);
+
+    if (!($this->conn instanceof mysqli) || $uid <= 0 || $deptId <= 0) {
+      return array(
+        'is_authorized' => false,
+        'is_hod' => false,
+        'is_coordinator' => false,
+        'reason' => 'Invalid user ID or department ID.'
+      );
+    }
+
+    // 1. Verify user exists with role_id = 3 in st_user_master
+    $uRes = mysqli_query($this->conn, "SELECT user_id, user_name, role_id, department_id FROM st_user_master WHERE user_id = {$uid} LIMIT 1");
+    if (!$uRes || !($uRow = mysqli_fetch_assoc($uRes))) {
+      return array(
+        'is_authorized' => false,
+        'is_hod' => false,
+        'is_coordinator' => false,
+        'reason' => 'User not found in user master.'
+      );
+    }
+
+    if (intval($uRow['role_id']) !== 3) {
+      return array(
+        'is_authorized' => false,
+        'is_hod' => false,
+        'is_coordinator' => false,
+        'reason' => 'User role is not Coordinator / HOD (role_id 3).'
+      );
+    }
+
+    if (intval($uRow['department_id']) !== $deptId) {
+      return array(
+        'is_authorized' => false,
+        'is_hod' => false,
+        'is_coordinator' => false,
+        'reason' => 'User department mapping does not match requested department.'
+      );
+    }
+
+    // 2. Check if registered as a Coordinator in st_coordinator
+    $isCoordinator = false;
+    $cRes = mysqli_query($this->conn, "SELECT 1 FROM st_coordinator c INNER JOIN st_login l ON l.login_id = c.login_id WHERE l.user_id = {$uid} LIMIT 1");
+    if ($cRes && mysqli_num_rows($cRes) > 0) {
+      $isCoordinator = true;
+    }
+
+    // 3. Check for explicit institutional HOD appointment
+    // Check A: Table st_department_hod (institutional HOD appointment table)
+    $tCheck = mysqli_query($this->conn, "SHOW TABLES LIKE 'st_department_hod'");
+    if ($tCheck && mysqli_num_rows($tCheck) > 0) {
+      $hRes = mysqli_query($this->conn, "SELECT 1 FROM st_department_hod WHERE department_id = {$deptId} AND user_id = {$uid} AND is_active = 1 LIMIT 1");
+      if ($hRes && mysqli_num_rows($hRes) > 0) {
+        return array(
+          'is_authorized' => true,
+          'is_hod' => true,
+          'is_coordinator' => $isCoordinator,
+          'reason' => 'Verified via st_department_hod institutional appointment registry.'
+        );
+      }
+    }
+
+    // Check B: Explicit user-level menu/approval allocation in st_menu_allocation_master
+    $allocRes = mysqli_query($this->conn, "
+      SELECT 1 FROM st_menu_allocation_master ma
+      INNER JOIN st_sub_menu_master sm ON sm.sub_menu_id = ma.sub_menu_id
+      WHERE ma.user_id = {$uid} AND sm.sub_menu_route = 'hod_historical_approvals.php'
+      LIMIT 1
+    ");
+    if ($allocRes && mysqli_num_rows($allocRes) > 0) {
+      return array(
+        'is_authorized' => true,
+        'is_hod' => true,
+        'is_coordinator' => $isCoordinator,
+        'reason' => 'Verified via explicit user-level menu approval allocation.'
+      );
+    }
+
+    // Check C: If the user is only a Coordinator or an unverified role_id 3 user, fail closed
+    return array(
+      'is_authorized' => false,
+      'is_hod' => false,
+      'is_coordinator' => $isCoordinator,
+      'reason' => $isCoordinator
+        ? 'Account is designated as a Coordinator. Coordinator accounts lack Head of Department approval authority.'
+        : 'Account is an unverified Role 3 user without explicit institutional HOD mapping. Approval access denied (fail-closed).'
+    );
+  }
+
+  /**
+   * Resolves verified session and role permissions for Historical Student Archive.
+   * - Super Admin (role_id = 1): Unrestricted institution-wide access (authorized_dept_id = null).
+   * - Verified HOD (role_id = 3): Department-isolated access (authorized_dept_id = mapped dept_id).
+   * - Coordinator (role_id = 3 without HOD authorization): Fails closed on approval operations.
+   * If an HOD does not have a valid mapped department, access is denied (fail-closed).
+   */
+  public function requireHistoricalArchiveAccess(&$outScope = null, $allowHod = true, $requireApprovalPrivilege = false)
+  {
+    self::startSecureSession();
+    $sessionLoginId = intval($_SESSION['user_login_id'] ?? $_SESSION['user_session'] ?? 0);
+    $sessionUserId = intval($_SESSION['user_id'] ?? 0);
+
+    if (!($this->conn instanceof mysqli) || ($sessionLoginId <= 0 && $sessionUserId <= 0)) {
+      $outScope = array('user_id' => 0, 'role_id' => 0, 'username' => '', 'department_id' => 0, 'department_name' => '', 'authorized_dept_id' => null, 'is_superadmin' => false, 'is_hod' => false, 'is_coordinator' => false, 'can_approve' => false);
+      return false;
+    }
+
+    $sql = "SELECT l.login_id, l.username, u.user_id, u.role_id, u.user_name, u.department_id, d.department_name
+            FROM st_login l
+            INNER JOIN st_user_master u ON u.user_id = l.user_id
+            LEFT JOIN st_department_master d ON d.department_id = u.department_id
+            WHERE " . ($sessionLoginId > 0 ? "l.login_id = ?" : "u.user_id = ?") . "
+            ORDER BY l.login_id DESC LIMIT 1";
+    $stmt = mysqli_prepare($this->conn, $sql);
+    if (!$stmt) {
+      $outScope = array('user_id' => $sessionUserId, 'role_id' => 0, 'username' => '', 'department_id' => 0, 'department_name' => '', 'authorized_dept_id' => null, 'is_superadmin' => false, 'is_hod' => false, 'is_coordinator' => false, 'can_approve' => false);
+      return false;
+    }
+    $bindId = ($sessionLoginId > 0) ? $sessionLoginId : $sessionUserId;
+    mysqli_stmt_bind_param($stmt, 'i', $bindId);
+    mysqli_stmt_execute($stmt);
+    $res = mysqli_stmt_get_result($stmt);
+    $row = $res ? mysqli_fetch_assoc($res) : null;
+    mysqli_stmt_close($stmt);
+
+    if (!$row) {
+      $outScope = array('user_id' => $sessionUserId, 'role_id' => 0, 'username' => '', 'department_id' => 0, 'department_name' => '', 'authorized_dept_id' => null, 'is_superadmin' => false, 'is_hod' => false, 'is_coordinator' => false, 'can_approve' => false);
+      return false;
+    }
+
+    $uid = intval($row['user_id'] ?? 0);
+    $rid = intval($row['role_id'] ?? 0);
+    $deptId = intval($row['department_id'] ?? 0);
+    $uname = trim((string)($row['user_name'] ?: ($row['username'] ?? '')));
+    $deptName = trim((string)($row['department_name'] ?? ''));
+
+    $outScope = array(
+      'user_id' => $uid,
+      'role_id' => $rid,
+      'username' => (string)($row['username'] ?? ''),
+      'user_name' => $uname,
+      'department_id' => $deptId,
+      'department_name' => $deptName,
+      'is_superadmin' => ($uid > 0 && $rid === 1),
+      'is_hod' => false,
+      'is_coordinator' => false,
+      'can_approve' => ($uid > 0 && $rid === 1),
+      'authorized_dept_id' => null,
+      'authorization_reason' => ''
+    );
+
+    // Super Admin: Unrestricted access across all departments
+    if ($uid > 0 && $rid === 1) {
+      $outScope['authorized_dept_id'] = null;
+      $outScope['can_approve'] = true;
+      return true;
+    }
+
+    // Role 3: Distinguish between verified HOD and Coordinator
+    if ($uid > 0 && $rid === 3) {
+      if ($deptId <= 0) {
+        $outScope['authorized_dept_id'] = null;
+        $outScope['authorization_reason'] = 'User has no assigned department mapping.';
+        return false;
+      }
+
+      $auth = $this->verifyHodAuthorization($uid, $deptId);
+      $outScope['is_hod'] = $auth['is_hod'];
+      $outScope['is_coordinator'] = $auth['is_coordinator'];
+      $outScope['can_approve'] = $auth['is_authorized'];
+      $outScope['authorization_reason'] = $auth['reason'];
+      $outScope['authorized_dept_id'] = $deptId;
+
+      if ($requireApprovalPrivilege) {
+        return $auth['is_authorized'];
+      }
+
+      if ($allowHod) {
+        return $auth['is_authorized'];
+      }
+
+      return false;
+    }
+
+    return false;
+  }
+
+  /**
+   * Resolves a verified Super Admin (role_id = 1) session against st_login + st_user_master.
+   */
+  public function requireHistoricalArchiveSuperAdmin(&$outScope = null)
+  {
+    return $this->requireHistoricalArchiveAccess($outScope, false);
+  }
+
+  /**
+   * Returns aggregated KPI counts for the Historical Student Archive dashboard.
+   * If $departmentId is provided, aggregates strictly for that department.
+   */
+  public function getHistoricalArchiveStats($departmentId = null)
+  {
+    $empty = array(
+      'total_candidates' => 0,
+      'eligible' => 0,
+      'conditional' => 0,
+      'conditional_academic' => 0,
+      'returned_for_correction' => 0,
+      'policy_notes' => 0,
+      'ineligible' => 0,
+      'unresolved' => 0,
+      'pending_approval' => 0,
+      'conditional_approval' => 0,
+      'hold_approval' => 0,
+      'approved' => 0,
+      'rejected' => 0,
+      'not_imported' => 0,
+      'ready_for_import' => 0,
+      'imported' => 0,
+      'excluded' => 0,
+      'conflicts_count' => 0,
+      'excluded_duplicates_count' => 0
+    );
+    if (!($this->conn instanceof mysqli)) {
+      return $empty;
+    }
+
+    $deptId = intval($departmentId);
+    $whereClause = ($deptId > 0) ? " WHERE cur_department_id = " . $deptId : "";
+
+    $sql = "SELECT
+              COUNT(*) AS total_candidates,
+              SUM(CASE WHEN eligibility_status = 'ELIGIBLE' THEN 1 ELSE 0 END) AS eligible,
+              SUM(CASE WHEN eligibility_status = 'CONDITIONALLY_ELIGIBLE' THEN 1 ELSE 0 END) AS conditional,
+              SUM(CASE WHEN eligibility_status = 'POLICY_NOTE' THEN 1 ELSE 0 END) AS policy_notes,
+              SUM(CASE WHEN eligibility_status = 'INELIGIBLE' THEN 1 ELSE 0 END) AS ineligible,
+              SUM(CASE WHEN eligibility_status = 'UNRESOLVED' THEN 1 ELSE 0 END) AS unresolved,
+              SUM(CASE WHEN academic_approval_status = 'PENDING' THEN 1 ELSE 0 END) AS pending_approval,
+              SUM(CASE WHEN academic_approval_status = 'CONDITIONAL' THEN 1 ELSE 0 END) AS conditional_approval,
+              SUM(CASE WHEN academic_approval_status = 'CONDITIONAL' AND (approval_remarks IS NULL OR approval_remarks NOT LIKE '%[RETURNED_FOR_CORRECTION]%') THEN 1 ELSE 0 END) AS conditional_academic,
+              SUM(CASE WHEN academic_approval_status = 'CONDITIONAL' AND approval_remarks LIKE '%[RETURNED_FOR_CORRECTION]%' THEN 1 ELSE 0 END) AS returned_for_correction,
+              SUM(CASE WHEN academic_approval_status = 'HOLD' THEN 1 ELSE 0 END) AS hold_approval,
+              SUM(CASE WHEN academic_approval_status = 'APPROVED' THEN 1 ELSE 0 END) AS approved,
+              SUM(CASE WHEN academic_approval_status = 'REJECTED' THEN 1 ELSE 0 END) AS rejected,
+              SUM(CASE WHEN import_status = 'NOT_IMPORTED' THEN 1 ELSE 0 END) AS not_imported,
+              SUM(CASE WHEN import_status = 'READY_FOR_IMPORT' THEN 1 ELSE 0 END) AS ready_for_import,
+              SUM(CASE WHEN import_status = 'IMPORTED' THEN 1 ELSE 0 END) AS imported,
+              SUM(CASE WHEN import_status = 'EXCLUDED' THEN 1 ELSE 0 END) AS excluded
+            FROM st_historical_student_candidates" . $whereClause;
+    $res = mysqli_query($this->conn, $sql);
+    if ($res && ($row = mysqli_fetch_assoc($res))) {
+      foreach ($empty as $k => $v) {
+        if (isset($row[$k])) {
+          $empty[$k] = intval($row[$k]);
+        }
+      }
+    }
+
+    if ($deptId > 0) {
+      $cRes = mysqli_query($this->conn, "SELECT COUNT(DISTINCT r.conflict_register_id) AS cnt FROM st_historical_conflict_register r INNER JOIN st_historical_student_candidates c ON FIND_IN_SET(r.conflict_id_ref, REPLACE(c.related_conflict_ids, ' ', '')) > 0 WHERE c.cur_department_id = {$deptId}");
+      if ($cRes && ($cRow = mysqli_fetch_assoc($cRes))) {
+        $empty['conflicts_count'] = intval($cRow['cnt'] ?? 0);
+      }
+      $dRes = mysqli_query($this->conn, "SELECT COUNT(*) AS cnt FROM st_historical_excluded_duplicates d INNER JOIN st_historical_student_candidates c ON c.candidate_id = d.linked_candidate_id WHERE c.cur_department_id = {$deptId}");
+      if ($dRes && ($dRow = mysqli_fetch_assoc($dRes))) {
+        $empty['excluded_duplicates_count'] = intval($dRow['cnt'] ?? 0);
+      }
+    } else {
+      $cRes = mysqli_query($this->conn, "SELECT COUNT(*) AS cnt FROM st_historical_conflict_register");
+      if ($cRes && ($cRow = mysqli_fetch_assoc($cRes))) {
+        $empty['conflicts_count'] = intval($cRow['cnt'] ?? 0);
+      }
+      $dRes = mysqli_query($this->conn, "SELECT COUNT(*) AS cnt FROM st_historical_excluded_duplicates");
+      if ($dRes && ($dRow = mysqli_fetch_assoc($dRes))) {
+        $empty['excluded_duplicates_count'] = intval($dRow['cnt'] ?? 0);
+      }
+    }
+
+    return $empty;
+  }
+
+  /**
+   * Builds shared prepared-statement WHERE SQL & parameter bindings across all 12 archive filters + search.
+   * If $enforcedDeptId is set, strictly enforces that department, overriding client filters.
+   */
+  public function buildHistoricalArchiveWhere(array $filters, $search, array &$params, &$types, $enforcedDeptId = null)
+  {
+    $clauses = array('1=1');
+    $params = array();
+    $types = '';
+
+    $ay = intval($filters['academic_year_id'] ?? 0);
+    if ($ay > 0) {
+      $clauses[] = 'c.academic_year_id = ?';
+      $params[] = $ay;
+      $types .= 'i';
+    }
+
+    $sem = intval($filters['semester_id'] ?? 0);
+    if ($sem > 0) {
+      $clauses[] = 'c.semester_id = ?';
+      $params[] = $sem;
+      $types .= 'i';
+    }
+
+    $enforced = intval($enforcedDeptId);
+    if ($enforced > 0) {
+      $clauses[] = 'c.cur_department_id = ?';
+      $params[] = $enforced;
+      $types .= 'i';
+    } else {
+      $dept = intval($filters['department_id'] ?? 0);
+      if ($dept > 0) {
+        $clauses[] = 'c.cur_department_id = ?';
+        $params[] = $dept;
+        $types .= 'i';
+      }
+    }
+
+    $cls = intval($filters['class_id'] ?? 0);
+    if ($cls > 0) {
+      $clauses[] = 'c.class_id = ?';
+      $params[] = $cls;
+      $types .= 'i';
+    }
+
+    $divFilter = trim((string)($filters['division'] ?? ''));
+    if ($divFilter === '__MISSING__') {
+      $clauses[] = 'c.cur_division_id IS NULL';
+    } elseif ($divFilter !== '' && ctype_digit($divFilter)) {
+      $clauses[] = 'c.cur_division_id = ?';
+      $params[] = intval($divFilter);
+      $types .= 'i';
+    }
+
+    $erpFilter = trim((string)($filters['erp_id'] ?? ''));
+    if ($erpFilter === '__MISSING__') {
+      $clauses[] = "(c.cur_erp_id IS NULL OR c.cur_erp_id = '')";
+    } elseif ($erpFilter !== '') {
+      $likeErp = '%' . $erpFilter . '%';
+      $clauses[] = "(IFNULL(c.cur_erp_id, '') LIKE ? OR IFNULL(c.orig_erp_standardized, '') LIKE ? OR IFNULL(c.orig_erp_raw, '') LIKE ?)";
+      $params[] = $likeErp;
+      $params[] = $likeErp;
+      $params[] = $likeErp;
+      $types .= 'sss';
+    }
+
+    $nameFilter = trim((string)($filters['student_name'] ?? ''));
+    if ($nameFilter !== '') {
+      $likeName = '%' . $nameFilter . '%';
+      $clauses[] = "(c.cur_student_name LIKE ? OR c.orig_student_name_canonical LIKE ? OR IFNULL(c.orig_student_name_excel, '') LIKE ? OR IFNULL(c.orig_student_name_notice, '') LIKE ?)";
+      $params[] = $likeName;
+      $params[] = $likeName;
+      $params[] = $likeName;
+      $params[] = $likeName;
+      $types .= 'ssss';
+    }
+
+    $specFilter = trim((string)($filters['specialization'] ?? ''));
+    if ($specFilter === '__UNRESOLVED__') {
+      $clauses[] = '(c.cur_specialization_id IS NULL AND c.cur_minor_course_id IS NULL)';
+    } elseif (strpos($specFilter, 'MINOR:') === 0) {
+      $mcId = intval(substr($specFilter, 6));
+      if ($mcId > 0) {
+        $clauses[] = 'c.cur_minor_course_id = ?';
+        $params[] = $mcId;
+        $types .= 'i';
+      }
+    } elseif (strpos($specFilter, 'SPEC:') === 0) {
+      $spId = intval(substr($specFilter, 5));
+      if ($spId > 0) {
+        $clauses[] = 'c.cur_specialization_id = ?';
+        $params[] = $spId;
+        $types .= 'i';
+      }
+    } elseif ($specFilter !== '' && ctype_digit($specFilter)) {
+      $clauses[] = 'c.cur_specialization_id = ?';
+      $params[] = intval($specFilter);
+      $types .= 'i';
+    }
+
+    $courseFilter = trim((string)($filters['course'] ?? ''));
+    if ($courseFilter === '__UNMAPPED__') {
+      $clauses[] = "(c.cur_course_code IS NULL OR c.cur_course_code = '')";
+    } elseif ($courseFilter !== '') {
+      $likeCourse = '%' . $courseFilter . '%';
+      $clauses[] = "(IFNULL(c.cur_course_code, '') LIKE ? OR IFNULL(c.cur_course_name, '') LIKE ? OR IFNULL(c.orig_mapped_course_code, '') LIKE ?)";
+      $params[] = $likeCourse;
+      $params[] = $likeCourse;
+      $params[] = $likeCourse;
+      $types .= 'sss';
+    }
+
+    $eligAllowed = array('ELIGIBLE', 'CONDITIONALLY_ELIGIBLE', 'POLICY_NOTE', 'INELIGIBLE', 'UNRESOLVED');
+    $eligFilter = trim((string)($filters['eligibility_status'] ?? ''));
+    if (in_array($eligFilter, $eligAllowed, true)) {
+      $clauses[] = 'c.eligibility_status = ?';
+      $params[] = $eligFilter;
+      $types .= 's';
+    }
+
+    $appAllowed = array('PENDING', 'CONDITIONAL', 'HOLD', 'APPROVED', 'REJECTED');
+    $appFilter = trim((string)($filters['academic_approval_status'] ?? ''));
+    if ($appFilter === 'RETURNED_FOR_CORRECTION') {
+      $clauses[] = "(c.academic_approval_status = 'CONDITIONAL' AND c.approval_remarks LIKE '%[RETURNED_FOR_CORRECTION]%')";
+    } elseif ($appFilter === 'ACADEMIC_CONDITIONAL') {
+      $clauses[] = "(c.academic_approval_status = 'CONDITIONAL' AND (c.approval_remarks IS NULL OR c.approval_remarks NOT LIKE '%[RETURNED_FOR_CORRECTION]%'))";
+    } elseif (in_array($appFilter, $appAllowed, true)) {
+      $clauses[] = 'c.academic_approval_status = ?';
+      $params[] = $appFilter;
+      $types .= 's';
+    }
+
+    $impAllowed = array('NOT_IMPORTED', 'READY_FOR_IMPORT', 'IMPORTED', 'EXCLUDED');
+    $impFilter = trim((string)($filters['import_status'] ?? ''));
+    if (in_array($impFilter, $impAllowed, true)) {
+      $clauses[] = 'c.import_status = ?';
+      $params[] = $impFilter;
+      $types .= 's';
+    }
+
+    $tierAllowed = array('TIER_1_CLEAN_READY_FOR_SIGN_OFF', 'TIER_2_CONDITIONAL_POLICY_DECISION', 'TIER_3_HOLD_CONFLICT_OR_MISSING_ID');
+    $tierFilter = trim((string)($filters['approval_tier'] ?? ''));
+    if (in_array($tierFilter, $tierAllowed, true)) {
+      $clauses[] = 'c.approval_tier = ?';
+      $params[] = $tierFilter;
+      $types .= 's';
+    }
+
+    $searchClean = trim((string)$search);
+    if ($searchClean !== '') {
+      $likeSearch = '%' . $searchClean . '%';
+      $clauses[] = "(
+        c.staging_id LIKE ?
+        OR IFNULL(c.cur_erp_id, '') LIKE ?
+        OR IFNULL(c.orig_erp_standardized, '') LIKE ?
+        OR c.cur_student_name LIKE ?
+        OR c.orig_student_name_canonical LIKE ?
+        OR IFNULL(c.cur_department_code, '') LIKE ?
+        OR IFNULL(c.cur_course_code, '') LIKE ?
+        OR IFNULL(c.cur_course_name, '') LIKE ?
+        OR IFNULL(c.orig_specialization_or_minor_name, '') LIKE ?
+        OR IFNULL(c.blocking_reasons, '') LIKE ?
+        OR IFNULL(c.related_conflict_ids, '') LIKE ?
+      )";
+      for ($i = 0; $i < 11; $i++) {
+        $params[] = $likeSearch;
+        $types .= 's';
+      }
+    }
+
+    return implode(' AND ', $clauses);
+  }
+
+  /**
+   * Executes a prepared SELECT query safely with optional reference-bound parameters.
+   */
+  public function runPreparedSelect($sql, $types = '', array $params = array())
+  {
+    if (!($this->conn instanceof mysqli)) {
+      return array();
+    }
+    $stmt = mysqli_prepare($this->conn, $sql);
+    if (!$stmt) {
+      error_log('Prepared select failed: ' . mysqli_error($this->conn));
+      return array();
+    }
+    if ($types !== '' && !empty($params)) {
+      $bindArgs = array($types);
+      foreach ($params as $idx => $_val) {
+        $bindArgs[] = &$params[$idx];
+      }
+      call_user_func_array(array($stmt, 'bind_param'), $bindArgs);
+    }
+    mysqli_stmt_execute($stmt);
+    $res = mysqli_stmt_get_result($stmt);
+    $rows = array();
+    if ($res) {
+      while ($r = mysqli_fetch_assoc($res)) {
+        $rows[] = $r;
+      }
+    }
+    mysqli_stmt_close($stmt);
+    return $rows;
+  }
+
+  /**
+   * Returns conflict register entries (41 seeded entries) with optional search.
+   */
+  public function getHistoricalConflictRegister($search = '')
+  {
+    $search = trim((string)$search);
+    $sql = "SELECT * FROM st_historical_conflict_register";
+    $types = '';
+    $params = array();
+    if ($search !== '') {
+      $like = '%' . $search . '%';
+      $sql .= " WHERE resolution_id LIKE ? OR conflict_id_ref LIKE ? OR category LIKE ? OR conflict_title LIKE ? OR IFNULL(evidence_and_impact, '') LIKE ?";
+      $types = 'sssss';
+      $params = array($like, $like, $like, $like, $like);
+    }
+    $sql .= " ORDER BY conflict_register_id ASC";
+    return $this->runPreparedSelect($sql, $types, $params);
+  }
+
+  /**
+   * Returns separately stored verbatim Notice duplicates (5 rows) linked to canonical candidates.
+   */
+  public function getHistoricalExcludedDuplicates()
+  {
+    $sql = "SELECT d.*, c.staging_id AS linked_staging_id, c.cur_student_name AS linked_student_name,
+                   c.academic_approval_status AS linked_approval_status
+            FROM st_historical_excluded_duplicates d
+            LEFT JOIN st_historical_student_candidates c ON c.candidate_id = d.linked_candidate_id
+            ORDER BY d.excluded_dup_id ASC";
+    return $this->runPreparedSelect($sql);
+  }
+
+  /**
+   * Fetches full detail payload for one historical candidate, including conflicts, duplicates, and audit timeline.
+   * If $enforcedDeptId is set, verifies department match and returns null if mismatched (strict isolation).
+   */
+  public function getHistoricalCandidateDetail($candidateId, $enforcedDeptId = null)
+  {
+    $cid = intval($candidateId);
+    if ($cid <= 0) {
+      return null;
+    }
+
+    $sql = "SELECT c.*,
+                   b.import_batch_ref,
+                   d.department_name AS cur_department_name,
+                   dv.division_name AS cur_division_master_name,
+                   sem.semester_name,
+                   cl.class_name,
+                   tr.specialization_name AS cur_track_name,
+                   sp.specialization_name AS cur_specialization_name,
+                   mc.course_name AS cur_minor_course_name,
+                   ssub.subject_name AS cur_spec_subject_name,
+                   ssub.subject_code AS cur_spec_subject_code,
+                   msub.subject_name AS cur_minor_subject_name,
+                   uapp.user_name AS approved_by_user_name
+            FROM st_historical_student_candidates c
+            INNER JOIN st_historical_import_batches b ON b.batch_id = c.batch_id
+            LEFT JOIN st_department_master d ON d.department_id = c.cur_department_id
+            LEFT JOIN st_division_master dv ON dv.division_id = c.cur_division_id
+            LEFT JOIN st_semester_master sem ON sem.semester_id = c.semester_id
+            LEFT JOIN st_class_master cl ON cl.class_id = c.class_id
+            LEFT JOIN st_specialization_master tr ON tr.specialization_id = c.cur_track_id
+            LEFT JOIN st_specialization_master sp ON sp.specialization_id = c.cur_specialization_id
+            LEFT JOIN st_minorcourse mc ON mc.course_id = c.cur_minor_course_id
+            LEFT JOIN st_specialization_subject_master ssub ON ssub.subject_id = c.cur_spec_subject_id
+            LEFT JOIN st_minorsubject msub ON msub.subject_id = c.cur_minor_subject_id
+            LEFT JOIN st_user_master uapp ON uapp.user_id = c.approved_by_user_id
+            WHERE c.candidate_id = ?
+            LIMIT 1";
+    $rows = $this->runPreparedSelect($sql, 'i', array($cid));
+    if (empty($rows)) {
+      return null;
+    }
+    $candidate = $rows[0];
+
+    // Enforce department isolation if an enforced department is passed
+    $enforced = intval($enforcedDeptId);
+    if ($enforced > 0 && intval($candidate['cur_department_id'] ?? 0) !== $enforced) {
+      return null;
+    }
+
+    $conflicts = array();
+    $relRaw = trim((string)($candidate['related_conflict_ids'] ?? ''));
+    if ($relRaw !== '') {
+      $confIds = array_values(array_unique(array_filter(array_map('trim', explode(',', $relRaw)))));
+      if (!empty($confIds)) {
+        $ph = implode(',', array_fill(0, count($confIds), '?'));
+        $tStr = str_repeat('s', count($confIds));
+        $conflicts = $this->runPreparedSelect(
+          "SELECT * FROM st_historical_conflict_register WHERE conflict_id_ref IN ({$ph}) ORDER BY conflict_register_id ASC",
+          $tStr,
+          $confIds
+        );
+      }
+    }
+
+    $excludedDups = $this->runPreparedSelect(
+      "SELECT * FROM st_historical_excluded_duplicates WHERE linked_candidate_id = ? ORDER BY excluded_dup_id ASC",
+      'i',
+      array($cid)
+    );
+
+    $auditTimeline = $this->runPreparedSelect(
+      "SELECT * FROM st_historical_candidate_audit WHERE candidate_id = ? ORDER BY hist_audit_id DESC",
+      'i',
+      array($cid)
+    );
+
+    return array(
+      'candidate' => $candidate,
+      'conflicts' => $conflicts,
+      'excluded_duplicates' => $excludedDups,
+      'audit_timeline' => $auditTimeline
+    );
+  }
+
+  /**
+   * Performs an authorized Super Admin curated-field correction with full before/after audit logging.
+   * Never touches orig_* or source_* columns or active student tables.
+   */
+  public function correctHistoricalCandidate($candidateId, array $updates, $reason, $userId, $username)
+  {
+    $cid = intval($candidateId);
+    $uid = intval($userId);
+    $reasonClean = trim((string)$reason);
+
+    if (!($this->conn instanceof mysqli) || $cid <= 0 || $uid <= 0) {
+      return array('ok' => false, 'message' => 'Invalid candidate or user context.');
+    }
+    if (strlen($reasonClean) < 5) {
+      return array('ok' => false, 'message' => 'A mandatory correction reason (at least 5 characters) is required.');
+    }
+
+    // Explicitly block any attempt to pass immutable fields
+    foreach (array_keys($updates) as $k) {
+      if (strpos($k, 'orig_') === 0 || strpos($k, 'source_') === 0 || in_array($k, array('staging_id', 'batch_id', 'reconcile_id', 'student_candidate_key', 'candidate_id', 'promoted_student_id'), true)) {
+        return array('ok' => false, 'message' => 'Immutable source fields cannot be modified.');
+      }
+    }
+
+    $allowlist = array(
+      'cur_erp_id', 'cur_student_name', 'cur_department_id', 'cur_division_id',
+      'cur_division_label', 'cur_roll_no', 'cur_cgpa', 'cur_track_id',
+      'cur_specialization_id', 'cur_minor_course_id', 'cur_spec_subject_id',
+      'cur_minor_subject_id', 'cur_course_code', 'cur_course_name',
+      'cur_mentor_name', 'eligibility_status'
+    );
+
+    $nullableIntFields = array('cur_department_id', 'cur_division_id', 'cur_track_id', 'cur_specialization_id', 'cur_minor_course_id', 'cur_spec_subject_id', 'cur_minor_subject_id');
+    $nullableStrFields = array('cur_erp_id', 'cur_division_label', 'cur_roll_no', 'cur_course_code', 'cur_course_name', 'cur_mentor_name');
+    $eligAllowed = array('ELIGIBLE', 'CONDITIONALLY_ELIGIBLE', 'POLICY_NOTE', 'INELIGIBLE', 'UNRESOLVED');
+
+    mysqli_begin_transaction($this->conn);
+    try {
+      $currRows = $this->runPreparedSelect("SELECT * FROM st_historical_student_candidates WHERE candidate_id = ? LIMIT 1 FOR UPDATE", 'i', array($cid));
+      if (empty($currRows)) {
+        mysqli_rollback($this->conn);
+        return array('ok' => false, 'message' => 'Historical candidate record not found.');
+      }
+      $current = $currRows[0];
+
+      $normalized = array();
+      foreach ($allowlist as $field) {
+        if (!array_key_exists($field, $updates)) {
+          continue;
+        }
+        $raw = trim((string)$updates[$field]);
+
+        if (in_array($field, $nullableIntFields, true)) {
+          if ($raw === '' || $raw === '0') {
+            $normalized[$field] = null;
+          } elseif (!ctype_digit($raw)) {
+            throw new InvalidArgumentException("Invalid integer reference for {$field}.");
+          } else {
+            $normalized[$field] = intval($raw);
+          }
+        } elseif ($field === 'cur_cgpa') {
+          if ($raw === '') {
+            $normalized[$field] = null;
+          } elseif (!is_numeric($raw) || floatval($raw) < 0 || floatval($raw) > 10) {
+            throw new InvalidArgumentException('Curated CGPA must be a valid decimal between 0.00 and 10.00.');
+          } else {
+            $normalized[$field] = number_format((float)$raw, 2, '.', '');
+          }
+        } elseif ($field === 'cur_student_name') {
+          if ($raw === '') {
+            throw new InvalidArgumentException('Curated student name cannot be empty.');
+          }
+          $normalized[$field] = mb_substr($raw, 0, 200);
+        } elseif ($field === 'eligibility_status') {
+          if (!in_array($raw, $eligAllowed, true)) {
+            throw new InvalidArgumentException('Invalid eligibility status selection.');
+          }
+          $normalized[$field] = $raw;
+        } elseif (in_array($field, $nullableStrFields, true)) {
+          if ($field === 'cur_erp_id' && $raw !== '' && !preg_match('/^[A-Za-z0-9_-]{3,40}$/', $raw)) {
+            throw new InvalidArgumentException('Curated ERP ID contains invalid characters.');
+          }
+          $normalized[$field] = ($raw === '') ? null : mb_substr($raw, 0, 255);
+        }
+      }
+
+      // Auto-sync cur_department_code if cur_department_id was changed
+      if (array_key_exists('cur_department_id', $normalized)) {
+        if ($normalized['cur_department_id'] === null) {
+          $normalized['cur_department_code'] = null;
+        } else {
+          $dCheck = $this->runPreparedSelect("SELECT department_name FROM st_department_master WHERE department_id = ? LIMIT 1", 'i', array($normalized['cur_department_id']));
+          if (empty($dCheck)) {
+            throw new InvalidArgumentException('Selected department does not exist.');
+          }
+          $normalized['cur_department_code'] = $dCheck[0]['department_name'];
+        }
+      }
+
+      // Validate division FK and sync division label if unset
+      if (array_key_exists('cur_division_id', $normalized) && $normalized['cur_division_id'] !== null) {
+        $dvCheck = $this->runPreparedSelect("SELECT division_name FROM st_division_master WHERE division_id = ? LIMIT 1", 'i', array($normalized['cur_division_id']));
+        if (empty($dvCheck)) {
+          throw new InvalidArgumentException('Selected division does not exist.');
+        }
+        if (!isset($normalized['cur_division_label']) || $normalized['cur_division_label'] === null) {
+          $normalized['cur_division_label'] = $dvCheck[0]['division_name'];
+        }
+      }
+
+      if (array_key_exists('cur_track_id', $normalized) && $normalized['cur_track_id'] !== null) {
+        $tCheck = $this->runPreparedSelect("SELECT specialization_id FROM st_specialization_master WHERE specialization_id = ? LIMIT 1", 'i', array($normalized['cur_track_id']));
+        if (empty($tCheck)) {
+          throw new InvalidArgumentException('Selected track does not exist.');
+        }
+      }
+      if (array_key_exists('cur_specialization_id', $normalized) && $normalized['cur_specialization_id'] !== null) {
+        $sCheck = $this->runPreparedSelect("SELECT specialization_id FROM st_specialization_master WHERE specialization_id = ? LIMIT 1", 'i', array($normalized['cur_specialization_id']));
+        if (empty($sCheck)) {
+          throw new InvalidArgumentException('Selected specialization does not exist.');
+        }
+      }
+      if (array_key_exists('cur_minor_course_id', $normalized) && $normalized['cur_minor_course_id'] !== null) {
+        $mCheck = $this->runPreparedSelect("SELECT course_id FROM st_minorcourse WHERE course_id = ? LIMIT 1", 'i', array($normalized['cur_minor_course_id']));
+        if (empty($mCheck)) {
+          throw new InvalidArgumentException('Selected minor course does not exist.');
+        }
+      }
+
+      // Determine only fields that actually changed
+      $changes = array();
+      foreach ($normalized as $col => $newVal) {
+        $oldRaw = $current[$col] ?? null;
+        $oldCmp = ($oldRaw === null) ? null : (string)$oldRaw;
+        $newCmp = ($newVal === null) ? null : (string)$newVal;
+        if ($col === 'cur_cgpa' && $oldCmp !== null && $newCmp !== null && abs((float)$oldCmp - (float)$newCmp) < 0.001) {
+          continue;
+        }
+        if ($oldCmp !== $newCmp) {
+          $changes[$col] = array('old' => $oldCmp, 'new' => $newCmp, 'val' => $newVal);
+        }
+      }
+
+      if (empty($changes)) {
+        mysqli_rollback($this->conn);
+        return array('ok' => false, 'message' => 'No field values were changed.');
+      }
+
+      $setClauses = array();
+      $uTypes = '';
+      $uParams = array();
+      foreach ($changes as $col => $meta) {
+        $setClauses[] = "`{$col}` = ?";
+        $uParams[] = $meta['val'];
+        if (in_array($col, $nullableIntFields, true) && $meta['val'] !== null) {
+          $uTypes .= 'i';
+        } else {
+          $uTypes .= 's';
+        }
+      }
+      $uParams[] = $cid;
+      $uTypes .= 'i';
+
+      $updSql = "UPDATE `st_historical_student_candidates` SET " . implode(', ', $setClauses) . " WHERE candidate_id = ?";
+      $stmtUpd = mysqli_prepare($this->conn, $updSql);
+      if (!$stmtUpd) {
+        throw new RuntimeException('Failed preparing candidate update statement.');
+      }
+      $bindUpd = array($uTypes);
+      foreach ($uParams as $idx => $_v) {
+        $bindUpd[] = &$uParams[$idx];
+      }
+      call_user_func_array(array($stmtUpd, 'bind_param'), $bindUpd);
+      if (!mysqli_stmt_execute($stmtUpd)) {
+        $err = mysqli_stmt_error($stmtUpd);
+        mysqli_stmt_close($stmtUpd);
+        throw new RuntimeException($err);
+      }
+      mysqli_stmt_close($stmtUpd);
+
+      // Append field-level entries to immutable audit ledger
+      $stmtAudit = mysqli_prepare(
+        $this->conn,
+        "INSERT INTO `st_historical_candidate_audit`
+         (`candidate_id`, `action_type`, `field_name`, `old_value`, `new_value`, `remarks`, `performed_by_user_id`, `performed_by_username`)
+         VALUES (?, 'FIELD_CORRECTION', ?, ?, ?, ?, ?, ?)"
+      );
+      if (!$stmtAudit) {
+        throw new RuntimeException('Failed preparing candidate audit statement.');
+      }
+      $summaryParts = array();
+      foreach ($changes as $col => $meta) {
+        $oldDisp = ($meta['old'] === null) ? '(NULL)' : $meta['old'];
+        $newDisp = ($meta['new'] === null) ? '(NULL)' : $meta['new'];
+        mysqli_stmt_bind_param($stmtAudit, 'issssis', $cid, $col, $oldDisp, $newDisp, $reasonClean, $uid, $username);
+        if (!mysqli_stmt_execute($stmtAudit)) {
+          $err = mysqli_stmt_error($stmtAudit);
+          mysqli_stmt_close($stmtAudit);
+          throw new RuntimeException($err);
+        }
+        $summaryParts[] = "{$col}: {$oldDisp} -> {$newDisp}";
+      }
+      mysqli_stmt_close($stmtAudit);
+
+      $this->writeAuditLog(
+        $uid,
+        'HISTORICAL_ARCHIVE_CORRECTION',
+        'st_historical_student_candidates',
+        $cid,
+        "Staging {$current['staging_id']} updated (" . implode('; ', $summaryParts) . "). Reason: {$reasonClean}",
+        $username
+      );
+
+      mysqli_commit($this->conn);
+      return array(
+        'ok' => true,
+        'message' => 'Curated historical record updated and logged in audit history.',
+        'changed_fields' => array_keys($changes)
+      );
+    } catch (Throwable $e) {
+      @mysqli_rollback($this->conn);
+      return array('ok' => false, 'message' => $e->getMessage());
+    }
+  }
+
+  /**
+   * Records an official Academic Approval Decision with strict supporting-evidence validation.
+   * If $enforcedDeptId is provided, strictly validates that all candidate IDs belong to that department.
+   * Blocks approval of candidates on Academic HOLD or INELIGIBLE status.
+   * Never automatically promotes candidates into st_student_master or st_enrollment.
+   */
+  public function recordHistoricalApprovalDecision(array $candidateIds, array $payload, $userId, $username, $enforcedDeptId = null, $dryRun = false)
+  {
+    $uid = intval($userId);
+    if (!($this->conn instanceof mysqli) || $uid <= 0) {
+      return array('ok' => false, 'message' => 'Unauthorized user session.');
+    }
+
+    $cleanIds = array();
+    foreach ($candidateIds as $idVal) {
+      $idInt = intval($idVal);
+      if ($idInt > 0) {
+        $cleanIds[$idInt] = $idInt;
+      }
+    }
+    $cleanIds = array_values($cleanIds);
+    if (empty($cleanIds)) {
+      return array('ok' => false, 'message' => 'Select at least one valid historical candidate.');
+    }
+
+    $approvalAllowed = array('PENDING', 'CONDITIONAL', 'HOLD', 'APPROVED', 'REJECTED');
+    $rawStatus = trim((string)($payload['academic_approval_status'] ?? ''));
+    $authority = trim((string)($payload['approving_authority'] ?? ''));
+    $approvalDateRaw = trim((string)($payload['approval_date'] ?? ''));
+    $remarks = trim((string)($payload['remarks'] ?? ''));
+    $sourceRef = trim((string)($payload['supporting_source_reference'] ?? ''));
+    $reqImportStatus = trim((string)($payload['import_status'] ?? ''));
+
+    // Distinguish Return for Correction from Academic Conditional
+    $isReturnForCorrection = (
+      $rawStatus === 'RETURNED_FOR_CORRECTION' ||
+      !empty($payload['is_return_for_correction']) ||
+      ($rawStatus === 'CONDITIONAL' && strpos($remarks, '[RETURNED_FOR_CORRECTION]') !== false)
+    );
+
+    $newStatus = $isReturnForCorrection ? 'CONDITIONAL' : $rawStatus;
+
+    if (!in_array($newStatus, $approvalAllowed, true)) {
+      return array('ok' => false, 'message' => 'Invalid academic approval status selected.');
+    }
+
+    if ($isReturnForCorrection && strpos($remarks, '[RETURNED_FOR_CORRECTION]') === false) {
+      $remarks = '[RETURNED_FOR_CORRECTION] ' . $remarks;
+    }
+
+    // Verify HOD authorization server-side if department scope is enforced
+    $enforced = intval($enforcedDeptId);
+    if ($enforced > 0) {
+      $authCheck = $this->verifyHodAuthorization($uid, $enforced);
+      if (!$authCheck['is_authorized']) {
+        return array('ok' => false, 'message' => 'Authorization error: ' . $authCheck['reason']);
+      }
+    }
+
+    // Guard against Authority Spoofing: prevent claiming BoS, Academic Council, Dean, or Principal approval
+    if (preg_match('/\b(academic\s+council|board\s+of\s+studies|bos|dean|principal|governing\s+body|university)\b/i', $authority)) {
+      return array('ok' => false, 'message' => 'Authority spoofing detected: HOD decisions cannot claim approval on behalf of Academic Council, Board of Studies, Dean, or Principal.');
+    }
+
+    if (strlen($authority) < 3) {
+      return array('ok' => false, 'message' => 'Approving Authority is mandatory (at least 3 characters).');
+    }
+
+    // Server-enforced HOD authority formatting to bind authenticated HOD identity
+    if ($enforced > 0) {
+      $deptRow = $this->runPreparedSelect("SELECT department_name FROM st_department_master WHERE department_id = ?", 'i', array($enforced));
+      $deptName = !empty($deptRow) ? trim((string)$deptRow[0]['department_name']) : ('Dept #' . $enforced);
+      if (strpos($authority, 'HOD -') !== 0) {
+        $authority = "HOD - {$deptName} ({$username}) [Ref: {$authority}]";
+      }
+    }
+
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}(?:[ T]\d{2}:\d{2}(?::\d{2})?)?$/', $approvalDateRaw)) {
+      return array('ok' => false, 'message' => 'Valid Approval Date (YYYY-MM-DD) is mandatory.');
+    }
+    $parsedTs = strtotime($approvalDateRaw);
+    if ($parsedTs === false) {
+      return array('ok' => false, 'message' => 'Invalid Approval Date format.');
+    }
+    $approvalDateSql = date('Y-m-d H:i:s', $parsedTs);
+    if (strlen($remarks) < 5) {
+      return array('ok' => false, 'message' => 'Approval remarks (at least 5 characters) are mandatory.');
+    }
+    if (strlen($sourceRef) < 3) {
+      return array('ok' => false, 'message' => 'Supporting source reference (e.g., signed IOM / BoS minute ref) is mandatory.');
+    }
+    if ($reqImportStatus === 'IMPORTED') {
+      return array('ok' => false, 'message' => 'Approval cannot mark candidates as IMPORTED or auto-promote into active students.');
+    }
+
+    $isBulk = (count($cleanIds) > 1);
+    if ($isReturnForCorrection) {
+      $actionType = $isBulk ? 'BULK_RETURN_FOR_CORRECTION' : 'RETURN_FOR_CORRECTION';
+    } else {
+      $actionType = $isBulk ? 'BULK_APPROVAL_DECISION' : 'APPROVAL_DECISION';
+    }
+
+    mysqli_begin_transaction($this->conn);
+    try {
+      $ph = implode(',', array_fill(0, count($cleanIds), '?'));
+      $tStr = str_repeat('i', count($cleanIds));
+      $rows = $this->runPreparedSelect(
+        "SELECT * FROM st_historical_student_candidates WHERE candidate_id IN ({$ph}) FOR UPDATE",
+        $tStr,
+        $cleanIds
+      );
+      if (count($rows) !== count($cleanIds)) {
+        throw new InvalidArgumentException('One or more selected historical candidate IDs do not exist.');
+      }
+
+      $enforced = intval($enforcedDeptId);
+      // Enforce department isolation and prerequisite rules prior to making decisions
+      foreach ($rows as $row) {
+        if ($enforced > 0 && intval($row['cur_department_id'] ?? 0) !== $enforced) {
+          throw new InvalidArgumentException("Security violation: Candidate {$row['staging_id']} ({$row['cur_student_name']}) does not belong to your authorized department.");
+        }
+
+        if ($newStatus === 'APPROVED') {
+          // Candidates on Academic HOLD or INELIGIBLE cannot be approved via ordinary HOD decision
+          if ($row['academic_approval_status'] === 'HOLD' || $row['eligibility_status'] === 'INELIGIBLE') {
+            throw new InvalidArgumentException("Cannot approve {$row['staging_id']} ({$row['cur_student_name']}): Candidate is on Academic Hold or Ineligible. Institutional council resolution required.");
+          }
+          if (trim((string)($row['cur_erp_id'] ?? '')) === '') {
+            throw new InvalidArgumentException("Cannot mark {$row['staging_id']} APPROVED: curated ERP ID is missing.");
+          }
+          if (intval($row['cur_division_id'] ?? 0) <= 0) {
+            throw new InvalidArgumentException("Cannot mark {$row['staging_id']} APPROVED: curated Division is missing.");
+          }
+          if (in_array($row['eligibility_status'], array('INELIGIBLE', 'UNRESOLVED'), true)) {
+            throw new InvalidArgumentException("Cannot mark {$row['staging_id']} APPROVED while eligibility is {$row['eligibility_status']}.");
+          }
+          if (intval($row['cur_specialization_id'] ?? 0) <= 0 && intval($row['cur_minor_course_id'] ?? 0) <= 0) {
+            throw new InvalidArgumentException("Cannot mark {$row['staging_id']} APPROVED: curated Specialization/Minor mapping is missing.");
+          }
+        }
+      }
+
+      $stmtUpd = mysqli_prepare(
+        $this->conn,
+        "UPDATE `st_historical_student_candidates`
+         SET academic_approval_status = ?,
+             import_status = ?,
+             approving_authority = ?,
+             approved_by_user_id = ?,
+             approval_date = ?,
+             approval_remarks = ?,
+             supporting_source_reference = ?
+         WHERE candidate_id = ?"
+      );
+      $stmtAudit = mysqli_prepare(
+        $this->conn,
+        "INSERT INTO `st_historical_candidate_audit`
+         (`candidate_id`, `action_type`, `field_name`, `old_value`, `new_value`, `approving_authority`, `remarks`, `supporting_source_reference`, `performed_by_user_id`, `performed_by_username`)
+         VALUES (?, ?, 'academic_approval_status', ?, ?, ?, ?, ?, ?, ?)"
+      );
+      if (!$stmtUpd || !$stmtAudit) {
+        throw new RuntimeException('Failed preparing approval decision statements.');
+      }
+
+      foreach ($rows as $row) {
+        $cid = intval($row['candidate_id']);
+        $oldApp = (string)$row['academic_approval_status'];
+        $nextImp = (string)$row['import_status'];
+        if ($reqImportStatus !== '') {
+          if ($reqImportStatus === 'READY_FOR_IMPORT' && $newStatus === 'APPROVED') {
+            $nextImp = 'READY_FOR_IMPORT';
+          } elseif ($reqImportStatus === 'EXCLUDED' && $newStatus === 'REJECTED') {
+            $nextImp = 'EXCLUDED';
+          } elseif ($reqImportStatus === 'NOT_IMPORTED') {
+            $nextImp = 'NOT_IMPORTED';
+          } else {
+            throw new InvalidArgumentException("Invalid import_status transition '{$reqImportStatus}' for approval '{$newStatus}'.");
+          }
+        } elseif ($newStatus === 'REJECTED') {
+          $nextImp = 'EXCLUDED';
+        } elseif ($newStatus !== 'APPROVED' && $nextImp === 'READY_FOR_IMPORT') {
+          $nextImp = 'NOT_IMPORTED';
+        }
+
+        mysqli_stmt_bind_param(
+          $stmtUpd,
+          'sssisssi',
+          $newStatus,
+          $nextImp,
+          $authority,
+          $uid,
+          $approvalDateSql,
+          $remarks,
+          $sourceRef,
+          $cid
+        );
+        if (!mysqli_stmt_execute($stmtUpd)) {
+          throw new RuntimeException(mysqli_stmt_error($stmtUpd));
+        }
+
+        mysqli_stmt_bind_param(
+          $stmtAudit,
+          'issssssis',
+          $cid,
+          $actionType,
+          $oldApp,
+          $newStatus,
+          $authority,
+          $remarks,
+          $sourceRef,
+          $uid,
+          $username
+        );
+        if (!mysqli_stmt_execute($stmtAudit)) {
+          throw new RuntimeException(mysqli_stmt_error($stmtAudit));
+        }
+      }
+
+      mysqli_stmt_close($stmtUpd);
+      mysqli_stmt_close($stmtAudit);
+
+      if ($dryRun) {
+        @mysqli_rollback($this->conn);
+        return array(
+          'ok' => true,
+          'message' => 'Dry run rehearsal successful: all prerequisite checks and validations passed.',
+          'updated_count' => count($cleanIds)
+        );
+      }
+
+      $this->writeAuditLog(
+        $uid,
+        $isBulk ? 'HISTORICAL_BULK_APPROVAL' : 'HISTORICAL_APPROVAL_DECISION',
+        'st_historical_student_candidates',
+        count($cleanIds) === 1 ? $cleanIds[0] : null,
+        "Recorded {$newStatus} decision for " . count($cleanIds) . " candidate(s); authority={$authority}; date={$approvalDateSql}; ref={$sourceRef}",
+        $username
+      );
+
+      mysqli_commit($this->conn);
+      return array(
+        'ok' => true,
+        'message' => 'Academic approval decision recorded successfully (no automatic promotion performed).',
+        'updated_count' => count($cleanIds)
+      );
+    } catch (Throwable $e) {
+      @mysqli_rollback($this->conn);
+      return array('ok' => false, 'message' => $e->getMessage());
+    }
+  }
+
+  /**
+   * Transitions a candidate returned for correction back to PENDING upon rectification.
+   * Strictly enforces department isolation.
+   */
+  public function resubmitCandidateCorrection($candidateId, $userId, $username, $enforcedDeptId = null)
+  {
+    $uid = intval($userId);
+    $cid = intval($candidateId);
+    if (!($this->conn instanceof mysqli) || $uid <= 0 || $cid <= 0) {
+      return array('ok' => false, 'message' => 'Invalid parameters or user session.');
+    }
+
+    $cands = $this->runPreparedSelect("SELECT * FROM st_historical_student_candidates WHERE candidate_id = ?", 'i', array($cid));
+    if (empty($cands)) {
+      return array('ok' => false, 'message' => 'Candidate record not found.');
+    }
+    $c = $cands[0];
+
+    $enforced = intval($enforcedDeptId);
+    if ($enforced > 0 && intval($c['cur_department_id'] ?? 0) !== $enforced) {
+      return array('ok' => false, 'message' => 'Security violation: Candidate belongs to another department.');
+    }
+
+    if ($c['academic_approval_status'] !== 'CONDITIONAL' || strpos((string)($c['approval_remarks'] ?? ''), '[RETURNED_FOR_CORRECTION]') === false) {
+      return array('ok' => false, 'message' => 'Candidate is not currently in Returned for Correction status.');
+    }
+
+    mysqli_begin_transaction($this->conn);
+    try {
+      $stmtUpd = mysqli_prepare(
+        $this->conn,
+        "UPDATE st_historical_student_candidates
+         SET academic_approval_status = 'PENDING',
+             import_status = 'NOT_IMPORTED'
+         WHERE candidate_id = ?"
+      );
+      if (!$stmtUpd) {
+        throw new RuntimeException('Failed preparing resubmission statement.');
+      }
+      mysqli_stmt_bind_param($stmtUpd, 'i', $cid);
+      if (!mysqli_stmt_execute($stmtUpd)) {
+        throw new RuntimeException(mysqli_stmt_error($stmtUpd));
+      }
+      mysqli_stmt_close($stmtUpd);
+
+      $stmtAudit = mysqli_prepare(
+        $this->conn,
+        "INSERT INTO `st_historical_candidate_audit`
+         (`candidate_id`, `action_type`, `field_name`, `old_value`, `new_value`, `remarks`, `performed_by_user_id`, `performed_by_username`)
+         VALUES (?, 'STATUS_CHANGE', 'academic_approval_status', 'CONDITIONAL', 'PENDING', 'Re-submitted for HOD approval after correction', ?, ?)"
+      );
+      if (!$stmtAudit) {
+        throw new RuntimeException('Failed preparing resubmission audit statement.');
+      }
+      mysqli_stmt_bind_param($stmtAudit, 'iis', $cid, $uid, $username);
+      if (!mysqli_stmt_execute($stmtAudit)) {
+        throw new RuntimeException(mysqli_stmt_error($stmtAudit));
+      }
+      mysqli_stmt_close($stmtAudit);
+
+      $this->writeAuditLog(
+        $uid,
+        'HISTORICAL_CANDIDATE_RESUBMIT',
+        'st_historical_student_candidates',
+        $cid,
+        "Candidate {$c['staging_id']} re-submitted for HOD approval after correction",
+        $username
+      );
+
+      mysqli_commit($this->conn);
+      return array('ok' => true, 'message' => 'Candidate successfully re-submitted for institutional approval.');
+    } catch (Throwable $e) {
+      @mysqli_rollback($this->conn);
+      return array('ok' => false, 'message' => $e->getMessage());
+    }
+  }
+
+  /**
+   * Generates department-wise approval monitoring metrics for Super Admin.
+   */
+  public function getSuperAdminApprovalMonitoringSummary()
+  {
+    if (!($this->conn instanceof mysqli)) {
+      return array();
+    }
+    $sql = "SELECT
+              d.department_id,
+              d.department_name,
+              COUNT(c.candidate_id) AS total_candidates,
+              SUM(CASE WHEN c.academic_approval_status = 'PENDING' THEN 1 ELSE 0 END) AS pending_count,
+              SUM(CASE WHEN c.academic_approval_status = 'APPROVED' THEN 1 ELSE 0 END) AS approved_count,
+              SUM(CASE WHEN c.academic_approval_status = 'REJECTED' THEN 1 ELSE 0 END) AS rejected_count,
+              SUM(CASE WHEN c.academic_approval_status = 'CONDITIONAL' AND (c.approval_remarks IS NULL OR c.approval_remarks NOT LIKE '%[RETURNED_FOR_CORRECTION]%') THEN 1 ELSE 0 END) AS conditional_academic_count,
+              SUM(CASE WHEN c.academic_approval_status = 'CONDITIONAL' AND c.approval_remarks LIKE '%[RETURNED_FOR_CORRECTION]%' THEN 1 ELSE 0 END) AS returned_for_correction_count,
+              SUM(CASE WHEN c.academic_approval_status = 'CONDITIONAL' THEN 1 ELSE 0 END) AS conditional_count,
+              SUM(CASE WHEN c.academic_approval_status = 'HOLD' THEN 1 ELSE 0 END) AS hold_count,
+              SUM(CASE WHEN c.eligibility_status = 'INELIGIBLE' THEN 1 ELSE 0 END) AS ineligible_count,
+              MAX(c.approval_date) AS last_decision_date
+            FROM st_department_master d
+            LEFT JOIN st_historical_student_candidates c ON c.cur_department_id = d.department_id
+            GROUP BY d.department_id, d.department_name
+            ORDER BY d.department_id ASC";
+    return $this->runPreparedSelect($sql);
   }
 
 }

@@ -13,18 +13,19 @@ if (!isset($_SESSION['user_session'])) {
 
 $loginUserId = intval($_SESSION['user_id'] ?? 0);
 $userData = $db_handle->runQuery("SELECT role_id, department_id, user_name FROM st_user_master WHERE user_id='$loginUserId'");
-$loginRole = intval($userData[0]['role_id'] ?? 0);
-$loginDepartment = intval($userData[0]['department_id'] ?? 0);
-$loginUserName = $userData[0]['user_name'] ?? 'Administrator';
+$loginRole = intval($userData[0]['role_id'] ?? ($_SESSION['role_id'] ?? 0));
+$loginDepartment = intval($userData[0]['department_id'] ?? ($_SESSION['department_id'] ?? 0));
+$loginUserName = $userData[0]['user_name'] ?? ($_SESSION['user_name'] ?? 'Staff');
 
-// Backend Authorization: Super Admin (1), Admin (2), Coordinator/HOD (3), Mentor (4)
-if (!in_array($loginRole, [1, 2, 3, 4], true)) {
+// Backend Authorization: Strictly restricted to Super Admin (1), Admin (2), and Coordinator/HOD (3)
+if (!in_array($loginRole, [1, 2, 3], true)) {
     if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
         header('Content-Type: application/json', true, 403);
-        echo json_encode(['success' => false, 'message' => 'Access Denied: You do not have permission to view mentor assignments.']);
+        echo json_encode(['success' => false, 'message' => 'Access Denied: Administrative privileges required to view or manage mentor assignments.']);
         exit();
     }
-    echo "<script>alert('Access Denied'); window.location.href='index.php';</script>";
+    http_response_code(403);
+    echo '<!DOCTYPE html><html><head><title>403 Forbidden</title></head><body><h1>403 Forbidden</h1><p>Access Denied: Administrative privileges are required to view or manage mentor assignments.</p></body></html>';
     exit();
 }
 

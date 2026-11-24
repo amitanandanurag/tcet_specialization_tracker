@@ -277,10 +277,40 @@ body, .content-wrapper, .right-side, .main-footer {
 .skin-blue .main-sidebar {
   background-color: var(--erp-sidebar-bg) !important;
   border-right: 1px solid #1e293b;
+  overflow-x: hidden !important;
 }
 .skin-blue .sidebar {
   padding-bottom: 30px;
+  overflow-x: hidden !important;
 }
+.skin-blue .sidebar-menu {
+  overflow-x: hidden !important;
+  width: 100% !important;
+}
+
+/* Global Sidebar Link Normalization — prevent focus/hover outlines and underlines */
+.skin-blue .sidebar-menu a,
+.skin-blue .sidebar-menu a:hover,
+.skin-blue .sidebar-menu a:focus,
+.skin-blue .sidebar-menu a:active,
+.skin-blue .sidebar-menu a:focus-visible,
+.skin-blue .sidebar-menu li,
+.skin-blue .sidebar-menu li:focus,
+.skin-blue .sidebar-menu li:focus-visible,
+.skin-blue .sidebar-menu li.active > a,
+.skin-blue .sidebar-menu li.active > a:focus,
+.skin-blue .sidebar-menu li.active > a:focus-visible,
+.skin-blue .sidebar-menu li.active > a:hover,
+.skin-blue .treeview-menu > li > a,
+.skin-blue .treeview-menu > li > a:hover,
+.skin-blue .treeview-menu > li > a:focus,
+.skin-blue .treeview-menu > li > a:focus-visible,
+.skin-blue .treeview-menu > li > a:active {
+  text-decoration: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
 .erp-sidebar-brand {
   padding: 12px 14px;
   display: flex;
@@ -334,6 +364,9 @@ body, .content-wrapper, .right-side, .main-footer {
   font-weight: 500;
   padding: 9px 16px !important;
   transition: all 0.15s ease;
+  display: flex !important;
+  align-items: center;
+  justify-content: space-between;
 }
 .skin-blue .sidebar-menu > li > a i {
   width: 20px;
@@ -342,6 +375,10 @@ body, .content-wrapper, .right-side, .main-footer {
   margin-right: 8px;
   color: #64748b;
   transition: color 0.15s ease;
+  flex-shrink: 0;
+}
+.skin-blue .sidebar-menu > li > a > span:first-of-type {
+  flex-grow: 1;
 }
 .skin-blue .sidebar-menu > li:hover > a {
   color: #ffffff !important;
@@ -364,18 +401,51 @@ body, .content-wrapper, .right-side, .main-footer {
 .skin-blue .treeview-menu {
   background: #090d16 !important;
   padding: 4px 0 6px !important;
+  overflow-x: hidden !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+.skin-blue .treeview-menu > li {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
 }
 .skin-blue .treeview-menu > li > a {
   color: #8b9bb4 !important;
   font-size: 12px;
-  padding: 7px 16px 7px 42px !important;
+  padding: 7px 12px 7px 26px !important;
   font-weight: 400;
   transition: all 0.15s ease;
+  display: flex !important;
+  align-items: flex-start !important;
+  white-space: normal !important;
+  line-height: 1.35 !important;
+  word-break: normal;
+  overflow-wrap: break-word;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
 }
 .skin-blue .treeview-menu > li > a i {
-  font-size: 11px;
-  margin-right: 6px;
+  font-size: 10px;
+  margin-top: 2px !important;
+  margin-right: 8px !important;
   width: 14px;
+  min-width: 14px;
+  text-align: center;
+  flex-shrink: 0 !important;
+}
+.skin-blue .treeview-menu > li > a span {
+  display: block !important;
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  max-width: calc(100% - 22px);
+  white-space: normal !important;
+  word-wrap: break-word !important;
+  overflow-wrap: break-word !important;
+  line-height: 1.35 !important;
 }
 .skin-blue .treeview-menu > li > a:hover,
 .skin-blue .treeview-menu > li.active > a {

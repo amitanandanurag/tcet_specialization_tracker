@@ -362,16 +362,23 @@ if (isset($_POST['save'])) {
     $status = 1;
     
     // Check if registration number exists
-    $check_sql = "SELECT registration_no FROM st_student_master WHERE registration_no = '$registration_no'";
+    $regNoVal = trim($registration_no);
+    $check_sql = "SELECT student_id FROM st_student_master WHERE registration_no = ?";
     if ($existingStudentId > 0) {
-        $check_sql .= " AND student_id != " . $existingStudentId;
+        $check_sql .= " AND student_id != " . intval($existingStudentId);
     }
-    $check_result = mysqli_query($conn, $check_sql);
-    
-    if (mysqli_num_rows($check_result) > 0) {
-        echo '<script type="text/javascript">alert("Registration number already exists!");</script>';
-        echo "<script>window.open('student_admission.php','_self')</script>";
-        exit;
+    $checkStmt = mysqli_prepare($conn, $check_sql);
+    if ($checkStmt) {
+        mysqli_stmt_bind_param($checkStmt, "s", $regNoVal);
+        mysqli_stmt_execute($checkStmt);
+        mysqli_stmt_store_result($checkStmt);
+        if (mysqli_stmt_num_rows($checkStmt) > 0) {
+            mysqli_stmt_close($checkStmt);
+            echo '<script type="text/javascript">alert("Registration number already exists!");</script>';
+            echo "<script>window.open('student_admission.php','_self')</script>";
+            exit;
+        }
+        mysqli_stmt_close($checkStmt);
     }
 
     if ($specialization_subject_id !== 'NULL' && !$database->isSubjectAvailable(
@@ -381,179 +388,235 @@ if (isset($_POST['save'])) {
         exit;
     }
 
-    // If this is a promotion/edit of an existing student, freeze the old
-    // semester before changing the legacy current-state columns.
+    // Prepare values for database operations
+    $ayIdVal = intval($academic_year_id);
+    $classIdVal = intval($class_id);
+    $divisionIdVal = intval($division_id);
+    $gradYearVal = ($grad_year !== 'NULL' && intval($grad_year) > 0) ? intval($grad_year) : null;
+    $rollNoVal = ($roll_no !== 'NULL') ? trim($_POST['roll_no']) : null;
+    $deptIdVal = ($department_id !== 'NULL' && intval($_POST['department_id']) > 0) ? intval($_POST['department_id']) : null;
+    $trackIdVal = ($track_id > 0) ? $track_id : null;
+    $specIdVal = ($specialization_id !== 'NULL' && intval($specialization_id) > 0) ? intval($specialization_id) : null;
+    $specSubIdVal = ($specialization_subject_id !== 'NULL' && intval($specialization_subject_id) > 0) ? intval($specialization_subject_id) : null;
+    $minorCourseIdVal = ($minor_course_id !== 'NULL' && intval($minor_course_id) > 0) ? intval($minor_course_id) : null;
+    $minorSubIdVal = ($minor_subject_id !== 'NULL' && intval($minor_subject_id) > 0) ? intval($minor_subject_id) : null;
+    $cgpaVal = ($cgpa !== 'NULL') ? floatval(trim($cgpa, "'")) : null;
+    $fnameVal = trim($fname);
+    $mobileVal = ($mobile !== 'NULL') ? trim($_POST['mobile']) : null;
+    $emailVal = ($email !== 'NULL') ? trim($_POST['email']) : null;
+    $markListVal = !empty($mark_list_files) ? implode(',', $mark_list_files) : null;
+    $statusVal = 1;
+    $currSemVal = intval($current_semester_id);
+
+    // If this is a promotion/edit of an existing student, resolve old semester
     $previousSemesterId = 0;
-    $promotionTransaction = false;
     if ($existingStudentId > 0) {
         $oldResult = mysqli_query($conn, "SELECT current_semester_id FROM st_student_master WHERE student_id = " . intval($existingStudentId) . " LIMIT 1");
         if ($oldResult && ($oldRow = mysqli_fetch_assoc($oldResult))) {
             $previousSemesterId = intval($oldRow['current_semester_id']);
         }
-        if ($previousSemesterId > 0 && $previousSemesterId !== intval($current_semester_id)) {
-            mysqli_begin_transaction($conn);
-            $promotionTransaction = true;
-            $historyPrepared = $database->syncStudentSemesterHistory($existingStudentId, $previousSemesterId);
-            $historyPrepared = $historyPrepared && $database->finalizeStudentSemester($existingStudentId, $previousSemesterId);
-            if (!$historyPrepared) {
-                mysqli_rollback($conn);
-                echo 'Unable to preserve the previous semester. Promotion cancelled; run the semester-history migration first.';
-                exit;
+    }
+
+    // Begin multi-table admission transaction
+    mysqli_begin_transaction($conn);
+    $transactionActive = true;
+
+    try {
+        if ($existingStudentId > 0) {
+            // Preserve previous semester snapshot if semester is changing
+            if ($previousSemesterId > 0 && $previousSemesterId !== $currSemVal) {
+                $historyPrepared = $database->syncStudentSemesterHistory($existingStudentId, $previousSemesterId);
+                $historyPrepared = $historyPrepared && $database->finalizeStudentSemester($existingStudentId, $previousSemesterId);
+                if (!$historyPrepared) {
+                    throw new Exception("Unable to preserve the previous semester history snapshot. Promotion cancelled.", 500);
+                }
             }
+
+            // Prepared UPDATE on st_student_master (without non-existent research columns)
+            $upSql = "UPDATE `st_student_master` SET
+                `academic_year_id` = ?,
+                `registration_no` = ?,
+                `class_id` = ?,
+                `division_id` = ?,
+                `grad_year` = ?,
+                `roll_no` = ?,
+                `department_id` = ?,
+                `specialization_track_id` = ?,
+                `specialization_id` = ?,
+                `specialization_subject_id` = ?,
+                `minor_course_id` = ?,
+                `minor_subject_id` = ?,
+                `cgpa` = ?,
+                `fname` = ?,
+                `mobile` = ?,
+                `email` = ?,
+                `mark_list` = ?,
+                `status` = ?,
+                `current_semester_id` = ?
+                WHERE `student_id` = ?";
+            $upStmt = mysqli_prepare($conn, $upSql);
+            if (!$upStmt) {
+                throw new Exception("Prepare failed for student update: " . mysqli_error($conn), mysqli_errno($conn));
+            }
+            $upParams = [
+                $ayIdVal, $regNoVal, $classIdVal, $divisionIdVal, $gradYearVal, $rollNoVal,
+                $deptIdVal, $trackIdVal, $specIdVal, $specSubIdVal, $minorCourseIdVal, $minorSubIdVal,
+                $cgpaVal, $fnameVal, $mobileVal, $emailVal, $markListVal, $statusVal, $currSemVal,
+                $existingStudentId
+            ];
+            if (!$upStmt->execute($upParams)) {
+                $upErr = $upStmt->error;
+                $upStmt->close();
+                throw new Exception("Failed updating student record: " . $upErr, mysqli_errno($conn));
+            }
+            $upStmt->close();
+            $student_id = $existingStudentId;
+        } else {
+            // Prepared INSERT into st_student_master (without non-existent research columns)
+            $insSql = "INSERT INTO `st_student_master`(
+                `academic_year_id`,
+                `registration_no`,
+                `class_id`,
+                `division_id`,
+                `grad_year`,
+                `roll_no`,
+                `department_id`,
+                `specialization_track_id`,
+                `specialization_id`,
+                `specialization_subject_id`,
+                `minor_course_id`,
+                `minor_subject_id`,
+                `cgpa`,
+                `fname`,
+                `mobile`,
+                `email`,
+                `mark_list`,
+                `status`,
+                `m_sem1`,
+                `m_sem2`,
+                `m_sem3`,
+                `created_at`,
+                `current_semester_id`
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '[]', '[]', '[]', NOW(), ?)";
+            $insStmt = mysqli_prepare($conn, $insSql);
+            if (!$insStmt) {
+                throw new Exception("Prepare failed for student insert: " . mysqli_error($conn), mysqli_errno($conn));
+            }
+            $insParams = [
+                $ayIdVal, $regNoVal, $classIdVal, $divisionIdVal, $gradYearVal, $rollNoVal,
+                $deptIdVal, $trackIdVal, $specIdVal, $specSubIdVal, $minorCourseIdVal, $minorSubIdVal,
+                $cgpaVal, $fnameVal, $mobileVal, $emailVal, $markListVal, $statusVal, $currSemVal
+            ];
+            if (!$insStmt->execute($insParams)) {
+                $insErr = $insStmt->error;
+                $insStmt->close();
+                throw new Exception("Failed inserting student record: " . $insErr, mysqli_errno($conn));
+            }
+            $student_id = mysqli_insert_id($conn);
+            $insStmt->close();
         }
-    }
-    
-    // If user has existing linked student, UPDATE that record; otherwise INSERT new
-    if ($existingStudentId > 0) {
-        // UPDATE existing student record
-        $sql = "UPDATE `st_student_master` SET
-            `academic_year_id` = '$academic_year_id',
-            `registration_no` = '$registration_no',
-            `class_id` = '$class_id',
-            `division_id` = '$division_id',
-            `grad_year` = $grad_year_sql,
-            `roll_no` = $roll_no,
-            `department_id` = $department_id,
-            `specialization_track_id` = $specialization_track_id_sql,
-            `specialization_id` = $specialization_id,
-            `specialization_subject_id` = $specialization_subject_id,
-            `minor_course_id` = $minor_course_id,
-            `minor_subject_id` = $minor_subject_id,
-            `cgpa` = $cgpa,
-            `fname` = '$fname',
-            `mobile` = $mobile,
-            `email` = $email,
-            `mark_list` = $mark_list,
-            `status` = $status,
-            `current_semester_id` = '$current_semester_id',
-            `research_component_i_id` = $research_component_i_id,
-            `research_core_vii` = $research_core_vii,
-            `research_component_ii_id` = $research_component_ii_id,
-            `research_core_viii` = $research_core_viii
-            WHERE `student_id` = $existingStudentId";
-        
-        $result = mysqli_query($conn, $sql);
-        $student_id = $existingStudentId;
-    } else {
-        // Build the INSERT query for new student
-        $sql = "INSERT INTO `st_student_master`(
-            `academic_year_id`,
-            `registration_no`,
-            `class_id`,
-            `division_id`,
-            `grad_year`,
-            `roll_no`,
-            `department_id`,
-            `specialization_track_id`,
-            `specialization_id`,
-            `specialization_subject_id`,
-            `minor_course_id`,
-            `minor_subject_id`,
-            `cgpa`,
-            `fname`,
-            `mobile`,
-            `email`,
-            `mark_list`,
-            `status`,
-            `m_sem1`,
-            `m_sem2`,
-            `m_sem3`,
-            `created_at`,
-            `current_semester_id`,
-            `research_component_i_id`,
-            `research_core_vii`,
-            `research_component_ii_id`,
-            `research_core_viii`
-        ) VALUES (
-            '$academic_year_id',
-            '$registration_no',
-            '$class_id',
-            '$division_id',
-            $grad_year_sql,
-            $roll_no,
-            $department_id,
-            $specialization_track_id_sql,
-            $specialization_id,
-            $specialization_subject_id,
-            $minor_course_id,
-            $minor_subject_id,
-            $cgpa,
-            '$fname',
-            $mobile,
-            $email,
-            $mark_list,
-            $status,
-            $m_sem1,
-            $m_sem2,
-            $m_sem3,
-            NOW(),
-            '$current_semester_id',
-            $research_component_i_id,
-            $research_core_vii,
-            $research_component_ii_id,
-            $research_core_viii
-        )";
-        
-        $result = mysqli_query($conn, $sql);
-        $student_id = mysqli_insert_id($conn);
-    }
-    
-    if ($result === TRUE) {
+
+        // 1. Related table: Semester History sync
         $database->removeInvalidStudentMentorAllocation($student_id);
-        $database->syncStudentSemesterHistory($student_id, $current_semester_id);
-        if (isset($specialization_subject_id) && $specialization_subject_id !== 'NULL') {
-            $clean_subject_id = intval(trim($specialization_subject_id, "'"));
-            $clean_semester_id = intval($current_semester_id);
-            if ($clean_subject_id > 0 && $clean_semester_id > 0) {
-                $database->autoAllocateMentor($student_id, $clean_subject_id, $clean_semester_id);
+        $database->syncStudentSemesterHistory($student_id, $currSemVal);
+
+        // 2. Related table: Research components in semester history (Honours with Research, Track 2)
+        if ($trackIdVal === 2) {
+            $upHistResSql = "UPDATE st_student_semester_history SET
+                research_component_i_id = ?,
+                research_core_vii = ?,
+                research_component_ii_id = ?,
+                research_core_viii = ?
+                WHERE student_id = ? AND semester_id = ?";
+            $upHistResStmt = mysqli_prepare($conn, $upHistResSql);
+            if ($upHistResStmt) {
+                $rComp1 = ($research_component_i_id !== 'NULL') ? intval($research_component_i_id) : null;
+                $rCore7 = ($research_core_vii !== 'NULL') ? trim($research_core_vii, "'") : null;
+                $rComp2 = ($research_component_ii_id !== 'NULL') ? intval($research_component_ii_id) : null;
+                $rCore8 = ($research_core_viii !== 'NULL') ? trim($research_core_viii, "'") : null;
+                $upHistResStmt->execute([$rComp1, $rCore7, $rComp2, $rCore8, $student_id, $currSemVal]);
+                $upHistResStmt->close();
             }
         }
-        // Run again after allocation so the semester snapshot includes the
-        // newly assigned mentor.
-        $newHistorySaved = $database->syncStudentSemesterHistory($student_id, $current_semester_id);
-        if ($promotionTransaction) {
-            if (!$newHistorySaved) {
-                mysqli_rollback($conn);
-                echo 'Unable to create the new semester record. Promotion cancelled.';
-                exit;
-            }
-            mysqli_commit($conn);
+
+        // 3. Related table: Mentor auto-allocation
+        if ($specSubIdVal !== null && $specSubIdVal > 0) {
+            $database->autoAllocateMentor($student_id, $specSubIdVal, $currSemVal);
+            $database->syncStudentSemesterHistory($student_id, $currSemVal);
         }
-        
-        // Link the student to the student's user account ONLY if role is student (role 5)
+
+        // 4. Related table: st_enrollment
+        if ($specIdVal !== null && $specIdVal > 0) {
+            require_once __DIR__ . "/../database/enrollment_service.php";
+            $enChk = mysqli_query($conn, "SELECT enrollment_id FROM st_enrollment WHERE student_id = $student_id AND semester_id = $currSemVal AND specialization_id = $specIdVal LIMIT 1");
+            if (!$enChk || mysqli_num_rows($enChk) === 0) {
+                EnrollmentService::createEnrollment($conn, $student_id, $specIdVal, $currSemVal, $ayIdVal, 'Active');
+            }
+        }
+
+        // 5. User account linking
         if ($userRole === 5 && !empty($userid)) {
             $updateUserSql = "UPDATE st_user_master SET student_id = ? WHERE user_id = ? AND role_id = 5";
             $updateUserStmt = mysqli_prepare($conn, $updateUserSql);
             if ($updateUserStmt) {
-                mysqli_stmt_bind_param($updateUserStmt, "ii", $student_id, $userid);
-                mysqli_stmt_execute($updateUserStmt);
-                mysqli_stmt_close($updateUserStmt);
+                $updateUserStmt->execute([$student_id, $userid]);
+                $updateUserStmt->close();
             }
         } elseif (!empty($_POST['email'])) {
-            // If admitted by admin/coordinator and a student user account already exists with this email, link it
             $studentEmail = trim($_POST['email']);
             $linkStudentUserStmt = mysqli_prepare($conn, "UPDATE st_user_master SET student_id = ? WHERE email_id = ? AND role_id = 5 AND (student_id = 0 OR student_id IS NULL)");
             if ($linkStudentUserStmt) {
-                mysqli_stmt_bind_param($linkStudentUserStmt, "is", $student_id, $studentEmail);
-                mysqli_stmt_execute($linkStudentUserStmt);
-                mysqli_stmt_close($linkStudentUserStmt);
+                $linkStudentUserStmt->execute([$student_id, $studentEmail]);
+                $linkStudentUserStmt->close();
             }
         }
-        // Note: NEVER update the logged-in administrator's or coordinator's user record!
-        
-        // Store in session and redirect to view page
+
+        // Commit all operations atomically
+        mysqli_commit($conn);
+        $transactionActive = false;
+
+        // Diagnostic audit logging
+        if (method_exists($database, 'writeAuditLog')) {
+            $actionType = ($existingStudentId > 0) ? 'STUDENT_ADMISSION_UPDATED' : 'STUDENT_ADMISSION_CREATED';
+            $database->writeAuditLog($userid, $actionType, 'st_student_master', $student_id, "Student admission successfully processed for {$fnameVal} (Reg: {$regNoVal})");
+        }
+
         $_SESSION['student_admission_success'] = 'Student admitted successfully! Student ID: ' . $student_id;
         $_SESSION['viewed_student_id'] = $student_id;
-        
+        unset($_SESSION['student_admission_form']);
+
         echo '<script type="text/javascript">alert("Student admitted successfully! Student ID: ' . $student_id . '");</script>';
         echo "<script>window.open('student_admission_view.php?id=" . $student_id . "','_self')</script>";
-    } else {
-        if ($promotionTransaction) {
+        exit;
+
+    } catch (Throwable $e) {
+        if ($transactionActive) {
             mysqli_rollback($conn);
         }
-        error_log("Student admission failed: " . mysqli_error($conn));
-        echo '<script type="text/javascript">alert("Error: Unable to save student admission record. Please check your inputs and try again.");</script>';
+
+        $errCode = $e->getCode();
+        $errMsg = $e->getMessage();
+        $sqlState = mysqli_sqlstate($conn) ?: 'HY000';
+
+        // Diagnostic logging (sanitized, no sensitive student info or passwords)
+        error_log("[STUDENT_ADMISSION_FAILURE] Timestamp: " . date('Y-m-d H:i:s') . " | User ID: {$userid} | Operation: Student Admission | ErrCode: {$errCode} | SQLSTATE: {$sqlState} | Error: {$errMsg}");
+
+        if (method_exists($database, 'writeAuditLog')) {
+            $sanitizedDesc = "Student admission failed for registration_no: {$regNoVal}. Reason: " . substr($errMsg, 0, 150);
+            $database->writeAuditLog($userid, 'STUDENT_ADMISSION_FAILED', 'st_student_master', null, $sanitizedDesc);
+        }
+
+        // Clean user-facing validation message
+        $userFriendlyMsg = "Unable to save student admission record. Please check your inputs and try again.";
+        if (strpos($errMsg, 'Duplicate') !== false || strpos($errMsg, 'already exists') !== false || $errCode == 1062) {
+            $userFriendlyMsg = "A student with this Registration Number or ERP ID already exists in the system.";
+        } elseif (strpos($errMsg, 'Specialization') !== false || strpos($errMsg, 'subject') !== false) {
+            $userFriendlyMsg = $errMsg;
+        }
+
+        echo '<script type="text/javascript">alert("Error: ' . addslashes($userFriendlyMsg) . '");</script>';
         echo "<script>window.open('student_admission.php','_self')</script>";
+        exit;
     }
     exit;
 }

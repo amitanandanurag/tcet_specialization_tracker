@@ -1,0 +1,1379 @@
+{
+    "tables": {
+        "st_schema_version": {
+            "1": {
+                "name": "version_id",
+                "type": "int(11)",
+                "null": "NO",
+                "default": null,
+                "extra": "auto_increment"
+            },
+            "2": {
+                "name": "version_tag",
+                "type": "varchar(64)",
+                "null": "NO",
+                "default": null,
+                "extra": ""
+            },
+            "3": {
+                "name": "migration_name",
+                "type": "varchar(150)",
+                "null": "NO",
+                "default": null,
+                "extra": ""
+            },
+            "4": {
+                "name": "checksum",
+                "type": "varchar(64)",
+                "null": "NO",
+                "default": null,
+                "extra": ""
+            },
+            "5": {
+                "name": "applied_at",
+                "type": "timestamp",
+                "null": "NO",
+                "default": "current_timestamp()",
+                "extra": ""
+            },
+            "6": {
+                "name": "applied_by",
+                "type": "varchar(100)",
+                "null": "NO",
+                "default": "'deploy_and_verify_schema.php'",
+                "extra": ""
+            },
+            "7": {
+                "name": "execution_time_ms",
+                "type": "int(11)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "8": {
+                "name": "status",
+                "type": "enum('APPLIED','ROLLED_BACK','FAILED')",
+                "null": "NO",
+                "default": "'APPLIED'",
+                "extra": ""
+            }
+        },
+        "st_historical_import_batches": {
+            "1": {
+                "name": "batch_id",
+                "type": "int(11)",
+                "null": "NO",
+                "default": null,
+                "extra": "auto_increment"
+            },
+            "2": {
+                "name": "import_batch_ref",
+                "type": "varchar(64)",
+                "null": "NO",
+                "default": null,
+                "extra": ""
+            },
+            "3": {
+                "name": "academic_year_id",
+                "type": "int(11)",
+                "null": "NO",
+                "default": null,
+                "extra": ""
+            },
+            "4": {
+                "name": "academic_year_label",
+                "type": "varchar(50)",
+                "null": "NO",
+                "default": null,
+                "extra": ""
+            },
+            "5": {
+                "name": "semester_id",
+                "type": "int(11)",
+                "null": "NO",
+                "default": null,
+                "extra": ""
+            },
+            "6": {
+                "name": "class_id",
+                "type": "int(11)",
+                "null": "NO",
+                "default": null,
+                "extra": ""
+            },
+            "7": {
+                "name": "total_candidates",
+                "type": "int(11)",
+                "null": "NO",
+                "default": "0",
+                "extra": ""
+            },
+            "8": {
+                "name": "excluded_duplicates_count",
+                "type": "int(11)",
+                "null": "NO",
+                "default": "0",
+                "extra": ""
+            },
+            "9": {
+                "name": "source_manifest_json",
+                "type": "longtext",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "10": {
+                "name": "seeded_by",
+                "type": "varchar(100)",
+                "null": "NO",
+                "default": "'seed_historical_archive.php'",
+                "extra": ""
+            },
+            "11": {
+                "name": "created_at",
+                "type": "timestamp",
+                "null": "NO",
+                "default": "current_timestamp()",
+                "extra": ""
+            },
+            "12": {
+                "name": "updated_at",
+                "type": "timestamp",
+                "null": "NO",
+                "default": "current_timestamp()",
+                "extra": "on update current_timestamp()"
+            }
+        },
+        "st_historical_student_candidates": {
+            "1": {
+                "name": "candidate_id",
+                "type": "int(11)",
+                "null": "NO",
+                "default": null,
+                "extra": "auto_increment"
+            },
+            "2": {
+                "name": "batch_id",
+                "type": "int(11)",
+                "null": "NO",
+                "default": null,
+                "extra": ""
+            },
+            "3": {
+                "name": "staging_id",
+                "type": "varchar(32)",
+                "null": "NO",
+                "default": null,
+                "extra": ""
+            },
+            "4": {
+                "name": "student_candidate_key",
+                "type": "varchar(64)",
+                "null": "NO",
+                "default": null,
+                "extra": ""
+            },
+            "5": {
+                "name": "reconcile_id",
+                "type": "varchar(32)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "6": {
+                "name": "academic_year_id",
+                "type": "int(11)",
+                "null": "NO",
+                "default": null,
+                "extra": ""
+            },
+            "7": {
+                "name": "academic_year_label",
+                "type": "varchar(50)",
+                "null": "NO",
+                "default": null,
+                "extra": ""
+            },
+            "8": {
+                "name": "semester_id",
+                "type": "int(11)",
+                "null": "NO",
+                "default": null,
+                "extra": ""
+            },
+            "9": {
+                "name": "class_id",
+                "type": "int(11)",
+                "null": "NO",
+                "default": null,
+                "extra": ""
+            },
+            "10": {
+                "name": "orig_erp_raw",
+                "type": "varchar(100)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "11": {
+                "name": "orig_erp_standardized",
+                "type": "varchar(50)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "12": {
+                "name": "orig_student_name_canonical",
+                "type": "varchar(200)",
+                "null": "NO",
+                "default": null,
+                "extra": ""
+            },
+            "13": {
+                "name": "orig_student_name_excel",
+                "type": "varchar(200)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "14": {
+                "name": "orig_student_name_notice",
+                "type": "varchar(200)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "15": {
+                "name": "orig_department_code",
+                "type": "varchar(50)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "16": {
+                "name": "orig_division_raw_excel",
+                "type": "varchar(100)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "17": {
+                "name": "orig_division_raw_notice",
+                "type": "varchar(100)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "18": {
+                "name": "orig_division_canonical",
+                "type": "varchar(50)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "19": {
+                "name": "orig_roll_no",
+                "type": "varchar(50)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "20": {
+                "name": "orig_cgpa_raw",
+                "type": "varchar(50)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "21": {
+                "name": "orig_cgpa_numeric",
+                "type": "decimal(4,2)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "22": {
+                "name": "orig_honors_minor_category",
+                "type": "varchar(64)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "23": {
+                "name": "orig_spec_raw_excel",
+                "type": "varchar(255)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "24": {
+                "name": "orig_spec_raw_notice",
+                "type": "varchar(255)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "25": {
+                "name": "orig_specialization_or_minor_name",
+                "type": "varchar(255)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "26": {
+                "name": "orig_mapped_subject_id",
+                "type": "int(11)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "27": {
+                "name": "orig_mapped_course_code",
+                "type": "varchar(50)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "28": {
+                "name": "orig_mentor_raw",
+                "type": "varchar(255)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "29": {
+                "name": "orig_is_nptel_yellow",
+                "type": "tinyint(1)",
+                "null": "NO",
+                "default": "0",
+                "extra": ""
+            },
+            "30": {
+                "name": "orig_reconcile_status",
+                "type": "varchar(64)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "31": {
+                "name": "orig_eligibility_raw",
+                "type": "varchar(150)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "32": {
+                "name": "orig_import_decision_raw",
+                "type": "varchar(150)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "33": {
+                "name": "source_document_primary",
+                "type": "varchar(255)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "34": {
+                "name": "source_document_secondary",
+                "type": "varchar(255)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "35": {
+                "name": "source_conflict_notes",
+                "type": "text",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "36": {
+                "name": "cur_erp_id",
+                "type": "varchar(50)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "37": {
+                "name": "cur_student_name",
+                "type": "varchar(200)",
+                "null": "NO",
+                "default": null,
+                "extra": ""
+            },
+            "38": {
+                "name": "cur_department_id",
+                "type": "int(11)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "39": {
+                "name": "cur_department_code",
+                "type": "varchar(50)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "40": {
+                "name": "cur_division_id",
+                "type": "int(11)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "41": {
+                "name": "cur_division_label",
+                "type": "varchar(50)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "42": {
+                "name": "cur_roll_no",
+                "type": "varchar(50)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "43": {
+                "name": "cur_cgpa",
+                "type": "decimal(4,2)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "44": {
+                "name": "cur_track_id",
+                "type": "int(11)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "45": {
+                "name": "cur_specialization_id",
+                "type": "int(11)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "46": {
+                "name": "cur_minor_course_id",
+                "type": "int(11)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "47": {
+                "name": "cur_spec_subject_id",
+                "type": "int(11)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "48": {
+                "name": "cur_minor_subject_id",
+                "type": "int(11)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "49": {
+                "name": "cur_course_code",
+                "type": "varchar(50)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "50": {
+                "name": "cur_course_name",
+                "type": "varchar(255)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "51": {
+                "name": "cur_mentor_user_id",
+                "type": "int(11)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "52": {
+                "name": "cur_mentor_name",
+                "type": "varchar(255)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "53": {
+                "name": "approval_tier",
+                "type": "enum('TIER_1_CLEAN_READY_FOR_SIGN_OFF','TIER_2_CONDITIONAL_POLICY_DECISION','TIER_3_HOLD_CONFLICT_OR_MISSING_ID')",
+                "null": "NO",
+                "default": null,
+                "extra": ""
+            },
+            "54": {
+                "name": "technical_validation_status",
+                "type": "enum('PASS_TECHNICAL_AND_ELIGIBILITY','PASS_WITH_POLICY_NOTE','FAIL_TECHNICAL_OR_SOURCE_CONFLICT','HOLD_OR_CONDITIONAL')",
+                "null": "NO",
+                "default": null,
+                "extra": ""
+            },
+            "55": {
+                "name": "duplicate_check_status",
+                "type": "varchar(64)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "56": {
+                "name": "flag_missing_erp",
+                "type": "tinyint(1)",
+                "null": "NO",
+                "default": "0",
+                "extra": ""
+            },
+            "57": {
+                "name": "flag_missing_division",
+                "type": "tinyint(1)",
+                "null": "NO",
+                "default": "0",
+                "extra": ""
+            },
+            "58": {
+                "name": "flag_duplicate_erp",
+                "type": "tinyint(1)",
+                "null": "NO",
+                "default": "0",
+                "extra": ""
+            },
+            "59": {
+                "name": "flag_multiple_spec_reg",
+                "type": "tinyint(1)",
+                "null": "NO",
+                "default": "0",
+                "extra": ""
+            },
+            "60": {
+                "name": "flag_conflicting_dept",
+                "type": "tinyint(1)",
+                "null": "NO",
+                "default": "0",
+                "extra": ""
+            },
+            "61": {
+                "name": "flag_conflicting_spec",
+                "type": "tinyint(1)",
+                "null": "NO",
+                "default": "0",
+                "extra": ""
+            },
+            "62": {
+                "name": "flag_cgpa_below_threshold",
+                "type": "tinyint(1)",
+                "null": "NO",
+                "default": "0",
+                "extra": ""
+            },
+            "63": {
+                "name": "flag_conditional_cgpa",
+                "type": "tinyint(1)",
+                "null": "NO",
+                "default": "0",
+                "extra": ""
+            },
+            "64": {
+                "name": "flag_sem6_unresolved_spec",
+                "type": "tinyint(1)",
+                "null": "NO",
+                "default": "0",
+                "extra": ""
+            },
+            "65": {
+                "name": "flag_notice_only",
+                "type": "tinyint(1)",
+                "null": "NO",
+                "default": "0",
+                "extra": ""
+            },
+            "66": {
+                "name": "flag_excel_only",
+                "type": "tinyint(1)",
+                "null": "NO",
+                "default": "0",
+                "extra": ""
+            },
+            "67": {
+                "name": "blocking_reasons",
+                "type": "text",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "68": {
+                "name": "related_conflict_ids",
+                "type": "varchar(255)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "69": {
+                "name": "elig_case_id",
+                "type": "varchar(32)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "70": {
+                "name": "missing_id_ref",
+                "type": "varchar(32)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "71": {
+                "name": "dup_record_id",
+                "type": "varchar(32)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "72": {
+                "name": "eligibility_status",
+                "type": "enum('ELIGIBLE','CONDITIONALLY_ELIGIBLE','POLICY_NOTE','INELIGIBLE','UNRESOLVED')",
+                "null": "NO",
+                "default": null,
+                "extra": ""
+            },
+            "73": {
+                "name": "academic_approval_status",
+                "type": "enum('PENDING','CONDITIONAL','HOLD','APPROVED','REJECTED')",
+                "null": "NO",
+                "default": "'PENDING'",
+                "extra": ""
+            },
+            "74": {
+                "name": "import_status",
+                "type": "enum('NOT_IMPORTED','READY_FOR_IMPORT','IMPORTED','EXCLUDED')",
+                "null": "NO",
+                "default": "'NOT_IMPORTED'",
+                "extra": ""
+            },
+            "75": {
+                "name": "approving_authority",
+                "type": "varchar(150)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "76": {
+                "name": "approved_by_user_id",
+                "type": "int(11)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "77": {
+                "name": "approval_date",
+                "type": "datetime",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "78": {
+                "name": "approval_remarks",
+                "type": "text",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "79": {
+                "name": "supporting_source_reference",
+                "type": "varchar(255)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "80": {
+                "name": "promoted_student_id",
+                "type": "int(11)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "81": {
+                "name": "promoted_at",
+                "type": "datetime",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "82": {
+                "name": "created_at",
+                "type": "timestamp",
+                "null": "NO",
+                "default": "current_timestamp()",
+                "extra": ""
+            },
+            "83": {
+                "name": "updated_at",
+                "type": "timestamp",
+                "null": "NO",
+                "default": "current_timestamp()",
+                "extra": "on update current_timestamp()"
+            }
+        },
+        "st_historical_conflict_register": {
+            "1": {
+                "name": "conflict_register_id",
+                "type": "int(11)",
+                "null": "NO",
+                "default": null,
+                "extra": "auto_increment"
+            },
+            "2": {
+                "name": "resolution_id",
+                "type": "varchar(32)",
+                "null": "NO",
+                "default": null,
+                "extra": ""
+            },
+            "3": {
+                "name": "conflict_id_ref",
+                "type": "varchar(32)",
+                "null": "NO",
+                "default": null,
+                "extra": ""
+            },
+            "4": {
+                "name": "section2_catalogue_item",
+                "type": "varchar(255)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "5": {
+                "name": "category",
+                "type": "varchar(64)",
+                "null": "NO",
+                "default": null,
+                "extra": ""
+            },
+            "6": {
+                "name": "conflict_title",
+                "type": "varchar(255)",
+                "null": "NO",
+                "default": null,
+                "extra": ""
+            },
+            "7": {
+                "name": "source_document",
+                "type": "varchar(255)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "8": {
+                "name": "page_or_table",
+                "type": "varchar(150)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "9": {
+                "name": "existing_database_value",
+                "type": "text",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "10": {
+                "name": "conflicting_document_value",
+                "type": "text",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "11": {
+                "name": "evidence_and_impact",
+                "type": "text",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "12": {
+                "name": "proposed_resolution",
+                "type": "text",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "13": {
+                "name": "academic_approval_required",
+                "type": "varchar(64)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "14": {
+                "name": "approving_authority",
+                "type": "varchar(150)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "15": {
+                "name": "approved_decision_value",
+                "type": "text",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "16": {
+                "name": "approver_name_and_date",
+                "type": "varchar(150)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "17": {
+                "name": "approval_status",
+                "type": "varchar(64)",
+                "null": "NO",
+                "default": "'PENDING_ACADEMIC_APPROVAL'",
+                "extra": ""
+            },
+            "18": {
+                "name": "created_at",
+                "type": "timestamp",
+                "null": "NO",
+                "default": "current_timestamp()",
+                "extra": ""
+            },
+            "19": {
+                "name": "updated_at",
+                "type": "timestamp",
+                "null": "NO",
+                "default": "current_timestamp()",
+                "extra": "on update current_timestamp()"
+            }
+        },
+        "st_historical_excluded_duplicates": {
+            "1": {
+                "name": "excluded_dup_id",
+                "type": "int(11)",
+                "null": "NO",
+                "default": null,
+                "extra": "auto_increment"
+            },
+            "2": {
+                "name": "batch_id",
+                "type": "int(11)",
+                "null": "NO",
+                "default": null,
+                "extra": ""
+            },
+            "3": {
+                "name": "reconcile_id",
+                "type": "varchar(32)",
+                "null": "NO",
+                "default": null,
+                "extra": ""
+            },
+            "4": {
+                "name": "cohort",
+                "type": "varchar(64)",
+                "null": "NO",
+                "default": null,
+                "extra": ""
+            },
+            "5": {
+                "name": "reconcile_category",
+                "type": "varchar(64)",
+                "null": "NO",
+                "default": null,
+                "extra": ""
+            },
+            "6": {
+                "name": "excel_source_ref",
+                "type": "varchar(150)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "7": {
+                "name": "notice_source_ref",
+                "type": "varchar(150)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "8": {
+                "name": "erp_standardized",
+                "type": "varchar(50)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "9": {
+                "name": "department_code",
+                "type": "varchar(50)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "10": {
+                "name": "division_canonical",
+                "type": "varchar(50)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "11": {
+                "name": "roll_no",
+                "type": "varchar(50)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "12": {
+                "name": "name_excel",
+                "type": "varchar(200)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "13": {
+                "name": "name_notice",
+                "type": "varchar(200)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "14": {
+                "name": "spec_excel",
+                "type": "varchar(255)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "15": {
+                "name": "spec_notice",
+                "type": "varchar(255)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "16": {
+                "name": "existing_in_tcet_st",
+                "type": "tinyint(1)",
+                "null": "NO",
+                "default": "0",
+                "extra": ""
+            },
+            "17": {
+                "name": "import_decision",
+                "type": "varchar(64)",
+                "null": "NO",
+                "default": null,
+                "extra": ""
+            },
+            "18": {
+                "name": "notes",
+                "type": "text",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "19": {
+                "name": "linked_candidate_id",
+                "type": "int(11)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "20": {
+                "name": "created_at",
+                "type": "timestamp",
+                "null": "NO",
+                "default": "current_timestamp()",
+                "extra": ""
+            }
+        },
+        "st_historical_candidate_audit": {
+            "1": {
+                "name": "hist_audit_id",
+                "type": "int(11)",
+                "null": "NO",
+                "default": null,
+                "extra": "auto_increment"
+            },
+            "2": {
+                "name": "candidate_id",
+                "type": "int(11)",
+                "null": "NO",
+                "default": null,
+                "extra": ""
+            },
+            "3": {
+                "name": "action_type",
+                "type": "enum('FIELD_CORRECTION','APPROVAL_DECISION','BULK_APPROVAL_DECISION','STATUS_CHANGE')",
+                "null": "NO",
+                "default": null,
+                "extra": ""
+            },
+            "4": {
+                "name": "field_name",
+                "type": "varchar(64)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "5": {
+                "name": "old_value",
+                "type": "text",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "6": {
+                "name": "new_value",
+                "type": "text",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "7": {
+                "name": "approving_authority",
+                "type": "varchar(150)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "8": {
+                "name": "remarks",
+                "type": "text",
+                "null": "NO",
+                "default": null,
+                "extra": ""
+            },
+            "9": {
+                "name": "supporting_source_reference",
+                "type": "varchar(255)",
+                "null": "YES",
+                "default": "NULL",
+                "extra": ""
+            },
+            "10": {
+                "name": "performed_by_user_id",
+                "type": "int(11)",
+                "null": "NO",
+                "default": null,
+                "extra": ""
+            },
+            "11": {
+                "name": "performed_by_username",
+                "type": "varchar(200)",
+                "null": "NO",
+                "default": null,
+                "extra": ""
+            },
+            "12": {
+                "name": "performed_at",
+                "type": "timestamp",
+                "null": "NO",
+                "default": "current_timestamp()",
+                "extra": ""
+            }
+        }
+    },
+    "indexes": {
+        "st_historical_candidate_audit": {
+            "idx_hist_audit_action": {
+                "non_unique": 1,
+                "columns": "action_type"
+            },
+            "idx_hist_audit_candidate": {
+                "non_unique": 1,
+                "columns": "candidate_id"
+            },
+            "idx_hist_audit_performed": {
+                "non_unique": 1,
+                "columns": "performed_at"
+            },
+            "PRIMARY": {
+                "non_unique": 0,
+                "columns": "hist_audit_id"
+            }
+        },
+        "st_historical_conflict_register": {
+            "idx_hist_conf_cat": {
+                "non_unique": 1,
+                "columns": "category"
+            },
+            "idx_hist_conf_ref": {
+                "non_unique": 1,
+                "columns": "conflict_id_ref"
+            },
+            "idx_hist_conf_status": {
+                "non_unique": 1,
+                "columns": "approval_status"
+            },
+            "PRIMARY": {
+                "non_unique": 0,
+                "columns": "conflict_register_id"
+            },
+            "uq_hist_conf_resolution_id": {
+                "non_unique": 0,
+                "columns": "resolution_id"
+            }
+        },
+        "st_historical_excluded_duplicates": {
+            "idx_hist_excl_batch": {
+                "non_unique": 1,
+                "columns": "batch_id"
+            },
+            "idx_hist_excl_linked_cand": {
+                "non_unique": 1,
+                "columns": "linked_candidate_id"
+            },
+            "PRIMARY": {
+                "non_unique": 0,
+                "columns": "excluded_dup_id"
+            },
+            "uq_hist_excl_reconcile_id": {
+                "non_unique": 0,
+                "columns": "reconcile_id"
+            }
+        },
+        "st_historical_import_batches": {
+            "fk_hist_batch_class": {
+                "non_unique": 1,
+                "columns": "class_id"
+            },
+            "fk_hist_batch_semester": {
+                "non_unique": 1,
+                "columns": "semester_id"
+            },
+            "idx_hist_batch_ay_sem": {
+                "non_unique": 1,
+                "columns": "academic_year_id,semester_id"
+            },
+            "PRIMARY": {
+                "non_unique": 0,
+                "columns": "batch_id"
+            },
+            "uq_hist_batch_ref": {
+                "non_unique": 0,
+                "columns": "import_batch_ref"
+            }
+        },
+        "st_historical_student_candidates": {
+            "fk_hist_cand_class": {
+                "non_unique": 1,
+                "columns": "class_id"
+            },
+            "fk_hist_cand_division": {
+                "non_unique": 1,
+                "columns": "cur_division_id"
+            },
+            "fk_hist_cand_minor_subj": {
+                "non_unique": 1,
+                "columns": "cur_minor_subject_id"
+            },
+            "fk_hist_cand_semester": {
+                "non_unique": 1,
+                "columns": "semester_id"
+            },
+            "fk_hist_cand_spec_subj": {
+                "non_unique": 1,
+                "columns": "cur_spec_subject_id"
+            },
+            "fk_hist_cand_track": {
+                "non_unique": 1,
+                "columns": "cur_track_id"
+            },
+            "idx_hist_cand_ay_sem": {
+                "non_unique": 1,
+                "columns": "academic_year_id,semester_id"
+            },
+            "idx_hist_cand_batch": {
+                "non_unique": 1,
+                "columns": "batch_id"
+            },
+            "idx_hist_cand_course_code": {
+                "non_unique": 1,
+                "columns": "cur_course_code"
+            },
+            "idx_hist_cand_dept_class_div": {
+                "non_unique": 1,
+                "columns": "cur_department_id,class_id,cur_division_id"
+            },
+            "idx_hist_cand_erp": {
+                "non_unique": 1,
+                "columns": "cur_erp_id"
+            },
+            "idx_hist_cand_minor": {
+                "non_unique": 1,
+                "columns": "cur_minor_course_id"
+            },
+            "idx_hist_cand_name": {
+                "non_unique": 1,
+                "columns": "cur_student_name"
+            },
+            "idx_hist_cand_orig_erp": {
+                "non_unique": 1,
+                "columns": "orig_erp_standardized"
+            },
+            "idx_hist_cand_spec": {
+                "non_unique": 1,
+                "columns": "cur_specialization_id"
+            },
+            "idx_hist_cand_statuses": {
+                "non_unique": 1,
+                "columns": "eligibility_status,academic_approval_status,import_status"
+            },
+            "idx_hist_cand_tier": {
+                "non_unique": 1,
+                "columns": "approval_tier"
+            },
+            "PRIMARY": {
+                "non_unique": 0,
+                "columns": "candidate_id"
+            },
+            "uq_hist_cand_staging_id": {
+                "non_unique": 0,
+                "columns": "staging_id"
+            }
+        },
+        "st_schema_version": {
+            "PRIMARY": {
+                "non_unique": 0,
+                "columns": "version_id"
+            },
+            "uq_schema_version_tag": {
+                "non_unique": 0,
+                "columns": "version_tag"
+            }
+        }
+    },
+    "foreign_keys": {
+        "st_historical_candidate_audit": {
+            "fk_hist_audit_candidate": {
+                "column": "candidate_id",
+                "referenced_table": "st_historical_student_candidates",
+                "referenced_column": "candidate_id",
+                "update_rule": "CASCADE",
+                "delete_rule": "RESTRICT"
+            }
+        },
+        "st_historical_excluded_duplicates": {
+            "fk_hist_excl_batch": {
+                "column": "batch_id",
+                "referenced_table": "st_historical_import_batches",
+                "referenced_column": "batch_id",
+                "update_rule": "CASCADE",
+                "delete_rule": "RESTRICT"
+            },
+            "fk_hist_excl_candidate": {
+                "column": "linked_candidate_id",
+                "referenced_table": "st_historical_student_candidates",
+                "referenced_column": "candidate_id",
+                "update_rule": "CASCADE",
+                "delete_rule": "RESTRICT"
+            }
+        },
+        "st_historical_import_batches": {
+            "fk_hist_batch_class": {
+                "column": "class_id",
+                "referenced_table": "st_class_master",
+                "referenced_column": "class_id",
+                "update_rule": "CASCADE",
+                "delete_rule": "RESTRICT"
+            },
+            "fk_hist_batch_semester": {
+                "column": "semester_id",
+                "referenced_table": "st_semester_master",
+                "referenced_column": "semester_id",
+                "update_rule": "CASCADE",
+                "delete_rule": "RESTRICT"
+            }
+        },
+        "st_historical_student_candidates": {
+            "fk_hist_cand_batch": {
+                "column": "batch_id",
+                "referenced_table": "st_historical_import_batches",
+                "referenced_column": "batch_id",
+                "update_rule": "CASCADE",
+                "delete_rule": "RESTRICT"
+            },
+            "fk_hist_cand_class": {
+                "column": "class_id",
+                "referenced_table": "st_class_master",
+                "referenced_column": "class_id",
+                "update_rule": "CASCADE",
+                "delete_rule": "RESTRICT"
+            },
+            "fk_hist_cand_dept": {
+                "column": "cur_department_id",
+                "referenced_table": "st_department_master",
+                "referenced_column": "department_id",
+                "update_rule": "CASCADE",
+                "delete_rule": "RESTRICT"
+            },
+            "fk_hist_cand_division": {
+                "column": "cur_division_id",
+                "referenced_table": "st_division_master",
+                "referenced_column": "division_id",
+                "update_rule": "CASCADE",
+                "delete_rule": "RESTRICT"
+            },
+            "fk_hist_cand_minor_course": {
+                "column": "cur_minor_course_id",
+                "referenced_table": "st_minorcourse",
+                "referenced_column": "course_id",
+                "update_rule": "CASCADE",
+                "delete_rule": "RESTRICT"
+            },
+            "fk_hist_cand_minor_subj": {
+                "column": "cur_minor_subject_id",
+                "referenced_table": "st_minorsubject",
+                "referenced_column": "subject_id",
+                "update_rule": "CASCADE",
+                "delete_rule": "RESTRICT"
+            },
+            "fk_hist_cand_semester": {
+                "column": "semester_id",
+                "referenced_table": "st_semester_master",
+                "referenced_column": "semester_id",
+                "update_rule": "CASCADE",
+                "delete_rule": "RESTRICT"
+            },
+            "fk_hist_cand_spec": {
+                "column": "cur_specialization_id",
+                "referenced_table": "st_specialization_master",
+                "referenced_column": "specialization_id",
+                "update_rule": "CASCADE",
+                "delete_rule": "RESTRICT"
+            },
+            "fk_hist_cand_spec_subj": {
+                "column": "cur_spec_subject_id",
+                "referenced_table": "st_specialization_subject_master",
+                "referenced_column": "subject_id",
+                "update_rule": "CASCADE",
+                "delete_rule": "RESTRICT"
+            },
+            "fk_hist_cand_track": {
+                "column": "cur_track_id",
+                "referenced_table": "st_specialization_master",
+                "referenced_column": "specialization_id",
+                "update_rule": "CASCADE",
+                "delete_rule": "RESTRICT"
+            }
+        }
+    }
+}

@@ -10,5 +10,36 @@
 .DS_Store
 Thumbs.db
 
+# Dependencies
+vendor/
+node_modules/
+
+# Security, Environment & Credentials
+.env
+.env.*
+tests/uat_session_bridge.php
+
+# Database Snapshots, Dumps & Backups (Contains Student PII & Credentials)
+database/*.sql
+database/backup/
+database/backups/
+*.sql
+
+# Private Student Documents & Academic Uploads
+admin/uploads/marklists/*
+!admin/uploads/marklists/index.html
+!admin/uploads/marklists/.htaccess
+admin/uploads/certificates/*
+!admin/uploads/certificates/index.html
+!admin/uploads/certificates/.htaccess
+admin/uploads/nptel/*
+
+# Institutional Source Documents (Containing Student PII)
+docs/audit/*.docx
+docs/audit/*.xlsx
+docs/audit/*.pdf
+docs/audit/*.doc
+docs/archive_audit_reports/
+
 # Project Scratch directories
 scratch/
